@@ -7,10 +7,10 @@ export const metadata: Metadata = {
   description: "Seu mordomo financeiro pessoal — elegância e controle ao seu dispor.",
   manifest: "/manifest.json",
   icons: {
-    icon: "/apple-icon.svg",
+    icon: "/apple-icon.png",
     apple: [
-      { url: "/apple-icon.svg", type: "image/svg+xml" },
       { url: "/apple-icon.png", sizes: "180x180", type: "image/png" },
+      { url: "/apple-icon.svg", type: "image/svg+xml" },
     ],
   },
 };

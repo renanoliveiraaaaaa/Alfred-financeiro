@@ -1,16 +1,22 @@
 # Ícone PWA / Apple Touch Icon
 
-## Instruções para ícone otimizado no iPhone
+## Status
 
-Para o melhor resultado ao adicionar o Alfred à Tela Inicial do iPhone:
+O iOS **exige PNG 180×180** para "Adicionar à Tela Inicial" — SVG não é suportado. O arquivo `apple-icon.png` é gerado automaticamente.
+
+## Regenerar o ícone
+
+```bash
+node scripts/generate-apple-icon.js
+```
+
+## Ícone personalizado
+
+Para usar seu próprio logotipo (gravata borboleta, letra A customizada, etc.):
 
 1. **Tamanho:** 180×180 pixels
-2. **Formato:** PNG (recomendado para iOS)
-3. **Nome do arquivo:** `apple-icon.png`
-4. **Local:** Coloque na pasta `/public` do projeto (mesmo nível que `apple-icon.svg`)
+2. **Formato:** PNG (fundo sólido, sem transparência)
+3. **Nome:** `apple-icon.png`
+4. **Local:** `public/apple-icon.png`
 
-Exemplo de caminho final: `public/apple-icon.png`
-
-O Next.js servirá automaticamente em `/apple-icon.png`. O iOS usará esse ícone quando o usuário tocar em "Adicionar à Tela Inicial".
-
-**Nota:** Já existe um ícone provisório em SVG (`apple-icon.svg`). Se preferir, substitua-o por uma imagem PNG quadrada de 180×180px com o logotipo desejado (gravata borboleta, letra A estilizada, etc.).
+Substitua o arquivo existente. O iOS aplica cantos arredondados automaticamente.
