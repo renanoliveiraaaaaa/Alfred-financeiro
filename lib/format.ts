@@ -1,6 +1,20 @@
 export const formatCurrency = (value: number) =>
   value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 
+/** Retorna saudação conforme hora local: Bom dia (0-11), Boa tarde (12-17), Boa noite (18-23) */
+export const getGreeting = (): string => {
+  const h = new Date().getHours()
+  if (h >= 0 && h < 12) return 'Bom dia'
+  if (h >= 12 && h < 18) return 'Boa tarde'
+  return 'Boa noite'
+}
+
+/** Retorna nome do mês em português com primeira letra maiúscula (ex: Março, Abril) */
+export const getMonthName = (): string => {
+  const name = new Intl.DateTimeFormat('pt-BR', { month: 'long' }).format(new Date())
+  return name.charAt(0).toUpperCase() + name.slice(1)
+}
+
 export const formatDate = (dateStr: string | null) => {
   if (!dateStr) return '-'
   const [y, m, d] = dateStr.split('-')

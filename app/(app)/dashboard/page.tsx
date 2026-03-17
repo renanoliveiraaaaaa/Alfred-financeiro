@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
 import { createSupabaseClient } from '@/lib/supabaseClient'
-import { formatCurrency, formatDate } from '@/lib/format'
+import { formatCurrency, formatDate, getGreeting, getMonthName } from '@/lib/format'
 import MaskedValue from '@/components/MaskedValue'
 import { RefreshCw, Loader2 } from 'lucide-react'
 import type { Database } from '@/types/supabase'
@@ -252,8 +252,8 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className={c.h1}>Boa noite, {firstName || 'senhor'}</h1>
-        <p className={`${c.sub} mt-0.5`}>Visão geral do patrimônio — mês corrente</p>
+        <h1 className={c.h1}>{getGreeting()}, {firstName || 'senhor'}</h1>
+        <p className={`${c.sub} mt-0.5`}>Visão geral do patrimônio — {getMonthName()}</p>
       </div>
 
       {error && (

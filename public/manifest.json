@@ -1,0 +1,17 @@
+{
+  "name": "Alfred Financeiro",
+  "short_name": "Alfred",
+  "description": "Seu mordomo financeiro pessoal — elegância e controle ao seu dispor.",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#0f0f0f",
+  "theme_color": "#0f0f0f",
+  "icons": [
+    {
+      "src": "/apple-icon.svg",
+      "sizes": "180x180",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
