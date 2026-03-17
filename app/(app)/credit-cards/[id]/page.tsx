@@ -8,7 +8,7 @@ import { formatCurrency, formatDate } from '@/lib/format'
 import MaskedValue from '@/components/MaskedValue'
 import CardBrandIcon from '@/components/CardBrandIcon'
 import CardChipIcon from '@/components/CardChipIcon'
-import { ArrowLeft, CheckCircle2, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, ChevronLeft, ChevronRight, CreditCard, Loader2 } from 'lucide-react'
 import type { Database } from '@/types/supabase'
 
 type Card = Database['public']['Tables']['credit_cards']['Row']
