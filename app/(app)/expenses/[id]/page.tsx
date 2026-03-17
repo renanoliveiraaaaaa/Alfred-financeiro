@@ -1,0 +1,432 @@
+'use client'
+
+import { useState, useEffect, useCallback } from 'react'
+import { useRouter, useParams } from 'next/navigation'
+import Link from 'next/link'
+import { createSupabaseClient } from '@/lib/supabaseClient'
+import { maskCurrency, parseBRL } from '@/lib/format'
+import { Loader2, Trash2, ArrowLeft, ExternalLink, Paperclip } from 'lucide-react'
+import ConfirmDangerModal from '@/components/ConfirmDangerModal'
+
+const DEFAULT_CATEGORIES = [
+  { value: 'mercado', label: 'Mercado' },
+  { value: 'combustivel', label: 'Combustível' },
+  { value: 'manutencao_carro', label: 'Manutenção do carro' },
+  { value: 'outros', label: 'Outros' },
+]
+
+const PAYMENT_METHODS = [
+  { value: 'debito', label: 'Débito' },
+  { value: 'credito', label: 'Crédito' },
+  { value: 'especie', label: 'Espécie / Dinheiro' },
+  { value: 'credito_parcelado', label: 'Crédito parcelado' },
+] as const
+
+type PaymentMethod = (typeof PAYMENT_METHODS)[number]['value']
+
+function numberToMask(val: number): string {
+  if (!val) return ''
+  return val.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+export default function EditExpensePage() {
+  const router = useRouter()
+  const params = useParams()
+  const id = params.id as string
+  const supabase = createSupabaseClient()
+
+  const [categories, setCategories] = useState(DEFAULT_CATEGORIES)
+  const [fetching, setFetching] = useState(true)
+  const [notFound, setNotFound] = useState(false)
+
+  const [amountDisplay, setAmountDisplay] = useState('')
+  const [description, setDescription] = useState('')
+  const [category, setCategory] = useState('outros')
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('debito')
+  const [dueDate, setDueDate] = useState('')
+  const [paid, setPaid] = useState(false)
+  const [invoiceUrl, setInvoiceUrl] = useState<string | null>(null)
+  const [file, setFile] = useState<File | null>(null)
+  const [installmentInfo, setInstallmentInfo] = useState<string | null>(null)
+
+  const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState(false)
+
+  const loadExpense = useCallback(async () => {
+    setFetching(true)
+    try {
+      const [{ data: expense, error: fetchErr }, { data: cats }] = await Promise.all([
+        supabase.from('expenses').select('*').eq('id', id).single(),
+        supabase.from('categories').select('name').order('name', { ascending: true }),
+      ])
+
+      if (fetchErr || !expense) {
+        setNotFound(true)
+        return
+      }
+
+      if (cats && cats.length > 0) {
+        const userCats = cats.map((c: { name: string }) => ({ value: c.name, label: c.name }))
+        setCategories([...DEFAULT_CATEGORIES, ...userCats])
+      }
+
+      setAmountDisplay(numberToMask(Number(expense.amount || 0)))
+      setDescription(expense.description || '')
+      setCategory(expense.category || 'outros')
+      setPaymentMethod((expense.payment_method || 'debito') as PaymentMethod)
+      setDueDate(expense.due_date || '')
+      setPaid(expense.paid ?? false)
+      setInvoiceUrl(expense.invoice_url || null)
+
+      if (expense.installments && expense.installment_number) {
+        setInstallmentInfo(`Parcela ${expense.installment_number}/${expense.installments}`)
+      }
+    } catch {
+      setError('Erro ao carregar despesa.')
+    } finally {
+      setFetching(false)
+    }
+  }, [supabase, id])
+
+  useEffect(() => { loadExpense() }, [loadExpense])
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError(null)
+
+    const amount = parseBRL(amountDisplay)
+    if (amount <= 0) { setError('Informe um valor maior que zero.'); return }
+    if (!description.trim()) { setError('Informe uma descrição.'); return }
+    if (!dueDate) { setError('Informe a data de vencimento.'); return }
+
+    setSaving(true)
+    try {
+      let finalInvoiceUrl = invoiceUrl
+
+      if (file) {
+        const { data: userData, error: authErr } = await supabase.auth.getUser()
+        if (authErr || !userData.user) throw new Error('Usuário não autenticado.')
+
+        const ext = file.name.split('.').pop() || 'bin'
+        const filePath = `${userData.user.id}/${Date.now()}-${crypto.randomUUID()}.${ext}`
+
+        const { error: uploadErr } = await supabase.storage
+          .from('invoices')
+          .upload(filePath, file, { upsert: false })
+        if (uploadErr) throw new Error(`Falha no upload: ${uploadErr.message}`)
+
+        const { data: urlData } = supabase.storage.from('invoices').getPublicUrl(filePath)
+        finalInvoiceUrl = urlData.publicUrl
+      }
+
+      const { error: updateErr } = await supabase
+        .from('expenses')
+        .update({
+          amount,
+          description: description.trim(),
+          category,
+          payment_method: paymentMethod,
+          due_date: dueDate,
+          paid,
+          invoice_url: finalInvoiceUrl,
+        })
+        .eq('id', id)
+
+      if (updateErr) throw new Error(updateErr.message)
+
+      setSuccess(true)
+      setTimeout(() => router.push('/expenses'), 800)
+    } catch (err: any) {
+      setError(err?.message || 'Erro ao atualizar despesa.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    setDeleting(true)
+    setError(null)
+    try {
+      const { error: deleteErr } = await supabase.from('expenses').delete().eq('id', id)
+      if (deleteErr) throw new Error(deleteErr.message)
+      router.push('/expenses')
+    } catch (err: any) {
+      setError(err?.message || 'Erro ao excluir despesa.')
+      setDeleting(false)
+      setShowDeleteModal(false)
+    }
+  }
+
+  if (fetching) {
+    return (
+      <div className="max-w-2xl space-y-6 bg-white dark:bg-manor-950 min-h-screen p-6">
+        <div className="flex items-center gap-4 mb-6">
+          <div className="h-4 w-16 animate-pulse rounded bg-gray-200 dark:bg-manor-800" />
+          <div className="h-6 w-40 animate-pulse rounded bg-gray-200 dark:bg-manor-800" />
+        </div>
+        <div className="rounded-xl border border-gray-200 dark:border-manor-800 bg-white dark:bg-manor-900 p-6 shadow-sm space-y-5">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i}>
+              <div className="h-4 w-24 animate-pulse rounded bg-gray-200 dark:bg-manor-800 mb-2" />
+              <div className="h-10 w-full animate-pulse rounded bg-gray-200 dark:bg-manor-800" />
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  if (notFound) {
+    return (
+      <div className="max-w-2xl text-center py-16 bg-white dark:bg-manor-950 min-h-screen p-6">
+        <p className="text-gray-600 dark:text-manor-400 mb-4">Registro não encontrado, senhor.</p>
+        <Link href="/expenses" className="text-sm text-gold-500 dark:text-gold-400 hover:text-gold-600 dark:hover:text-gold-500 hover:underline">
+          Retornar aos registros
+        </Link>
+      </div>
+    )
+  }
+
+  return (
+    <div className="max-w-2xl bg-white dark:bg-manor-950 min-h-screen p-6">
+      <div className="flex items-center gap-4 mb-6">
+        <Link
+          href="/expenses"
+          className="inline-flex items-center gap-1 text-sm text-gray-600 dark:text-manor-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Voltar
+        </Link>
+        <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Editar registro de saída</h1>
+        {installmentInfo && (
+          <span className="rounded-full bg-amber-50 dark:bg-amber-500/15 border border-amber-200 dark:border-amber-500/30 px-2.5 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-300">
+            {installmentInfo}
+          </span>
+        )}
+      </div>
+
+      {success && (
+        <div className="mb-4 rounded-lg border border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-300">
+          Registro atualizado com sucesso! Redirecionando...
+        </div>
+      )}
+
+      {error && (
+        <div className="mb-4 rounded-lg border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-300">
+          {error}
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-5 rounded-xl border border-gray-200 dark:border-manor-800 bg-white dark:bg-manor-900 p-6 shadow-sm">
+        {/* Valor */}
+        <div>
+          <label htmlFor="amount" className="block text-sm font-medium text-gray-600 dark:text-manor-400 mb-1">
+            Valor (R$) <span className="text-red-400">*</span>
+          </label>
+          <div className="relative">
+            <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400 dark:text-manor-500 text-sm">R$</span>
+            <input
+              id="amount"
+              type="text"
+              inputMode="numeric"
+              value={amountDisplay}
+              onChange={(e) => setAmountDisplay(maskCurrency(e.target.value))}
+              placeholder="0,00"
+              className="block w-full rounded-lg border border-gray-300 dark:border-manor-700 bg-gray-50 dark:bg-manor-950 py-2 pl-10 pr-3 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-manor-500 focus:border-gold-500 focus:ring-1 focus:ring-gold-500"
+            />
+          </div>
+        </div>
+
+        {/* Descrição */}
+        <div>
+          <label htmlFor="description" className="block text-sm font-medium text-gray-600 dark:text-manor-400 mb-1">
+            Descrição <span className="text-red-400">*</span>
+          </label>
+          <input
+            id="description"
+            type="text"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Ex.: Supermercado, combustível..."
+            className="block w-full rounded-lg border border-gray-300 dark:border-manor-700 bg-gray-50 dark:bg-manor-950 py-2 px-3 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-manor-500 focus:border-gold-500 focus:ring-1 focus:ring-gold-500"
+          />
+        </div>
+
+        {/* Categoria + Pagamento */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <label htmlFor="category" className="block text-sm font-medium text-gray-600 dark:text-manor-400 mb-1">
+              Categoria <span className="text-red-400">*</span>
+            </label>
+            <select
+              id="category"
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="block w-full rounded-lg border border-gray-300 dark:border-manor-700 bg-gray-50 dark:bg-manor-950 py-2 px-3 text-sm text-gray-900 dark:text-white focus:border-gold-500 focus:ring-1 focus:ring-gold-500"
+            >
+              {categories.map((c) => (
+                <option key={c.value} value={c.value}>{c.label}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label htmlFor="paymentMethod" className="block text-sm font-medium text-gray-600 dark:text-manor-400 mb-1">
+              Método de pagamento <span className="text-red-400">*</span>
+            </label>
+            <select
+              id="paymentMethod"
+              value={paymentMethod}
+              onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
+              className="block w-full rounded-lg border border-gray-300 dark:border-manor-700 bg-gray-50 dark:bg-manor-950 py-2 px-3 text-sm text-gray-900 dark:text-white focus:border-gold-500 focus:ring-1 focus:ring-gold-500"
+            >
+              {PAYMENT_METHODS.map((m) => (
+                <option key={m.value} value={m.value}>{m.label}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Data de vencimento */}
+        <div className="max-w-xs">
+          <label htmlFor="dueDate" className="block text-sm font-medium text-gray-600 dark:text-manor-400 mb-1">
+            Data de vencimento <span className="text-red-400">*</span>
+          </label>
+          <input
+            id="dueDate"
+            type="date"
+            value={dueDate}
+            onChange={(e) => setDueDate(e.target.value)}
+            className="block w-full rounded-lg border border-gray-300 dark:border-manor-700 bg-gray-50 dark:bg-manor-950 py-2 px-3 text-sm text-gray-900 dark:text-white focus:border-gold-500 focus:ring-1 focus:ring-gold-500"
+          />
+        </div>
+
+        {/* Anexo existente + novo upload */}
+        <div>
+          <label className="block text-sm font-medium text-gray-600 dark:text-manor-400 mb-1">
+            Comprovativo anexo
+          </label>
+
+          {invoiceUrl && !file && (
+            <div className="flex items-center gap-3 mb-2 rounded-lg border border-gray-200 dark:border-manor-800 bg-gray-100 dark:bg-manor-800 px-3 py-2">
+              <Paperclip className="h-4 w-4 text-gray-400 dark:text-manor-500 shrink-0" />
+              <a
+                href={invoiceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 truncate text-sm text-gold-600 dark:text-gold-400 hover:text-gold-500 dark:hover:text-gold-500 hover:underline"
+              >
+                Ver ficheiro atual
+              </a>
+              <ExternalLink className="h-3.5 w-3.5 text-gray-400 dark:text-manor-500 shrink-0" />
+            </div>
+          )}
+
+          <div className="flex items-center gap-3">
+            <label className="flex-1 cursor-pointer">
+              <div className={`flex items-center justify-center gap-2 rounded-lg border-2 border-dashed px-4 py-3 text-sm transition-colors ${
+                file
+                  ? 'border-gold-300 dark:border-gold-500/40 bg-gold-50 dark:bg-gold-500/10 text-gold-700 dark:text-gold-400'
+                  : 'border-gray-300 dark:border-manor-700 text-gray-500 dark:text-manor-400 hover:border-manor-500 hover:bg-gray-100 dark:hover:bg-manor-800'
+              }`}>
+                <svg className="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+                </svg>
+                <span className="truncate">
+                  {file ? file.name : invoiceUrl ? 'Substituir ficheiro' : 'Selecionar ficheiro (imagem ou PDF)'}
+                </span>
+              </div>
+              <input
+                type="file"
+                accept="image/*,application/pdf"
+                className="sr-only"
+                onChange={(e) => setFile(e.target.files?.[0] || null)}
+              />
+            </label>
+            {file && (
+              <button type="button" onClick={() => setFile(null)} className="text-xs text-red-600 dark:text-red-400 hover:text-red-300 shrink-0">
+                Remover
+              </button>
+            )}
+          </div>
+            {file && (
+            <p className="mt-1 text-xs text-gray-400 dark:text-manor-600">
+              {(file.size / 1024).toFixed(0)} KB · {file.type || 'arquivo'}
+            </p>
+          )}
+        </div>
+
+        {/* Pago */}
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            role="switch"
+            aria-checked={paid}
+            onClick={() => setPaid(!paid)}
+            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ${
+              paid ? 'bg-gold-500' : 'bg-gray-200 dark:bg-manor-700'
+            }`}
+          >
+            <span
+              className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow ring-0 transition-transform duration-200 ${
+                paid ? 'translate-x-5' : 'translate-x-0'
+              }`}
+            />
+          </button>
+          <label className="text-sm font-medium text-gray-600 dark:text-manor-400 select-none cursor-pointer" onClick={() => setPaid(!paid)}>
+            Pago
+          </label>
+        </div>
+
+        {/* Botões */}
+        <div className="flex items-center justify-between gap-3 pt-2">
+          <div className="flex items-center gap-3">
+            <button
+              type="submit"
+              disabled={saving || deleting}
+              className="inline-flex items-center gap-2 rounded-lg bg-gold-600 dark:bg-gold-500 px-5 py-2.5 text-sm font-medium text-white dark:text-manor-950 hover:bg-gold-500 dark:hover:bg-gold-400 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:ring-offset-2 focus:ring-offset-manor-900 disabled:opacity-50 transition-colors"
+            >
+              {saving ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                'Salvar alterações'
+              )}
+            </button>
+            <Link
+              href="/expenses"
+            className="rounded-lg border border-gray-300 dark:border-manor-700 px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-manor-400 hover:bg-gray-100 dark:hover:bg-manor-800 transition-colors"
+          >
+              Cancelar
+            </Link>
+          </div>
+
+          <button
+            type="button"
+            disabled={saving || deleting}
+            onClick={() => setShowDeleteModal(true)}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 dark:border-red-500/30 px-4 py-2.5 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:ring-offset-2 focus:ring-offset-manor-900 disabled:opacity-50 transition-colors"
+          >
+            {deleting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Trash2 className="h-4 w-4" />
+            )}
+            Excluir
+          </button>
+        </div>
+      </form>
+
+      <ConfirmDangerModal
+        open={showDeleteModal}
+        loading={deleting}
+        onConfirm={handleDelete}
+        onCancel={() => setShowDeleteModal(false)}
+      />
+    </div>
+  )
+}

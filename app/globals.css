@@ -1,0 +1,103 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Light mode (Morning Suit) */
+:root {
+  --manor-bg: #f8f9fa;
+  --manor-surface: #ffffff;
+  --manor-border: #e5e7eb;
+  --gold-accent: #9a750e;
+  --silver-text: #6b7280;
+}
+
+/* Dark mode (Tuxedo) */
+.dark {
+  --manor-bg: #0a0a0a;
+  --manor-surface: #0f0f0f;
+  --manor-border: #1a1a1a;
+  --gold-accent: #b59410;
+  --silver-text: #c0c0c0;
+}
+
+body {
+  @apply bg-[#f8f9fa] text-gray-900 dark:bg-manor-950 dark:text-gray-100 antialiased;
+}
+
+*, *::before, *::after {
+  transition-property: color, background-color, border-color, box-shadow;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 0ms;
+}
+
+html.theme-transition *,
+html.theme-transition *::before,
+html.theme-transition *::after {
+  transition-duration: 400ms !important;
+}
+
+main {
+  @apply bg-[#f8f9fa] dark:bg-manor-950;
+}
+
+::selection {
+  background-color: rgba(181, 148, 16, 0.3);
+}
+
+.dark ::-webkit-scrollbar {
+  width: 6px;
+}
+.dark ::-webkit-scrollbar-track {
+  background: #0a0a0a;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 3px;
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out;
+}
+
+@keyframes modal-enter {
+  from { opacity: 0; transform: translateY(-12px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes modal-exit {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to { opacity: 0; transform: translateY(8px) scale(0.97); }
+}
+@keyframes backdrop-enter {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.animate-modal-enter {
+  animation: modal-enter 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.animate-backdrop-enter {
+  animation: backdrop-enter 0.2s ease-out forwards;
+}
+
+@keyframes stagger-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-stagger-up {
+  animation: stagger-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  opacity: 0;
+}
+
+.glow-hover {
+  transition: box-shadow 0.3s ease, transform 0.2s ease;
+}
+.glow-hover:hover {
+  box-shadow: 0 0 20px rgba(181, 148, 16, 0.12);
+  transform: scale(1.02);
+}

@@ -1,0 +1,99 @@
+'use server'
+
+import { createSupabaseServerClient } from '@/lib/supabaseServer'
+import { calculateInstallmentDates, addMonths } from '@/lib/installments'
+
+type PaymentMethod = 'credito' | 'debito' | 'especie' | 'credito_parcelado'
+
+export type CreateExpenseInput = {
+  amount: number
+  description: string
+  category: string
+  payment_method: PaymentMethod
+  installments: number
+  due_date: string
+  paid: boolean
+  invoice_url?: string | null
+  credit_card_id?: string | null
+}
+
+export type ActionResult = { success: true } | { success: false; error: string }
+
+export async function createExpense(input: CreateExpenseInput): Promise<ActionResult> {
+  if (input.amount <= 0) return { success: false, error: 'Valor deve ser maior que zero.' }
+  if (!input.description.trim()) return { success: false, error: 'Descrição é obrigatória.' }
+  if (!input.due_date) return { success: false, error: 'Data de vencimento é obrigatória.' }
+
+  const isParcelado = input.payment_method === 'credito_parcelado'
+  if (isParcelado && (input.installments < 2 || input.installments > 120)) {
+    return { success: false, error: 'Parcelas devem ser entre 2 e 120.' }
+  }
+
+  const supabase = createSupabaseServerClient()
+
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  if (authError || !user) return { success: false, error: 'Usuário não autenticado.' }
+
+  if (isParcelado) {
+    const n = input.installments
+    const perInstallment = Math.round((input.amount / n) * 100) / 100
+    const remainder = Math.round((input.amount - perInstallment * n) * 100) / 100
+
+    let dueDates: string[]
+
+    if (input.credit_card_id) {
+      const { data: card } = await supabase
+        .from('credit_cards')
+        .select('closing_day, due_day')
+        .eq('id', input.credit_card_id)
+        .maybeSingle()
+
+      if (card) {
+        dueDates = calculateInstallmentDates(
+          input.due_date,
+          card.closing_day,
+          card.due_day,
+          n,
+        )
+      } else {
+        dueDates = Array.from({ length: n }, (_, i) => addMonths(input.due_date, i))
+      }
+    } else {
+      dueDates = Array.from({ length: n }, (_, i) => addMonths(input.due_date, i))
+    }
+
+    const rows = Array.from({ length: n }, (_, i) => ({
+      user_id: user.id,
+      amount: i === 0 ? perInstallment + remainder : perInstallment,
+      description: `${input.description.trim()} (${i + 1}/${n})`,
+      category: input.category,
+      payment_method: 'credito_parcelado' as const,
+      installments: n,
+      installment_number: i + 1,
+      due_date: dueDates[i],
+      paid: i === 0 ? input.paid : false,
+      invoice_url: input.invoice_url || null,
+      credit_card_id: input.credit_card_id || null,
+    }))
+
+    const { error: insertError } = await supabase.from('expenses').insert(rows)
+    if (insertError) return { success: false, error: insertError.message }
+  } else {
+    const { error: insertError } = await supabase.from('expenses').insert({
+      user_id: user.id,
+      amount: input.amount,
+      description: input.description.trim(),
+      category: input.category,
+      payment_method: input.payment_method,
+      installments: null,
+      installment_number: null,
+      due_date: input.due_date,
+      paid: input.paid,
+      invoice_url: input.invoice_url || null,
+      credit_card_id: input.credit_card_id || null,
+    })
+    if (insertError) return { success: false, error: insertError.message }
+  }
+
+  return { success: true }
+}
