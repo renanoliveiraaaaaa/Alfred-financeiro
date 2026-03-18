@@ -79,8 +79,13 @@ export default function CommandPalette() {
         close()
       }
     }
+    const openHandler = () => setOpen(true)
     window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
+    window.addEventListener('open-command-palette', openHandler)
+    return () => {
+      window.removeEventListener('keydown', handler)
+      window.removeEventListener('open-command-palette', openHandler)
+    }
   }, [close])
 
   useEffect(() => {

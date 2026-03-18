@@ -246,17 +246,20 @@ export default function ReportsPage() {
     skel: 'bg-gray-200 dark:bg-manor-800 rounded animate-pulse',
   }
 
+  const csvRow = (type: string, desc: string, amount: number, date: string, category: string, status: string) =>
+    `${type};"${(desc || '').replace(/"/g, '""')}";${amount.toFixed(2).replace('.', ',')};${date};${category};${status}`
+
   const exportCSV = () => {
     const BOM = '\uFEFF'
     const headers = 'Tipo;Descrição;Valor;Data;Categoria;Status'
     const rows: string[] = []
 
     yearRevenues.forEach((r) => {
-      rows.push(`Entrada;"${(r.description || '').replace(/"/g, '""')}";${Number(r.amount || 0).toFixed(2).replace('.', ',')};${r.date};-;${r.received ? 'Recebido' : 'Pendente'}`)
+      rows.push(csvRow('Entrada', r.description, Number(r.amount || 0), r.date, '-', r.received ? 'Recebido' : 'Pendente'))
     })
 
     yearExpenses.forEach((e) => {
-      rows.push(`Saída;"${(e.description || '').replace(/"/g, '""')}";${Number(e.amount || 0).toFixed(2).replace('.', ',')};${e.due_date || ''};${e.category || '-'};${e.paid ? 'Pago' : 'Aberto'}`)
+      rows.push(csvRow('Saída', e.description, Number(e.amount || 0), e.due_date || '', e.category || '-', e.paid ? 'Pago' : 'Aberto'))
     })
 
     const csv = BOM + headers + '\n' + rows.join('\n')

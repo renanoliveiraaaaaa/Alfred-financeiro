@@ -102,7 +102,7 @@ export default function Topbar() {
         <div className="flex items-center gap-1.5">
           {/* Global search hint */}
           <button
-            onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))}
+            onClick={() => window.dispatchEvent(new CustomEvent('open-command-palette'))}
             title="Buscar (⌘K)"
             className="inline-flex items-center gap-2 h-8 px-3 rounded-lg text-xs font-medium border border-gray-200 dark:border-manor-700 text-gray-400 dark:text-manor-500 hover:text-gray-600 dark:hover:text-manor-300 hover:bg-gray-50 dark:hover:bg-manor-800 transition-colors"
           >

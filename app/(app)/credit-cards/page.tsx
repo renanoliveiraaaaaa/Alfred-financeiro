@@ -427,22 +427,25 @@ export default function CreditCardsPage() {
                           value={Number(card.credit_limit)}
                           className="text-base font-semibold tracking-tight"
                         />
-                        {(usedByCard[card.id] || 0) > 0 && Number(card.credit_limit) > 0 && (() => {
-                          const usedPct = Math.min((usedByCard[card.id] / Number(card.credit_limit)) * 100, 100)
+                        {(() => {
+                          const used = usedByCard[card.id] || 0
+                          const limit = Number(card.credit_limit)
+                          if (used <= 0 || limit <= 0) return null
+                          const usedPct = Math.min((used / limit) * 100, 100)
                           const availPct = Math.max(100 - usedPct, 0)
                           return (
-                          <div className="mt-1">
-                            <div className="flex gap-3 text-[10px] text-white/60">
-                              <span>Usado <strong className="text-red-300">{usedPct.toFixed(0)}%</strong></span>
-                              <span>Disp. <strong className="text-emerald-300">{availPct.toFixed(0)}%</strong></span>
+                            <div className="mt-1">
+                              <div className="flex gap-3 text-[10px] text-white/60">
+                                <span>Usado <strong className="text-red-300">{usedPct.toFixed(0)}%</strong></span>
+                                <span>Disp. <strong className="text-emerald-300">{availPct.toFixed(0)}%</strong></span>
+                              </div>
+                              <div className="mt-1 h-1 w-full rounded-full bg-white/20 overflow-hidden">
+                                <div
+                                  className="h-full rounded-full bg-red-400/80"
+                                  style={{ width: `${usedPct}%` }}
+                                />
+                              </div>
                             </div>
-                            <div className="mt-1 h-1 w-full rounded-full bg-white/20 overflow-hidden">
-                              <div
-                                className="h-full rounded-full bg-red-400/80"
-                                style={{ width: `${usedPct}%` }}
-                              />
-                            </div>
-                          </div>
                           )
                         })()}
                         <div className="flex gap-3 mt-1.5 text-[10px] text-white/60">
