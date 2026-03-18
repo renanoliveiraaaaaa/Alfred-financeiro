@@ -207,7 +207,7 @@ export default function CreditCardDetailPage() {
                 className="text-2xl font-semibold tracking-tight"
               />
             </div>
-            {usedBalance > 0 && (
+            {usedBalance > 0 && Number(card?.credit_limit || 0) > 0 && (
               <div>
                 <div className="flex gap-4 text-xs text-white/60">
                   <span>Limite: <strong className="text-white/80">{formatCurrency(Number(card?.credit_limit || 0))}</strong></span>
@@ -216,7 +216,7 @@ export default function CreditCardDetailPage() {
                 <div className="mt-1.5 h-1.5 w-full rounded-full bg-white/20 overflow-hidden">
                   <div
                     className="h-full rounded-full bg-red-400/80 transition-all"
-                    style={{ width: `${Math.min((usedBalance / Number(card?.credit_limit || 1)) * 100, 100)}%` }}
+                    style={{ width: `${Math.min((usedBalance / Number(card?.credit_limit)) * 100, 100)}%` }}
                   />
                 </div>
               </div>

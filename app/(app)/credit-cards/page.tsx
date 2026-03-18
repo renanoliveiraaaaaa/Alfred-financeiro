@@ -84,7 +84,7 @@ export default function CreditCardsPage() {
       .eq('paid', false)
     if (expData) {
       const map: Record<string, number> = {}
-      expData.forEach((e: any) => {
+      expData.forEach((e: { credit_card_id: string | null; amount: number | null }) => {
         if (e.credit_card_id) {
           map[e.credit_card_id] = (map[e.credit_card_id] || 0) + Number(e.amount || 0)
         }
@@ -427,20 +427,24 @@ export default function CreditCardsPage() {
                           value={Number(card.credit_limit)}
                           className="text-base font-semibold tracking-tight"
                         />
-                        {(usedByCard[card.id] || 0) > 0 && (
+                        {(usedByCard[card.id] || 0) > 0 && Number(card.credit_limit) > 0 && (() => {
+                          const usedPct = Math.min((usedByCard[card.id] / Number(card.credit_limit)) * 100, 100)
+                          const availPct = Math.max(100 - usedPct, 0)
+                          return (
                           <div className="mt-1">
                             <div className="flex gap-3 text-[10px] text-white/60">
-                              <span>Usado <strong className="text-red-300">{((usedByCard[card.id] / Number(card.credit_limit)) * 100).toFixed(0)}%</strong></span>
-                              <span>Disp. <strong className="text-emerald-300">{(((Number(card.credit_limit) - usedByCard[card.id]) / Number(card.credit_limit)) * 100).toFixed(0)}%</strong></span>
+                              <span>Usado <strong className="text-red-300">{usedPct.toFixed(0)}%</strong></span>
+                              <span>Disp. <strong className="text-emerald-300">{availPct.toFixed(0)}%</strong></span>
                             </div>
                             <div className="mt-1 h-1 w-full rounded-full bg-white/20 overflow-hidden">
                               <div
                                 className="h-full rounded-full bg-red-400/80"
-                                style={{ width: `${Math.min((usedByCard[card.id] / Number(card.credit_limit)) * 100, 100)}%` }}
+                                style={{ width: `${usedPct}%` }}
                               />
                             </div>
                           </div>
-                        )}
+                          )
+                        })()}
                         <div className="flex gap-3 mt-1.5 text-[10px] text-white/60">
                           <span>Fecha <strong className="text-white/80">{card.closing_day}</strong></span>
                           <span>Vence <strong className="text-white/80">{card.due_day}</strong></span>
