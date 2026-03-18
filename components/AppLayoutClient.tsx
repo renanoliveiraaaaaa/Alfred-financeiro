@@ -6,6 +6,7 @@ import Topbar from '@/components/Topbar'
 import Sidebar from '@/components/Sidebar'
 import AnimatedPage from '@/components/AnimatedPage'
 import { createSupabaseClient } from '@/lib/supabaseClient'
+import { useUserPreferences } from '@/lib/userPreferencesContext'
 
 export default function AppLayoutClient({
   children,
@@ -15,6 +16,7 @@ export default function AppLayoutClient({
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createSupabaseClient()
+  const { loadPreferences } = useUserPreferences()
   const [checking, setChecking] = useState(true)
 
   const isExpiredPage = pathname === '/expired'
@@ -43,16 +45,17 @@ export default function AppLayoutClient({
         router.replace('/expired')
         return
       }
+      if (user) loadPreferences(user.id)
       setChecking(false)
     }
 
     checkTrial()
-  }, [supabase, router, isExpiredPage])
+  }, [supabase, router, isExpiredPage, loadPreferences])
 
   if (checking) {
     return (
-      <div className="min-h-screen bg-[#f8f9fa] dark:bg-manor-950 flex items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-gold-500 border-t-transparent" />
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand border-t-transparent" />
       </div>
     )
   }
@@ -62,11 +65,11 @@ export default function AppLayoutClient({
   }
 
   return (
-    <div className="min-h-screen bg-[#f8f9fa] dark:bg-manor-950 flex transition-colors">
-      <Sidebar />
-      <div className="flex-1 flex flex-col min-w-0">
+    <div className="app-layout h-screen flex overflow-hidden transition-colors bg-background">
+        <Sidebar />
+      <div className="flex-1 flex flex-col min-w-0 ml-60 max-md:ml-16">
         <Topbar />
-        <main className="flex-1 p-6 overflow-auto">
+        <main className="flex-1 min-h-0 overflow-y-auto p-6">
           <AnimatedPage>{children}</AnimatedPage>
         </main>
       </div>

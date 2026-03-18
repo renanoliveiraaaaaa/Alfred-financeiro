@@ -9,6 +9,7 @@ import MaskedValue from '@/components/MaskedValue'
 import CardBrandIcon from '@/components/CardBrandIcon'
 import CardChipIcon from '@/components/CardChipIcon'
 import { useToast, CONNECTION_ERROR_MSG, isConnectionError } from '@/lib/toastContext'
+import { useGreetingPronoun } from '@/lib/greeting'
 import { ArrowLeft, CheckCircle2, ChevronLeft, ChevronRight, CreditCard, Loader2 } from 'lucide-react'
 import type { Database } from '@/types/supabase'
 
@@ -33,6 +34,7 @@ export default function CreditCardDetailPage() {
   const params = useParams()
   const supabase = createSupabaseClient()
   const { toastError } = useToast()
+  const pronoun = useGreetingPronoun()
   const cardId = params.id as string
 
   const [card, setCard] = useState<Card | null>(null)
@@ -103,7 +105,7 @@ export default function CreditCardDetailPage() {
 
   const handlePayAll = async () => {
     if (!currentGroup) return
-    if (!window.confirm(`Deseja marcar todas as ${currentGroup.expenses.length} despesas da fatura de ${currentGroup.label} como pagas, senhor?`)) return
+    if (!window.confirm(`Deseja marcar todas as ${currentGroup.expenses.length} despesas da fatura de ${currentGroup.label} como pagas, ${pronoun}?`)) return
 
     setPayingAll(true)
     const ids = currentGroup.expenses.filter((e) => !e.paid).map((e) => e.id)
@@ -126,15 +128,15 @@ export default function CreditCardDetailPage() {
   }
 
   const cls = {
-    card: 'rounded-xl border border-gray-200 dark:border-manor-800 bg-white dark:bg-manor-900 transition-colors',
-    h1: 'text-xl font-semibold text-gray-900 dark:text-white',
-    h2: 'text-sm font-semibold text-gray-900 dark:text-white',
-    sub: 'text-sm text-gray-500 dark:text-manor-400',
-    label: 'text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-manor-500',
-    divider: 'divide-y divide-gray-100 dark:divide-manor-800',
-    borderB: 'border-b border-gray-100 dark:border-manor-800',
-    skel: 'bg-gray-200 dark:bg-manor-800 rounded animate-pulse',
-    btnPrimary: 'inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium bg-gold-600 dark:bg-gold-500 text-white dark:text-manor-950 hover:bg-gold-500 dark:hover:bg-gold-400 disabled:opacity-50 transition-colors',
+    card: 'rounded-xl border border-border bg-surface transition-colors',
+    h1: 'text-xl font-semibold text-main',
+    h2: 'text-sm font-semibold text-main',
+    sub: 'text-sm text-muted',
+    label: 'text-xs font-medium uppercase tracking-wider text-muted',
+    divider: 'divide-y divide-border',
+    borderB: 'border-b border-border',
+    skel: 'bg-border rounded animate-pulse',
+    btnPrimary: 'inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium bg-brand text-white hover:opacity-90 disabled:opacity-50 transition-colors',
   }
 
   if (loading) {
@@ -152,8 +154,8 @@ export default function CreditCardDetailPage() {
   if (notFound) {
     return (
       <div className={`${cls.card} p-12 text-center`}>
-        <CreditCard className="h-12 w-12 mx-auto text-gray-300 dark:text-manor-700 mb-4" />
-        <p className="text-gray-500 dark:text-manor-400 mb-4">Cartão não encontrado, senhor.</p>
+        <CreditCard className="h-12 w-12 mx-auto text-muted mb-4" />
+        <p className="text-muted mb-4">Cartão não encontrado, {pronoun}.</p>
         <Link href="/credit-cards" className={cls.btnPrimary}>Retornar à carteira</Link>
       </div>
     )
@@ -179,7 +181,7 @@ export default function CreditCardDetailPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Link href="/credit-cards" className="inline-flex items-center justify-center h-9 w-9 rounded-lg border border-gray-200 dark:border-manor-800 bg-white dark:bg-manor-900 text-gray-500 dark:text-manor-400 hover:bg-gray-100 dark:hover:bg-manor-800 transition-colors">
+        <Link href="/credit-cards" className="inline-flex items-center justify-center h-9 w-9 rounded-lg border border-border bg-surface text-muted hover:bg-background transition-colors">
           <ArrowLeft className="h-4 w-4" />
         </Link>
         <div>
@@ -209,7 +211,7 @@ export default function CreditCardDetailPage() {
       {/* Faturas */}
       {monthGroups.length === 0 ? (
         <div className={`${cls.card} p-12 text-center`}>
-          <p className="text-gray-400 dark:text-manor-500 text-sm">
+          <p className="text-muted text-sm">
             Nenhuma despesa vinculada a este cartão no momento, senhor.
           </p>
         </div>
@@ -220,12 +222,12 @@ export default function CreditCardDetailPage() {
             <button
               onClick={() => currentIdx < monthGroups.length - 1 && setSelectedMonth(monthGroups[currentIdx + 1].key)}
               disabled={currentIdx >= monthGroups.length - 1}
-              className="h-8 w-8 rounded-lg flex items-center justify-center text-gray-500 dark:text-manor-400 hover:bg-gray-100 dark:hover:bg-manor-800 disabled:opacity-30 transition-colors"
+              className="h-8 w-8 rounded-lg flex items-center justify-center text-muted hover:bg-background disabled:opacity-30 transition-colors"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
             <div className="text-center">
-              <p className="text-sm font-semibold text-gray-900 dark:text-white">
+              <p className="text-sm font-semibold text-main">
                 Fatura de {currentGroup?.label}
               </p>
               <MaskedValue
@@ -236,7 +238,7 @@ export default function CreditCardDetailPage() {
             <button
               onClick={() => currentIdx > 0 && setSelectedMonth(monthGroups[currentIdx - 1].key)}
               disabled={currentIdx <= 0}
-              className="h-8 w-8 rounded-lg flex items-center justify-center text-gray-500 dark:text-manor-400 hover:bg-gray-100 dark:hover:bg-manor-800 disabled:opacity-30 transition-colors"
+              className="h-8 w-8 rounded-lg flex items-center justify-center text-muted hover:bg-background disabled:opacity-30 transition-colors"
             >
               <ChevronRight className="h-4 w-4" />
             </button>
@@ -259,7 +261,7 @@ export default function CreditCardDetailPage() {
 
           {currentGroup?.allPaid && (
             <div className="rounded-lg border border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-300 flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4" /> Fatura integralmente quitada, senhor. Excelente gestão.
+              <CheckCircle2 className="h-4 w-4" /> Fatura integralmente quitada, {pronoun}. Excelente gestão.
             </div>
           )}
 
@@ -273,21 +275,21 @@ export default function CreditCardDetailPage() {
                 <li key={exp.id} className="px-5 py-3.5 flex items-center gap-3">
                   <div className={`h-2 w-2 rounded-full shrink-0 ${exp.paid ? 'bg-emerald-500' : 'bg-red-500'}`} />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                    <p className="text-sm font-medium text-main truncate">
                       {exp.description}
                       {exp.installment_number && exp.installments && (
-                        <span className="ml-1.5 text-xs text-gray-400 dark:text-manor-500 font-normal">
+                        <span className="ml-1.5 text-xs text-muted font-normal">
                           {exp.installment_number}/{exp.installments}
                         </span>
                       )}
                     </p>
-                    <p className="text-xs text-gray-400 dark:text-manor-500">
+                    <p className="text-xs text-muted">
                       {formatDate(exp.due_date)} · {exp.category || '—'}
                     </p>
                   </div>
                   <MaskedValue
                     value={Number(exp.amount || 0)}
-                    className="text-sm font-semibold text-gray-900 dark:text-white tabular-nums"
+                    className="text-sm font-semibold text-main tabular-nums"
                   />
                   <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
                     exp.paid

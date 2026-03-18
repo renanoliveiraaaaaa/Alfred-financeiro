@@ -9,9 +9,10 @@ const STORAGE_KEY = 'alfred_welcome_seen'
 type Props = {
   open: boolean
   onClose: () => void
+  pronoun?: string
 }
 
-export default function WelcomeModal({ open, onClose }: Props) {
+export default function WelcomeModal({ open, onClose, pronoun = 'senhor' }: Props) {
   useEffect(() => {
     if (open) {
       try {
@@ -26,36 +27,36 @@ export default function WelcomeModal({ open, onClose }: Props) {
 
   return (
     <div className="fixed inset-0 z-[70] flex flex-col sm:items-center sm:justify-center bg-black/60 backdrop-blur-sm px-0 sm:px-4 py-4 sm:py-0 overflow-y-auto animate-backdrop-enter">
-      <div className="w-full max-w-md sm:rounded-xl rounded-t-xl border-0 sm:border border-gray-200 dark:border-manor-800 bg-white dark:bg-manor-900 shadow-2xl overflow-hidden animate-modal-enter mt-auto sm:mt-0 max-h-[90vh] sm:max-h-none flex flex-col">
+      <div className="w-full max-w-md sm:rounded-xl rounded-t-xl border-0 sm:border border-border bg-surface shadow-2xl overflow-hidden animate-modal-enter mt-auto sm:mt-0 max-h-[90vh] sm:max-h-none flex flex-col">
         <div className="p-6 space-y-4 overflow-y-auto flex-1">
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="h-12 w-12 rounded-full bg-gold-100 dark:bg-gold-500/15 flex items-center justify-center shrink-0">
+              <div className="h-12 w-12 rounded-full bg-brand/15 flex items-center justify-center shrink-0">
                 <span className="text-2xl">🎩</span>
               </div>
               <div>
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  Bem-vindo à Mansão, senhor
+                <h2 className="text-lg font-semibold text-main">
+                  Bem-vindo à Mansão{pronoun ? `, ${pronoun}` : ''}
                 </h2>
-                <p className="text-sm text-gray-500 dark:text-manor-400 mt-0.5">
+                <p className="text-sm text-muted mt-0.5">
                   À sua disposição
                 </p>
               </div>
             </div>
             <button
               onClick={onClose}
-              className="p-2 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-manor-300 hover:bg-gray-100 dark:hover:bg-manor-800 transition-colors"
+              className="p-2 rounded-lg text-muted hover:text-main hover:bg-background transition-colors"
               aria-label="Fechar"
             >
               <X className="h-5 w-5" />
             </button>
           </div>
 
-          <p className="text-sm text-gray-600 dark:text-manor-300 leading-relaxed">
+          <p className="text-sm text-muted leading-relaxed">
             Preparei um conjunto de categorias básicas para organizar suas finanças: Alimentação, Transporte, Moradia, Saúde, Lazer, Educação, Assinaturas e Outros. Você pode personalizá-las em <strong>Cadastros</strong> quando desejar.
           </p>
 
-          <p className="text-sm text-gray-600 dark:text-manor-300 leading-relaxed">
+          <p className="text-sm text-muted leading-relaxed">
             Permita-me sugerir que registre sua primeira <strong>receita</strong> ou <strong>despesa</strong> para começar a acompanhar o seu patrimônio.
           </p>
 
@@ -71,7 +72,7 @@ export default function WelcomeModal({ open, onClose }: Props) {
             <Link
               href="/expenses/new"
               onClick={onClose}
-              className="min-h-[44px] inline-flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-medium border border-gray-300 dark:border-manor-700 text-gray-700 dark:text-manor-300 hover:bg-gray-50 dark:hover:bg-manor-800 transition-colors touch-manipulation"
+              className="min-h-[44px] inline-flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-medium border border-border text-main hover:bg-background transition-colors touch-manipulation"
             >
               <Receipt className="h-4 w-4" />
               Registrar despesa
@@ -79,10 +80,10 @@ export default function WelcomeModal({ open, onClose }: Props) {
           </div>
         </div>
 
-        <div className="px-6 py-3 bg-gray-50 dark:bg-manor-950 border-t border-gray-100 dark:border-manor-800 shrink-0">
+        <div className="px-6 py-3 bg-background border-t border-border shrink-0">
           <button
             onClick={onClose}
-            className="w-full min-h-[44px] text-sm font-medium text-gold-600 dark:text-gold-500 hover:text-gold-500 dark:hover:text-gold-400 transition-colors touch-manipulation"
+            className="w-full min-h-[44px] text-sm font-medium text-brand hover:opacity-80 transition-colors touch-manipulation"
           >
             Entendido, obrigado
           </button>

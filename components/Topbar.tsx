@@ -8,6 +8,7 @@ import { createSupabaseClient } from '@/lib/supabaseClient'
 import { usePrivacy } from '@/lib/privacyContext'
 import { LogOut, Sun, Moon, Eye, EyeOff, Plus, Loader2, DoorOpen } from 'lucide-react'
 import QuickAddModal from '@/components/QuickAddModal'
+import { useGreetingPronoun } from '@/lib/greeting'
 
 const mainNav = [
   { label: 'Patrimônio', href: '/dashboard' },
@@ -29,6 +30,7 @@ export default function Topbar() {
   const [planStatus, setPlanStatus] = useState<string>('trial')
   const [quickAddOpen, setQuickAddOpen] = useState(false)
   const [showLogoutModal, setShowLogoutModal] = useState(false)
+  const pronoun = useGreetingPronoun()
   const [loggingOut, setLoggingOut] = useState(false)
 
   useEffect(() => setMounted(true), [])
@@ -83,18 +85,18 @@ export default function Topbar() {
   }
 
   return (
-    <header className="sticky top-0 z-30">
-      <div className="h-14 flex items-center justify-between px-5 bg-white dark:bg-manor-900 border-b border-gray-200 dark:border-manor-800 transition-colors">
+    <header className="sticky top-0 z-40 bg-surface/80 backdrop-blur-md border-b border-border">
+      <div className="h-14 flex items-center justify-between px-5 transition-colors">
         <div className="flex items-center gap-6">
           <Link
             href="/dashboard"
             className="flex items-center gap-2.5 text-lg font-semibold tracking-tight"
           >
-            <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-gold-500/15 border border-gold-500/30 text-sm">
+            <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-brand/15 border border-brand/30 text-sm">
               🎩
             </span>
-            <span className="hidden sm:inline text-gray-900 dark:text-white">
-              Alfred <span className="text-gold-600 dark:text-gold-500 font-normal">Financeiro</span>
+            <span className="hidden sm:inline text-main">
+              Alfred <span className="text-brand font-normal">Financeiro</span>
             </span>
           </Link>
           <nav className="hidden md:flex items-center gap-1 text-sm">
@@ -106,8 +108,8 @@ export default function Topbar() {
                   href={item.href}
                   className={`px-3 py-1.5 rounded-md transition-colors ${
                     active
-                      ? 'bg-gold-500/15 text-gold-600 dark:text-gold-400'
-                      : 'text-gray-500 dark:text-manor-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-manor-800'
+                      ? 'bg-brand/15 text-brand'
+                      : 'text-muted hover:text-main hover:bg-background'
                   }`}
                 >
                   {item.label}
@@ -127,13 +129,13 @@ export default function Topbar() {
           <button
             onClick={() => setQuickAddOpen(true)}
             title="Novo lançamento rápido"
-            className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium bg-gold-600 dark:bg-gold-500 text-white dark:text-manor-950 hover:bg-gold-500 dark:hover:bg-gold-400 transition-colors"
+            className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium bg-brand text-white hover:opacity-90 transition-colors"
           >
             <Plus className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Novo</span>
           </button>
 
-          <div className="w-px h-6 bg-gray-200 dark:bg-manor-800 mx-0.5" />
+          <div className="w-px h-6 bg-border mx-0.5" />
 
           {/* Theme toggle */}
           {mounted && (
@@ -144,7 +146,7 @@ export default function Topbar() {
                 setTimeout(() => document.documentElement.classList.remove('theme-transition'), 500)
               }}
               title="Ajustar iluminação, senhor"
-              className="inline-flex items-center justify-center h-8 w-8 rounded-lg text-gray-500 dark:text-manor-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-manor-800 transition-colors"
+              className="inline-flex items-center justify-center h-8 w-8 rounded-lg text-muted hover:text-main hover:bg-background transition-colors"
             >
               {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </button>
@@ -156,28 +158,28 @@ export default function Topbar() {
             title="Modo discrição"
             className={`inline-flex items-center justify-center h-8 w-8 rounded-lg transition-colors ${
               isPrivacyMode
-                ? 'bg-gold-500/15 text-gold-600 dark:text-gold-400'
-                : 'text-gray-500 dark:text-manor-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-manor-800'
+                ? 'bg-brand/15 text-brand'
+                : 'text-muted hover:text-main hover:bg-background'
             }`}
           >
             {isPrivacyMode ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
           </button>
 
-          <div className="w-px h-6 bg-gray-200 dark:bg-manor-800 mx-1" />
+          <div className="w-px h-6 bg-border mx-1" />
 
           {/* Profile */}
           <Link href="/profile" className="flex items-center gap-2.5 group">
             <div className="hidden sm:block text-right">
-              <p className="text-xs text-gray-400 dark:text-manor-500 group-hover:text-gray-500 dark:group-hover:text-manor-400 transition-colors">
+              <p className="text-xs text-muted group-hover:text-main transition-colors">
                 À sua disposição
               </p>
-              <p className="text-sm font-medium text-gray-900 dark:text-white">{displayName || 'Senhor'}</p>
+              <p className="text-sm font-medium text-main">{displayName || pronoun}</p>
             </div>
-            <div className="h-8 w-8 rounded-full border border-gold-500/30 overflow-hidden bg-gray-100 dark:bg-manor-800 flex items-center justify-center shrink-0 glow-hover">
+            <div className="h-8 w-8 rounded-full border border-brand/30 overflow-hidden bg-background flex items-center justify-center shrink-0 glow-hover">
               {avatarUrl ? (
                 <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
               ) : (
-                <span className="text-xs font-semibold text-gold-600 dark:text-gold-400">{initials}</span>
+                <span className="text-xs font-semibold text-brand">{initials}</span>
               )}
             </div>
           </Link>
@@ -185,7 +187,7 @@ export default function Topbar() {
           <button
             onClick={() => setShowLogoutModal(true)}
             title="Encerrar sessão"
-            className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg text-gray-500 dark:text-manor-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-manor-800 transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg text-muted hover:text-main hover:bg-background transition-colors"
           >
             <LogOut className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Sair</span>
@@ -198,15 +200,15 @@ export default function Topbar() {
       {/* Logout modal */}
       {showLogoutModal && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4 animate-backdrop-enter">
-          <div className="w-full max-w-sm rounded-xl border border-gray-200 dark:border-manor-800 bg-white dark:bg-manor-900 shadow-2xl p-6 space-y-4 animate-modal-enter">
+          <div className="w-full max-w-sm rounded-xl border border-border bg-surface shadow-2xl p-6 space-y-4 animate-modal-enter">
             <div className="flex items-center gap-3">
-              <div className="h-11 w-11 rounded-full bg-gold-100 dark:bg-gold-500/15 flex items-center justify-center shrink-0">
-                <DoorOpen className="h-5 w-5 text-gold-600 dark:text-gold-400" />
+              <div className="h-11 w-11 rounded-full bg-brand/15 flex items-center justify-center shrink-0">
+                <DoorOpen className="h-5 w-5 text-brand" />
               </div>
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Deixando a Mansão?</h2>
+              <h2 className="text-lg font-semibold text-main">Deixando a Mansão?</h2>
             </div>
 
-            <p className="text-sm text-gray-600 dark:text-manor-300 leading-relaxed">
+            <p className="text-sm text-muted leading-relaxed">
               Deseja realmente encerrar a sua sessão, patrão? Estarei aqui aguardando o seu retorno para cuidar das finanças.
             </p>
 
@@ -214,7 +216,7 @@ export default function Topbar() {
               <button
                 onClick={() => setShowLogoutModal(false)}
                 disabled={loggingOut}
-                className="px-4 py-2.5 rounded-lg text-sm font-medium border border-gray-300 dark:border-manor-700 text-gray-600 dark:text-manor-400 hover:bg-gray-100 dark:hover:bg-manor-800 disabled:opacity-50 transition-colors"
+                className="px-4 py-2.5 rounded-lg text-sm font-medium border border-border text-muted hover:bg-background disabled:opacity-50 transition-colors"
               >
                 Permanecer
               </button>

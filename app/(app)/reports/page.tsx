@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import { useTheme } from 'next-themes'
 import { createSupabaseClient } from '@/lib/supabaseClient'
+import { useGreetingPronoun } from '@/lib/greeting'
 import { formatCurrency } from '@/lib/format'
 import MaskedValue from '@/components/MaskedValue'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
@@ -55,6 +56,7 @@ function groupByMonth(items: { amount: number; dateField: string }[]): number[] 
 export default function ReportsPage() {
   const supabase = createSupabaseClient()
   const { resolvedTheme } = useTheme()
+  const pronoun = useGreetingPronoun()
   const [mounted, setMounted] = useState(false)
 
   const currentYear = new Date().getFullYear()
@@ -240,10 +242,10 @@ export default function ReportsPage() {
   }), [isDark, baseTooltip, baseScales])
 
   const cls = {
-    card: 'rounded-xl border border-gray-200 dark:border-manor-800 bg-white dark:bg-manor-900 shadow-sm transition-colors',
-    label: 'text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-manor-500',
-    h2: 'text-sm font-semibold text-gray-900 dark:text-white',
-    skel: 'bg-gray-200 dark:bg-manor-800 rounded animate-pulse',
+    card: 'rounded-xl border border-border bg-surface shadow-sm transition-colors',
+    label: 'text-xs font-medium uppercase tracking-wide text-muted',
+    h2: 'text-sm font-semibold text-main',
+    skel: 'bg-border rounded animate-pulse',
   }
 
   if (loading) {
@@ -260,8 +262,8 @@ export default function ReportsPage() {
     <div className="space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Análise Patrimonial</h1>
-        <p className="text-sm text-gray-400 dark:text-manor-500 mt-0.5">Visão mensal e evolução anual do seu patrimônio, senhor</p>
+        <h1 className="text-xl font-semibold text-main">Análise Patrimonial</h1>
+        <p className="text-sm text-muted mt-0.5">Visão mensal e evolução anual do seu patrimônio, {pronoun}</p>
       </div>
 
       {error && (
@@ -270,7 +272,7 @@ export default function ReportsPage() {
 
       {/* ── SEÇÃO MENSAL ── */}
       <section className="space-y-4">
-        <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-manor-500">Período corrente</h2>
+        <h2 className="text-xs font-semibold uppercase tracking-widest text-muted">Período corrente</h2>
 
         <div className="grid gap-4 sm:grid-cols-3">
           <div className={`${cls.card} p-4`}>
@@ -289,7 +291,7 @@ export default function ReportsPage() {
 
         {!hasData ? (
           <div className={`${cls.card} p-12 text-center`}>
-            <p className="text-gray-500 dark:text-manor-400 text-sm">
+            <p className="text-muted text-sm">
               Nenhuma movimentação registrada neste período, senhor.
             </p>
           </div>
@@ -298,7 +300,7 @@ export default function ReportsPage() {
             <div className={`${cls.card} p-6`}>
               <h2 className={`${cls.h2} mb-4`}>Saídas por categoria</h2>
               {!hasCategoryData ? (
-                <p className="text-sm text-gray-400 dark:text-manor-500 py-12 text-center">Nenhuma saída registrada neste período.</p>
+                <p className="text-sm text-muted py-12 text-center">Nenhuma saída registrada neste período.</p>
               ) : (
                 <div className="relative h-64">
                   <Doughnut data={doughnutData} options={doughnutOptions} />
@@ -310,9 +312,9 @@ export default function ReportsPage() {
                     <li key={cat} className="flex items-center justify-between text-sm">
                       <div className="flex items-center gap-2">
                         <span className="inline-block h-3 w-3 rounded-full" style={{ backgroundColor: CATEGORY_COLORS[cat] ?? '#6b7280' }} />
-                        <span className="text-gray-500 dark:text-manor-400">{CATEGORY_LABELS[cat] ?? cat}</span>
+                        <span className="text-muted">{CATEGORY_LABELS[cat] ?? cat}</span>
                       </div>
-                      <MaskedValue value={total} className="font-medium text-gray-900 dark:text-white tabular-nums" />
+                      <MaskedValue value={total} className="font-medium text-main tabular-nums" />
                     </li>
                   ))}
                 </ul>
@@ -327,11 +329,11 @@ export default function ReportsPage() {
               <div className="mt-4 flex gap-6 text-sm">
                 <div className="flex items-center gap-2">
                   <span className="inline-block h-3 w-3 rounded-full bg-emerald-500" />
-                  <span className="text-gray-500 dark:text-manor-400">Entradas</span>
+                  <span className="text-muted">Entradas</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="inline-block h-3 w-3 rounded-full bg-red-500" />
-                  <span className="text-gray-500 dark:text-manor-400">Saídas</span>
+                  <span className="text-muted">Saídas</span>
                 </div>
               </div>
             </div>
@@ -343,21 +345,21 @@ export default function ReportsPage() {
       <section className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-manor-500">Evolução do Patrimônio Anual</h2>
-            <p className="text-sm text-gray-500 dark:text-manor-400 mt-0.5">O balanço do seu império este ano, senhor</p>
+            <h2 className="text-xs font-semibold uppercase tracking-widest text-muted">Evolução do Patrimônio Anual</h2>
+            <p className="text-sm text-muted mt-0.5">O balanço do seu império este ano, {pronoun}</p>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={() => setYear((y) => y - 1)}
-              className="h-8 w-8 rounded-lg flex items-center justify-center text-gray-500 dark:text-manor-400 hover:bg-gray-100 dark:hover:bg-manor-800 transition-colors"
+              className="h-8 w-8 rounded-lg flex items-center justify-center text-muted hover:bg-background transition-colors"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
-            <span className="text-sm font-semibold text-gray-900 dark:text-white tabular-nums w-12 text-center">{year}</span>
+            <span className="text-sm font-semibold text-main tabular-nums w-12 text-center">{year}</span>
             <button
               onClick={() => year < currentYear && setYear((y) => y + 1)}
               disabled={year >= currentYear}
-              className="h-8 w-8 rounded-lg flex items-center justify-center text-gray-500 dark:text-manor-400 hover:bg-gray-100 dark:hover:bg-manor-800 disabled:opacity-30 transition-colors"
+              className="h-8 w-8 rounded-lg flex items-center justify-center text-muted hover:bg-background disabled:opacity-30 transition-colors"
             >
               <ChevronRight className="h-4 w-4" />
             </button>
@@ -376,15 +378,15 @@ export default function ReportsPage() {
           </div>
           <div className={`${cls.card} p-4`}>
             <p className={cls.label}>Balanço total</p>
-            <MaskedValue value={yearBalance} className={`mt-1 text-lg font-semibold ${yearBalance >= 0 ? 'text-gold-600 dark:text-gold-400' : 'text-red-600 dark:text-red-400'}`} />
+            <MaskedValue value={yearBalance} className={`mt-1 text-lg font-semibold ${yearBalance >= 0 ? 'text-brand' : 'text-red-600 dark:text-red-400'}`} />
           </div>
         </div>
 
         {/* Line chart */}
         {!hasYearData ? (
           <div className={`${cls.card} p-12 text-center`}>
-            <p className="text-gray-500 dark:text-manor-400 text-sm">
-              Nenhuma movimentação encontrada em {year}, senhor.
+            <p className="text-muted text-sm">
+              Nenhuma movimentação encontrada em {year}, {pronoun}.
             </p>
           </div>
         ) : (

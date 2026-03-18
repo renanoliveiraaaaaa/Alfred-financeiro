@@ -2,7 +2,9 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { createSupabaseClient } from '@/lib/supabaseClient'
-import { formatCurrency, maskCurrency, parseBRL } from '@/lib/format'
+import { formatCurrency } from '@/lib/format'
+import { useGreetingPronoun } from '@/lib/greeting'
+import CurrencyInput from '@/components/CurrencyInput'
 import { useToast, CONNECTION_ERROR_MSG, isConnectionError } from '@/lib/toastContext'
 
 type Projection = {
@@ -33,6 +35,7 @@ function clamp(v: number, min: number, max: number) {
 export default function ProjectionsPage() {
   const supabase = createSupabaseClient()
   const { toastError } = useToast()
+  const pronoun = useGreetingPronoun()
   const now = new Date()
 
   const [year, setYear] = useState(now.getFullYear())
@@ -46,8 +49,8 @@ export default function ProjectionsPage() {
   const [actualRevenues, setActualRevenues] = useState(0)
   const [actualExpenses, setActualExpenses] = useState(0)
 
-  const [projRevDisplay, setProjRevDisplay] = useState('')
-  const [projExpDisplay, setProjExpDisplay] = useState('')
+  const [projRev, setProjRev] = useState(0)
+  const [projExp, setProjExp] = useState(0)
 
   const monthStr = useMemo(() => firstOfMonth(year, month), [year, month])
   const lastDay = useMemo(() => lastOfMonth(year, month), [year, month])
@@ -80,12 +83,8 @@ export default function ProjectionsPage() {
 
       const proj = projRes.data as Projection | null
       setProjection(proj)
-      setProjRevDisplay(
-        proj ? maskCurrency(String(Math.round(Number(proj.projected_revenues) * 100))) : ''
-      )
-      setProjExpDisplay(
-        proj ? maskCurrency(String(Math.round(Number(proj.projected_expenses) * 100))) : ''
-      )
+      setProjRev(Number(proj?.projected_revenues) || 0)
+      setProjExp(Number(proj?.projected_expenses) || 0)
 
       const totalRev = (revRes.data ?? []).reduce(
         (s: number, r: { amount: number }) => s + Number(r.amount || 0),
@@ -111,10 +110,8 @@ export default function ProjectionsPage() {
   const handleSave = async () => {
     setError(null)
     setSuccess(null)
-    const projectedRevenues = parseBRL(projRevDisplay)
-    const projectedExpenses = parseBRL(projExpDisplay)
 
-    if (projectedRevenues < 0 || projectedExpenses < 0) {
+    if (projRev < 0 || projExp < 0) {
       setError('Os valores não podem ser negativos.')
       return
     }
@@ -127,8 +124,8 @@ export default function ProjectionsPage() {
       const payload = {
         user_id: userData.user.id,
         month: monthStr,
-        projected_revenues: projectedRevenues,
-        projected_expenses: projectedExpenses,
+        projected_revenues: projRev,
+        projected_expenses: projExp,
         actual_revenues: actualRevenues,
         actual_expenses: actualExpenses,
       }
@@ -137,8 +134,8 @@ export default function ProjectionsPage() {
         const { error: upErr } = await supabase
           .from('projections')
           .update({
-            projected_revenues: projectedRevenues,
-            projected_expenses: projectedExpenses,
+            projected_revenues: projRev,
+            projected_expenses: projExp,
           })
           .eq('id', projection.id)
         if (upErr) throw upErr
@@ -147,7 +144,7 @@ export default function ProjectionsPage() {
         if (insErr) throw insErr
       }
 
-      setSuccess('Metas registradas com distinção, senhor.')
+      setSuccess(`Metas registradas com distinção, ${pronoun}.`)
       await loadData()
     } catch (err: unknown) {
       const msg = isConnectionError(err) ? CONNECTION_ERROR_MSG : (err instanceof Error ? err.message : 'Erro ao salvar orçamento.')
@@ -158,8 +155,8 @@ export default function ProjectionsPage() {
     }
   }
 
-  const projectedRevenues = parseBRL(projRevDisplay)
-  const projectedExpenses = parseBRL(projExpDisplay)
+  const projectedRevenues = projRev
+  const projectedExpenses = projExp
   const expPercent = projectedExpenses > 0 ? (actualExpenses / projectedExpenses) * 100 : 0
   const revPercent = projectedRevenues > 0 ? (actualRevenues / projectedRevenues) * 100 : 0
 
@@ -178,12 +175,12 @@ export default function ProjectionsPage() {
   }
 
   return (
-    <div className="max-w-3xl space-y-6 bg-white dark:bg-manor-950 rounded-xl p-6">
+    <div className="max-w-3xl space-y-6 bg-background rounded-xl p-6">
       {/* Header */}
       <div>
-        <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Planejamento Patrimonial</h1>
-        <p className="text-sm text-gray-400 dark:text-manor-500 mt-0.5">
-          Defina metas e acompanhe a execução do seu orçamento, senhor
+        <h1 className="text-xl font-semibold text-main">Planejamento Patrimonial</h1>
+        <p className="text-sm text-muted mt-0.5">
+          Defina metas e acompanhe a execução do seu orçamento, {pronoun}
         </p>
       </div>
 
@@ -191,18 +188,18 @@ export default function ProjectionsPage() {
       <div className="flex items-center gap-3">
         <button
           onClick={goPrev}
-          className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-300 dark:border-manor-700 bg-white dark:bg-manor-900 text-gray-500 dark:text-manor-400 hover:bg-gray-100 dark:hover:bg-manor-800 transition-colors"
+          className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-surface text-muted hover:bg-background transition-colors"
         >
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
           </svg>
         </button>
-        <span className="text-sm font-semibold text-gray-900 dark:text-white capitalize min-w-[160px] text-center">
+        <span className="text-sm font-semibold text-main capitalize min-w-[160px] text-center">
           {label}
         </span>
         <button
           onClick={goNext}
-          className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-300 dark:border-manor-700 bg-white dark:bg-manor-900 text-gray-500 dark:text-manor-400 hover:bg-gray-100 dark:hover:bg-manor-800 transition-colors"
+          className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-surface text-muted hover:bg-background transition-colors"
         >
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
@@ -225,10 +222,10 @@ export default function ProjectionsPage() {
       {loading ? (
         <div className="grid gap-6 md:grid-cols-2">
           {[1, 2].map((i) => (
-            <div key={i} className="rounded-xl border border-gray-200 dark:border-manor-800 bg-white dark:bg-manor-900 p-6 animate-pulse">
-              <div className="h-4 w-32 bg-gray-200 dark:bg-manor-800 rounded mb-4" />
-              <div className="h-8 bg-gray-200 dark:bg-manor-800 rounded mb-3" />
-              <div className="h-3 bg-gray-200 dark:bg-manor-800 rounded" />
+            <div key={i} className="rounded-xl border border-border bg-surface p-6 animate-pulse">
+              <div className="h-4 w-32 bg-border rounded mb-4" />
+              <div className="h-8 bg-border rounded mb-3" />
+              <div className="h-3 bg-border rounded" />
             </div>
           ))}
         </div>
@@ -237,17 +234,17 @@ export default function ProjectionsPage() {
           {/* Cards de Entradas vs Saídas */}
           <div className="grid gap-6 md:grid-cols-2">
             {/* Entradas */}
-            <div className="rounded-xl border border-gray-200 dark:border-manor-800 bg-white dark:bg-manor-900 p-6 space-y-4">
-              <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Entradas</h2>
+            <div className="rounded-xl border border-border bg-surface p-6 space-y-4">
+              <h2 className="text-sm font-semibold text-main">Entradas</h2>
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-500 dark:text-manor-400">Projetado</span>
-                  <span className="font-medium text-gray-900 dark:text-white">
+                  <span className="text-muted">Projetado</span>
+                  <span className="font-medium text-main">
                     {projectedRevenues > 0 ? formatCurrency(projectedRevenues) : '—'}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-500 dark:text-manor-400">Realizado</span>
+                  <span className="text-muted">Realizado</span>
                   <span className="font-semibold text-emerald-600 dark:text-emerald-400">
                     {formatCurrency(actualRevenues)}
                   </span>
@@ -255,13 +252,13 @@ export default function ProjectionsPage() {
               </div>
               {projectedRevenues > 0 && (
                 <div>
-                  <div className="flex justify-between text-xs text-gray-400 dark:text-manor-500 mb-1">
+                  <div className="flex justify-between text-xs text-muted mb-1">
                     <span>{Math.round(revPercent)}% atingido</span>
                     <span>
-                      {actualRevenues >= projectedRevenues ? 'Meta atingida, senhor!' : `Restam ${formatCurrency(projectedRevenues - actualRevenues)}`}
+                      {actualRevenues >= projectedRevenues ? `Meta atingida, ${pronoun}!` : `Restam ${formatCurrency(projectedRevenues - actualRevenues)}`}
                     </span>
                   </div>
-                  <div className="h-3 w-full rounded-full bg-gray-200 dark:bg-manor-800 overflow-hidden">
+                  <div className="h-3 w-full rounded-full bg-border overflow-hidden">
                     <div
                       className={`h-full rounded-full transition-all duration-500 ${revBarColor}`}
                       style={{ width: `${clamp(revPercent, 0, 100)}%` }}
@@ -272,25 +269,25 @@ export default function ProjectionsPage() {
             </div>
 
             {/* Saídas */}
-            <div className="rounded-xl border border-gray-200 dark:border-manor-800 bg-white dark:bg-manor-900 p-6 space-y-4">
-              <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Saídas</h2>
+            <div className="rounded-xl border border-border bg-surface p-6 space-y-4">
+              <h2 className="text-sm font-semibold text-main">Saídas</h2>
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-500 dark:text-manor-400">Limite definido</span>
-                  <span className="font-medium text-gray-900 dark:text-white">
+                  <span className="text-muted">Limite definido</span>
+                  <span className="font-medium text-main">
                     {projectedExpenses > 0 ? formatCurrency(projectedExpenses) : '—'}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-500 dark:text-manor-400">Gasto efetivo</span>
-                  <span className={`font-semibold ${expPercent > 100 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white'}`}>
+                  <span className="text-muted">Gasto efetivo</span>
+                  <span className={`font-semibold ${expPercent > 100 ? 'text-red-600 dark:text-red-400' : 'text-main'}`}>
                     {formatCurrency(actualExpenses)}
                   </span>
                 </div>
               </div>
               {projectedExpenses > 0 && (
                 <div>
-                  <div className="flex justify-between text-xs text-gray-400 dark:text-manor-500 mb-1">
+                  <div className="flex justify-between text-xs text-muted mb-1">
                     <span>{Math.round(expPercent)}% consumido</span>
                     <span>
                       {expPercent > 100
@@ -298,7 +295,7 @@ export default function ProjectionsPage() {
                         : `Margem restante: ${formatCurrency(projectedExpenses - actualExpenses)}`}
                     </span>
                   </div>
-                  <div className="h-3 w-full rounded-full bg-gray-200 dark:bg-manor-800 overflow-hidden">
+                  <div className="h-3 w-full rounded-full bg-border overflow-hidden">
                     <div
                       className={`h-full rounded-full transition-all duration-500 ${expBarColor}`}
                       style={{ width: `${clamp(expPercent, 0, 100)}%` }}
@@ -320,11 +317,11 @@ export default function ProjectionsPage() {
           </div>
 
           {/* Saldo projetado vs efetivo */}
-          <div className="rounded-xl border border-gray-200 dark:border-manor-800 bg-white dark:bg-manor-900 p-6">
-            <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Balanço do período</h2>
+          <div className="rounded-xl border border-border bg-surface p-6">
+            <h2 className="text-sm font-semibold text-main mb-3">Balanço do período</h2>
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <p className="text-xs text-gray-600 dark:text-manor-300 uppercase tracking-wide">Saldo projetado</p>
+                <p className="text-xs text-muted uppercase tracking-wide">Saldo projetado</p>
                 <p className={`text-lg font-semibold mt-0.5 ${
                   projectedRevenues - projectedExpenses >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'
                 }`}>
@@ -334,7 +331,7 @@ export default function ProjectionsPage() {
                 </p>
               </div>
               <div>
-                <p className="text-xs text-gray-600 dark:text-manor-300 uppercase tracking-wide">Saldo efetivo</p>
+                <p className="text-xs text-muted uppercase tracking-wide">Saldo efetivo</p>
                 <p className={`text-lg font-semibold mt-0.5 ${
                   actualRevenues - actualExpenses >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'
                 }`}>
@@ -345,46 +342,42 @@ export default function ProjectionsPage() {
           </div>
 
           {/* Formulário de metas */}
-          <div className="rounded-xl border border-gray-200 dark:border-manor-800 bg-white dark:bg-manor-900 p-6 space-y-5">
+          <div className="rounded-xl border border-border bg-surface p-6 space-y-5">
             <div>
-              <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Definir orçamento</h2>
-              <p className="text-xs text-gray-400 dark:text-manor-500 mt-0.5">
+              <h2 className="text-sm font-semibold text-main">Definir orçamento</h2>
+              <p className="text-xs text-muted mt-0.5">
                 {projection ? 'Ajuste as metas' : 'Estabeleça as metas'} para {label}
               </p>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label htmlFor="projRev" className="block text-sm font-medium text-gray-600 dark:text-manor-300 mb-1">
+                <label htmlFor="projRev" className="block text-sm font-medium text-muted mb-1">
                   Entrada projetada (R$)
                 </label>
                 <div className="relative">
-                  <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400 dark:text-manor-500 text-sm">R$</span>
-                  <input
+                  <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted text-sm">R$</span>
+                  <CurrencyInput
                     id="projRev"
-                    type="text"
-                    inputMode="numeric"
-                    value={projRevDisplay}
-                    onChange={(e) => setProjRevDisplay(maskCurrency(e.target.value))}
+                    value={projRev}
+                    onChange={setProjRev}
                     placeholder="0,00"
-                    className="block w-full rounded-lg border border-gray-300 dark:border-manor-700 bg-gray-50 dark:bg-manor-950 py-2 pl-10 pr-3 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-manor-500 focus:border-gold-500 focus:ring-1 focus:ring-gold-500"
+                    className="block w-full rounded-lg border border-border bg-background py-2 pl-10 pr-3 text-sm text-main placeholder-muted focus:border-brand focus:ring-1 focus:ring-brand"
                   />
                 </div>
               </div>
               <div>
-                <label htmlFor="projExp" className="block text-sm font-medium text-gray-600 dark:text-manor-300 mb-1">
+                <label htmlFor="projExp" className="block text-sm font-medium text-muted mb-1">
                   Limite de saídas (R$)
                 </label>
                 <div className="relative">
-                  <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400 dark:text-manor-500 text-sm">R$</span>
-                  <input
+                  <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted text-sm">R$</span>
+                  <CurrencyInput
                     id="projExp"
-                    type="text"
-                    inputMode="numeric"
-                    value={projExpDisplay}
-                    onChange={(e) => setProjExpDisplay(maskCurrency(e.target.value))}
+                    value={projExp}
+                    onChange={setProjExp}
                     placeholder="0,00"
-                    className="block w-full rounded-lg border border-gray-300 dark:border-manor-700 bg-gray-50 dark:bg-manor-950 py-2 pl-10 pr-3 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-manor-500 focus:border-gold-500 focus:ring-1 focus:ring-gold-500"
+                    className="block w-full rounded-lg border border-border bg-background py-2 pl-10 pr-3 text-sm text-main placeholder-muted focus:border-brand focus:ring-1 focus:ring-brand"
                   />
                 </div>
               </div>
@@ -393,7 +386,7 @@ export default function ProjectionsPage() {
             <button
               onClick={handleSave}
               disabled={saving}
-              className="inline-flex items-center gap-2 rounded-lg bg-gold-600 dark:bg-gold-500 px-5 py-2.5 text-sm font-medium text-white dark:text-manor-950 hover:bg-gold-500 dark:hover:bg-gold-400 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-manor-950 disabled:opacity-50 transition-colors"
+              className="inline-flex items-center gap-2 rounded-lg bg-brand px-5 py-2.5 text-sm font-medium text-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2 focus:ring-offset-surface disabled:opacity-50 transition-colors"
             >
               {saving ? 'Processando...' : projection ? 'Atualizar metas' : 'Registrar metas'}
             </button>

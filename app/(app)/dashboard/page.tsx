@@ -5,8 +5,12 @@ import Link from 'next/link'
 import { createSupabaseClient } from '@/lib/supabaseClient'
 import { seedCategoriesIfEmpty } from '@/lib/seedCategories'
 import { formatCurrency, formatDate, getGreeting, getMonthName } from '@/lib/format'
+import { useGreetingPronoun, getGreetingWithName, getGreetingSuffix } from '@/lib/greeting'
 import MaskedValue from '@/components/MaskedValue'
 import WelcomeModal, { shouldShowWelcomeModal } from '@/components/WelcomeModal'
+import AttentionPanel from '@/components/AttentionPanel'
+import BudgetsPanel from '@/components/BudgetsPanel'
+import { useUserPreferences } from '@/lib/userPreferencesContext'
 import { useToast, CONNECTION_ERROR_MSG, isConnectionError } from '@/lib/toastContext'
 import { RefreshCw, Loader2 } from 'lucide-react'
 import type { Database } from '@/types/supabase'
@@ -33,7 +37,7 @@ function diffDays(dateStr: string): number {
 }
 
 function dueBadge(dateStr: string | null) {
-  if (!dateStr) return { label: '—', cls: 'bg-gray-100 dark:bg-manor-800 text-gray-500 dark:text-manor-400' }
+  if (!dateStr) return { label: '—', cls: 'bg-border text-muted' }
   const diff = diffDays(dateStr)
   if (diff < 0)
     return { label: 'Em atraso', cls: 'bg-red-100 dark:bg-red-500/15 text-red-700 dark:text-red-400 ring-1 ring-inset ring-red-200 dark:ring-red-500/30' }
@@ -44,12 +48,14 @@ function dueBadge(dateStr: string | null) {
       label: `Vence em ${diff} dia${diff > 1 ? 's' : ''}`,
       cls: 'bg-yellow-50 dark:bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 ring-1 ring-inset ring-yellow-200 dark:ring-yellow-500/30',
     }
-  return { label: formatDate(dateStr), cls: 'bg-gray-100 dark:bg-manor-800 text-gray-500 dark:text-manor-400 ring-1 ring-inset ring-gray-200 dark:ring-manor-700' }
+  return { label: formatDate(dateStr), cls: 'bg-border text-muted ring-1 ring-inset ring-border' }
 }
 
 export default function DashboardPage() {
   const supabase = createSupabaseClient()
   const { toastError } = useToast()
+  const { gender } = useUserPreferences()
+  const pronoun = useGreetingPronoun()
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -229,14 +235,14 @@ export default function DashboardPage() {
   }
 
   const c = {
-    card: 'rounded-xl border border-gray-200 dark:border-manor-800 bg-white dark:bg-manor-900 transition-colors',
-    label: 'text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-manor-500',
-    h1: 'text-xl font-semibold text-gray-900 dark:text-white',
-    h2: 'text-sm font-semibold text-gray-900 dark:text-white',
-    sub: 'text-sm text-gray-500 dark:text-manor-400',
-    divider: 'divide-y divide-gray-100 dark:divide-manor-800',
-    borderB: 'border-b border-gray-100 dark:border-manor-800',
-    skel: 'bg-gray-200 dark:bg-manor-800 rounded animate-pulse',
+    card: 'rounded-xl border border-border bg-surface transition-colors',
+    label: 'text-xs font-medium uppercase tracking-wider text-muted',
+    h1: 'text-xl font-semibold text-main',
+    h2: 'text-sm font-semibold text-main',
+    sub: 'text-sm text-muted',
+    divider: 'divide-y divide-border',
+    borderB: 'border-b border-border',
+    skel: 'bg-border rounded animate-pulse',
   }
 
   if (loading) {
@@ -267,12 +273,14 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <WelcomeModal open={showWelcomeModal} onClose={() => setShowWelcomeModal(false)} />
+      <WelcomeModal open={showWelcomeModal} onClose={() => setShowWelcomeModal(false)} pronoun={pronoun} />
 
       <div>
-        <h1 className={c.h1}>{getGreeting()}, {firstName || 'senhor'}</h1>
+        <h1 className={c.h1}>{getGreetingWithName(getGreeting(), firstName || '', gender)}</h1>
         <p className={`${c.sub} mt-0.5`}>Visão geral do patrimônio — {getMonthName()}</p>
       </div>
+
+      <AttentionPanel />
 
       {error && (
         <div className="rounded-lg border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-300">
@@ -285,13 +293,13 @@ export default function DashboardPage() {
         <div className={`${c.card} p-4 space-y-3 border-emerald-200 dark:border-emerald-500/20 bg-emerald-50/50 dark:bg-emerald-500/5`}>
           <div className="flex items-center gap-2">
             <span className="text-lg">💰</span>
-            <p className="text-sm font-semibold text-gray-900 dark:text-white">Boas notícias, senhor</p>
+            <p className="text-sm font-semibold text-main">Boas notícias{getGreetingSuffix(gender)}</p>
           </div>
           <ul className={c.divider}>
             {dueIncomeSources.map((src) => (
               <li key={src.id} className="py-2.5 flex items-center gap-3">
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm text-gray-900 dark:text-white">
+                  <p className="text-sm text-main">
                     O seu pagamento de <strong>{src.name}</strong> (<MaskedValue value={Number(src.amount)} className="font-semibold" />) está agendado para hoje. Deseja confirmar a entrada no cofre?
                   </p>
                 </div>
@@ -313,21 +321,21 @@ export default function DashboardPage() {
       {dueSubs.length > 0 && (
         <div className={`${c.card} p-4 space-y-3`}>
           <div className="flex items-center gap-2">
-            <RefreshCw className="h-4 w-4 text-gold-600 dark:text-gold-400" />
-            <p className="text-sm font-semibold text-gray-900 dark:text-white">Renovações pendentes</p>
+            <RefreshCw className="h-4 w-4 text-brand" />
+            <p className="text-sm font-semibold text-main">Renovações pendentes</p>
           </div>
           <ul className={c.divider}>
             {dueSubs.map((sub) => (
               <li key={sub.id} className="py-2.5 flex items-center gap-3">
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm text-gray-900 dark:text-white">
+                  <p className="text-sm text-main">
                     Senhor, a sua assinatura de <strong>{sub.name}</strong> (<MaskedValue value={Number(sub.amount)} className="font-semibold" />) foi renovada.
                   </p>
                 </div>
                 <button
                   onClick={() => handleRegisterSub(sub)}
                   disabled={processingSubId === sub.id}
-                  className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-gold-600 dark:bg-gold-500 text-white dark:text-manor-950 hover:bg-gold-500 dark:hover:bg-gold-400 disabled:opacity-50 transition-colors"
+                  className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-brand text-white hover:opacity-90 disabled:opacity-50 transition-colors"
                 >
                   {processingSubId === sub.id ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
                   Registrar saída
@@ -356,40 +364,42 @@ export default function DashboardPage() {
           {projectedExpenses > 0 ? (
             <>
               <p className={`mt-1.5 text-2xl font-semibold ${
-                budgetPercent > 100 ? 'text-red-600 dark:text-red-400' : budgetPercent > 80 ? 'text-amber-600 dark:text-amber-400' : 'text-gray-900 dark:text-white'
+                budgetPercent > 100 ? 'text-red-600 dark:text-red-400' : budgetPercent > 80 ? 'text-amber-600 dark:text-amber-400' : 'text-main'
               }`}>
                 {Math.round(budgetPercent)}%
               </p>
-              <div className="mt-2 h-1.5 w-full rounded-full bg-gray-100 dark:bg-manor-800 overflow-hidden">
+              <div className="mt-2 h-1.5 w-full rounded-full bg-border overflow-hidden">
                 <div
                   className={`h-full rounded-full transition-all duration-700 ${
-                    budgetPercent > 100 ? 'bg-red-500' : budgetPercent > 80 ? 'bg-amber-500' : 'bg-gold-500'
+                    budgetPercent > 100 ? 'bg-red-500' : budgetPercent > 80 ? 'bg-amber-500' : 'bg-brand'
                   }`}
                   style={{ width: `${Math.min(budgetPercent, 100)}%` }}
                 />
               </div>
             </>
           ) : (
-            <p className="mt-1.5 text-sm text-gray-400 dark:text-manor-500">
-              <Link href="/projections" className="text-gold-600 dark:text-gold-500 hover:text-gold-500 dark:hover:text-gold-400 transition-colors">Definir metas</Link>
+            <p className="mt-1.5 text-sm text-muted">
+              <Link href="/projections" className="text-brand hover:opacity-80 transition-colors">Definir metas</Link>
             </p>
           )}
         </div>
       </section>
+
+      <BudgetsPanel />
 
       <section className="grid gap-6 lg:grid-cols-5">
         <div className={`lg:col-span-3 ${c.card}`}>
           <div className={`${c.borderB} px-5 py-4 flex items-center justify-between`}>
             <h2 className={c.h2}>Últimas movimentações</h2>
             <div className="flex gap-3">
-              <Link href="/revenues" className="text-xs text-gold-600 dark:text-gold-500 hover:text-gold-500 dark:hover:text-gold-400 transition-colors">Entradas</Link>
-              <Link href="/expenses" className="text-xs text-gold-600 dark:text-gold-500 hover:text-gold-500 dark:hover:text-gold-400 transition-colors">Saídas</Link>
+              <Link href="/revenues" className="text-xs text-brand hover:opacity-80 transition-colors">Entradas</Link>
+              <Link href="/expenses" className="text-xs text-brand hover:opacity-80 transition-colors">Saídas</Link>
             </div>
           </div>
           <div className="px-5 py-2">
             {movements.length === 0 ? (
-              <p className="py-8 text-center text-sm text-gray-400 dark:text-manor-500">
-                Tudo em ordem no momento, senhor. Nenhuma movimentação registrada neste mês.
+              <p className="py-8 text-center text-sm text-muted">
+                Tudo em ordem no momento{getGreetingSuffix(gender)}. Nenhuma movimentação registrada neste mês.
               </p>
             ) : (
               <ul className={c.divider}>
@@ -403,8 +413,8 @@ export default function DashboardPage() {
                       {m.type === 'revenue' ? '↑' : '↓'}
                     </span>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{m.description}</p>
-                      <p className="text-xs text-gray-500 dark:text-manor-500">{formatDate(m.date)} · {m.status}</p>
+                      <p className="text-sm font-medium text-main truncate">{m.description}</p>
+                      <p className="text-xs text-muted">{formatDate(m.date)} · {m.status}</p>
                     </div>
                     <MaskedValue
                       value={m.amount}
@@ -430,8 +440,8 @@ export default function DashboardPage() {
           </div>
           <div className="px-5 py-2">
             {unpaid.length === 0 ? (
-              <p className="py-8 text-center text-sm text-gray-400 dark:text-manor-500">
-                Todas as obrigações estão em dia, senhor. Excelente gestão.
+              <p className="py-8 text-center text-sm text-muted">
+                Todas as obrigações estão em dia{getGreetingSuffix(gender)}. Excelente gestão.
               </p>
             ) : (
               <ul className={c.divider}>
@@ -440,12 +450,12 @@ export default function DashboardPage() {
                   return (
                     <li key={e.id} className="py-3 space-y-1.5">
                       <div className="flex items-start justify-between gap-2">
-                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate flex-1">{e.description}</p>
+                        <p className="text-sm font-medium text-main truncate flex-1">{e.description}</p>
                         <MaskedValue value={Number(e.amount || 0)} className="text-sm font-semibold text-red-600 dark:text-red-400 tabular-nums shrink-0" />
                       </div>
                       <div className="flex items-center gap-2">
                         <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${badge.cls}`}>{badge.label}</span>
-                        {e.category && <span className="text-xs text-gray-400 dark:text-manor-500">{e.category}</span>}
+                        {e.category && <span className="text-xs text-muted">{e.category}</span>}
                       </div>
                     </li>
                   )

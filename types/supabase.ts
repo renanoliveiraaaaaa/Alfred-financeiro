@@ -18,18 +18,24 @@ export interface Database {
           id: string
           full_name: string | null
           avatar_url: string | null
+          gender: 'M' | 'F' | 'O' | null
+          app_theme: 'normal' | 'alfred'
           created_at: string
         }
         Insert: {
           id: string
           full_name?: string | null
           avatar_url?: string | null
+          gender?: 'M' | 'F' | 'O' | null
+          app_theme?: 'normal' | 'alfred'
           created_at?: string
         }
         Update: {
           id?: string
           full_name?: string | null
           avatar_url?: string | null
+          gender?: 'M' | 'F' | 'O' | null
+          app_theme?: 'normal' | 'alfred'
           created_at?: string
         }
       }
@@ -134,16 +140,19 @@ export interface Database {
           id: string
           user_id: string
           name: string
+          monthly_budget?: number | null
         }
         Insert: {
           id?: string
           user_id: string
           name: string
+          monthly_budget?: number | null
         }
         Update: {
           id?: string
           user_id?: string
           name?: string
+          monthly_budget?: number | null
         }
       }
       credit_cards: {

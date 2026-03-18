@@ -10,6 +10,13 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        /* Design Tokens - Matriz 4 estados (Normal/Alfred × Claro/Escuro) */
+        background: 'var(--background)',
+        surface: 'var(--surface)',
+        border: 'var(--border)',
+        main: 'var(--text-main)',
+        muted: 'var(--text-muted)',
+        brand: 'var(--brand)',
         manor: {
           50: '#f7f7f5',
           100: '#ededea',

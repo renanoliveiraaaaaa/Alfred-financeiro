@@ -4,10 +4,12 @@ import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { createSupabaseClient } from '@/lib/supabaseClient'
 import MaskedValue from '@/components/MaskedValue'
+import CurrencyInput from '@/components/CurrencyInput'
 import EmptyState from '@/components/EmptyState'
 import CardBrandIcon, { BRAND_OPTIONS } from '@/components/CardBrandIcon'
 import CardChipIcon from '@/components/CardChipIcon'
 import { useToast, CONNECTION_ERROR_MSG, isConnectionError } from '@/lib/toastContext'
+import { useGreetingPronoun } from '@/lib/greeting'
 import { Plus, CreditCard, X, Loader2, Settings2, AlertTriangle } from 'lucide-react'
 import type { Database } from '@/types/supabase'
 
@@ -46,6 +48,7 @@ const COLOR_OPTIONS = [
 export default function CreditCardsPage() {
   const supabase = createSupabaseClient()
   const { toastError } = useToast()
+  const pronoun = useGreetingPronoun()
 
   const [cards, setCards] = useState<Card[]>([])
   const [loading, setLoading] = useState(true)
@@ -58,7 +61,7 @@ export default function CreditCardsPage() {
   const [formSuccess, setFormSuccess] = useState<string | null>(null)
 
   const [name, setName] = useState('')
-  const [limit, setLimit] = useState('')
+  const [limit, setLimit] = useState(0)
   const [closingDay, setClosingDay] = useState('1')
   const [dueDay, setDueDay] = useState('10')
   const [brand, setBrand] = useState('outros')
@@ -83,7 +86,7 @@ export default function CreditCardsPage() {
 
   const resetForm = () => {
     setName('')
-    setLimit('')
+    setLimit(0)
     setClosingDay('1')
     setDueDay('10')
     setBrand('outros')
@@ -101,7 +104,7 @@ export default function CreditCardsPage() {
   const openEdit = (card: Card) => {
     setEditingCard(card)
     setName(card.name)
-    setLimit(String(card.credit_limit))
+    setLimit(Number(card.credit_limit) || 0)
     setClosingDay(String(card.closing_day))
     setDueDay(String(card.due_day))
     setBrand(card.brand || 'outros')
@@ -117,14 +120,18 @@ export default function CreditCardsPage() {
     setFormError(null)
     setFormSuccess(null)
 
-    const creditLimit = parseFloat(limit.replace(/\./g, '').replace(',', '.')) || 0
+    if (limit <= 0) {
+      setFormError(`Informe um limite maior que zero, ${pronoun}.`)
+      setSaving(false)
+      return
+    }
 
     if (editingCard) {
       const { error: err } = await supabase
         .from('credit_cards')
         .update({
           name: name.trim(),
-          credit_limit: creditLimit,
+          credit_limit: limit,
           closing_day: parseInt(closingDay),
           due_day: parseInt(dueDay),
           brand: brand === 'outros' ? null : brand,
@@ -141,7 +148,7 @@ export default function CreditCardsPage() {
         setCards((prev) =>
           prev.map((c) =>
             c.id === editingCard.id
-              ? { ...c, name: name.trim(), credit_limit: creditLimit, closing_day: parseInt(closingDay), due_day: parseInt(dueDay), brand: brand === 'outros' ? null : brand, color }
+              ? { ...c, name: name.trim(), credit_limit: limit, closing_day: parseInt(closingDay), due_day: parseInt(dueDay), brand: brand === 'outros' ? null : brand, color }
               : c
           )
         )
@@ -154,7 +161,7 @@ export default function CreditCardsPage() {
       const { error: err } = await supabase.from('credit_cards').insert({
         user_id: userData.user.id,
         name: name.trim(),
-        credit_limit: creditLimit,
+        credit_limit: limit,
         closing_day: parseInt(closingDay),
         due_day: parseInt(dueDay),
         brand: brand === 'outros' ? null : brand,
@@ -193,7 +200,7 @@ export default function CreditCardsPage() {
       const msg = isConnectionError(error)
         ? CONNECTION_ERROR_MSG
         : (error.message.includes('violates foreign key') || error.code === '23503'
-          ? 'Não é possível excluir este cartão, senhor, pois existem despesas vinculadas a ele no histórico.'
+          ? `Não é possível excluir este cartão, ${pronoun}, pois existem despesas vinculadas a ele no histórico.`
           : error.message)
       setDeleteError(msg)
       toastError(msg)
@@ -207,11 +214,11 @@ export default function CreditCardsPage() {
   }
 
   const cls = {
-    card: 'rounded-xl border border-gray-200 dark:border-manor-800 bg-white dark:bg-manor-900 transition-colors',
-    label: 'block text-xs font-medium text-gray-500 dark:text-manor-400 uppercase tracking-wider mb-1.5',
-    input: 'block w-full rounded-lg border border-gray-300 dark:border-manor-700 bg-gray-50 dark:bg-manor-950 px-4 py-2.5 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-manor-500 focus:outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500 transition-colors',
-    btnPrimary: 'inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium bg-gold-600 dark:bg-gold-500 text-white dark:text-manor-950 hover:bg-gold-500 dark:hover:bg-gold-400 disabled:opacity-50 transition-colors',
-    skel: 'bg-gray-200 dark:bg-manor-800 rounded animate-pulse',
+    card: 'rounded-xl border border-border bg-surface transition-colors',
+    label: 'block text-xs font-medium text-muted uppercase tracking-wider mb-1.5',
+    input: 'block w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm text-main placeholder-muted focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand transition-colors',
+    btnPrimary: 'inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium bg-brand text-white hover:opacity-90 disabled:opacity-50 transition-colors',
+    skel: 'bg-border rounded animate-pulse',
   }
 
   if (loading) {
@@ -220,7 +227,7 @@ export default function CreditCardsPage() {
         <div className={`h-6 w-64 ${cls.skel}`} />
         <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="aspect-[1.586/1] max-h-44 rounded-xl bg-gray-200 dark:bg-manor-800 animate-pulse" />
+            <div key={i} className="aspect-[1.586/1] max-h-44 rounded-xl bg-border animate-pulse" />
           ))}
         </div>
       </div>
@@ -231,8 +238,8 @@ export default function CreditCardsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-gray-900 dark:text-white">A Carteira</h1>
-          <p className="text-sm text-gray-500 dark:text-manor-400 mt-0.5">Seus cartões de crédito sob a custódia do Alfred, senhor</p>
+          <h1 className="text-xl font-semibold text-main">A Carteira</h1>
+          <p className="text-sm text-muted mt-0.5">Seus cartões de crédito sob a custódia do Alfred, {pronoun}</p>
         </div>
         <button onClick={openNew} className={cls.btnPrimary}>
           <Plus className="h-4 w-4" /> Novo cartão
@@ -245,14 +252,14 @@ export default function CreditCardsPage() {
           <div className={`${cls.card} w-full max-w-lg p-6 space-y-5 shadow-2xl`}>
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                <h2 className="text-lg font-semibold text-main">
                   {editingCard ? 'Ajustar Cartão' : 'Registrar novo cartão'}
                 </h2>
                 {editingCard && (
-                  <p className="text-xs text-gray-400 dark:text-manor-500 mt-0.5">Atualize as informações desta credencial, senhor</p>
+                  <p className="text-xs text-muted mt-0.5">Atualize as informações desta credencial, {pronoun}</p>
                 )}
               </div>
-              <button onClick={() => { setShowForm(false); resetForm() }} className="text-gray-400 dark:text-manor-500 hover:text-gray-600 dark:hover:text-white transition-colors">
+              <button onClick={() => { setShowForm(false); resetForm() }} className="text-muted hover:text-main transition-colors">
                 <X className="h-5 w-5" />
               </button>
             </div>
@@ -273,7 +280,7 @@ export default function CreditCardsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className={cls.label}>Limite (R$)</label>
-                  <input className={cls.input} placeholder="10.000,00" value={limit} onChange={(e) => setLimit(e.target.value)} required />
+                  <CurrencyInput value={limit} onChange={setLimit} placeholder="10.000,00" className={cls.input} required />
                 </div>
                 <div>
                   <label className={cls.label}>Bandeira da credencial</label>
@@ -305,8 +312,8 @@ export default function CreditCardsPage() {
                       type="button"
                       title={opt.label}
                       onClick={() => setColor(opt.value)}
-                      className={`h-8 w-8 rounded-full bg-gradient-to-br ${CARD_GRADIENTS[opt.value]} ring-2 ring-offset-2 ring-offset-white dark:ring-offset-manor-900 transition-all ${
-                        color === opt.value ? 'ring-gold-500 scale-110' : 'ring-transparent hover:ring-gray-300 dark:hover:ring-manor-600'
+                      className={`h-8 w-8 rounded-full bg-gradient-to-br ${CARD_GRADIENTS[opt.value]} ring-2 ring-offset-2 ring-offset-surface transition-all ${
+                        color === opt.value ? 'ring-brand scale-110' : 'ring-transparent hover:ring-border'
                       }`}
                     />
                   ))}
@@ -326,7 +333,7 @@ export default function CreditCardsPage() {
                   )}
                 </div>
                 <div className="flex gap-3">
-                  <button type="button" onClick={() => { setShowForm(false); resetForm() }} className="px-4 py-2.5 rounded-lg text-sm font-medium border border-gray-300 dark:border-manor-700 text-gray-600 dark:text-manor-400 hover:bg-gray-100 dark:hover:bg-manor-800 transition-colors">
+                  <button type="button" onClick={() => { setShowForm(false); resetForm() }} className="px-4 py-2.5 rounded-lg text-sm font-medium border border-border text-muted hover:bg-background transition-colors">
                     Cancelar
                   </button>
                   <button type="submit" disabled={saving} className={cls.btnPrimary}>
@@ -348,13 +355,13 @@ export default function CreditCardsPage() {
                 <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
               </div>
               <div>
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Descartar Cartão?</h2>
-                <p className="text-xs text-gray-500 dark:text-manor-400">{deleteTarget.name}</p>
+                <h2 className="text-lg font-semibold text-main">Descartar Cartão?</h2>
+                <p className="text-xs text-muted">{deleteTarget.name}</p>
               </div>
             </div>
 
-            <p className="text-sm text-gray-600 dark:text-manor-300">
-              Tem certeza de que deseja remover este cartão da sua carteira, senhor? Esta ação não pode ser desfeita.
+            <p className="text-sm text-muted">
+              Tem certeza de que deseja remover este cartão da sua carteira, {pronoun}? Esta ação não pode ser desfeita.
             </p>
 
             {deleteError && (
@@ -364,7 +371,7 @@ export default function CreditCardsPage() {
             <div className="flex justify-end gap-3 pt-1">
               <button
                 onClick={() => { setDeleteTarget(null); setDeleteError(null) }}
-                className="px-4 py-2.5 rounded-lg text-sm font-medium border border-gray-300 dark:border-manor-700 text-gray-600 dark:text-manor-400 hover:bg-gray-100 dark:hover:bg-manor-800 transition-colors"
+                className="px-4 py-2.5 rounded-lg text-sm font-medium border border-border text-muted hover:bg-background transition-colors"
               >
                 Manter
               </button>

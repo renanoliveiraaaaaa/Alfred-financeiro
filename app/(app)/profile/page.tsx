@@ -2,13 +2,11 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { createSupabaseClient } from '@/lib/supabaseClient'
-import { Loader2, Camera, User } from 'lucide-react'
-
-type Profile = {
-  id: string
-  full_name: string | null
-  avatar_url: string | null
-}
+import { useUserPreferences, type Gender, type AppTheme } from '@/lib/userPreferencesContext'
+import { getPrefTitle } from '@/lib/greeting'
+import { useTheme } from 'next-themes'
+import { useGreetingPronoun } from '@/lib/greeting'
+import { Loader2, Camera, User, Sun, Moon, Monitor } from 'lucide-react'
 
 export default function ProfilePage() {
   const supabase = createSupabaseClient()
@@ -24,6 +22,13 @@ export default function ProfilePage() {
   const [fullName, setFullName] = useState('')
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [userId, setUserId] = useState('')
+  const [gender, setGender] = useState<Gender | null>(null)
+  const [appTheme, setAppTheme] = useState<AppTheme>('normal')
+
+  const { setLocalPreferences } = useUserPreferences()
+  const { theme, setTheme } = useTheme()
+  const pronoun = useGreetingPronoun()
+  const prefTitle = getPrefTitle(gender)
 
   const [prefWeeklyReport, setPrefWeeklyReport] = useState(false)
   const [prefHideBalance, setPrefHideBalance] = useState(false)
@@ -52,6 +57,8 @@ export default function ProfilePage() {
       if (profile) {
         setFullName(profile.full_name ?? '')
         setAvatarUrl(profile.avatar_url ?? null)
+        setGender((profile.gender as Gender) || null)
+        setAppTheme((profile.app_theme as AppTheme) || 'normal')
       }
     } catch (err: any) {
       setError(err?.message || 'Falha ao carregar perfil.')
@@ -91,7 +98,7 @@ export default function ProfilePage() {
       if (upsertErr) throw new Error(upsertErr.message)
 
       setAvatarUrl(publicUrl)
-      setSuccess('Seu retrato foi atualizado com distinção, senhor.')
+      setSuccess(`Seu retrato foi atualizado com distinção, ${pronoun}.`)
     } catch (err: any) {
       setError(err?.message || 'Falha ao atualizar retrato.')
     } finally {
@@ -111,11 +118,15 @@ export default function ProfilePage() {
           id: userId,
           full_name: fullName.trim() || null,
           avatar_url: avatarUrl,
+          gender,
+          app_theme: appTheme,
           updated_at: new Date().toISOString(),
         })
       if (upsertErr) throw new Error(upsertErr.message)
 
-      setSuccess('Preferências salvas com distinção, senhor.')
+      setLocalPreferences({ gender, appTheme })
+
+      setSuccess(`Preferências salvas com distinção, ${pronoun}.`)
     } catch (err: any) {
       setError(err?.message || 'Falha ao salvar preferências.')
     } finally {
@@ -126,19 +137,19 @@ export default function ProfilePage() {
   if (loading) {
     return (
       <div className="max-w-2xl space-y-6">
-        <div className="h-6 w-52 bg-gray-200 dark:bg-manor-800 rounded animate-pulse" />
-        <div className="rounded-xl border border-gray-200 dark:border-manor-800 bg-white dark:bg-manor-900 p-8 animate-pulse space-y-6">
+        <div className="h-6 w-52 bg-border rounded animate-pulse" />
+        <div className="rounded-xl border border-border bg-surface p-8 animate-pulse space-y-6">
           <div className="flex items-center gap-6">
-            <div className="h-24 w-24 rounded-full bg-gray-200 dark:bg-manor-800" />
+            <div className="h-24 w-24 rounded-full bg-border" />
             <div className="space-y-2 flex-1">
-              <div className="h-4 w-40 bg-gray-200 dark:bg-manor-800 rounded" />
-              <div className="h-3 w-28 bg-gray-200 dark:bg-manor-800 rounded" />
+              <div className="h-4 w-40 bg-border rounded" />
+              <div className="h-3 w-28 bg-border rounded" />
             </div>
           </div>
           {[1, 2, 3].map(i => (
             <div key={i}>
-              <div className="h-3 w-24 bg-gray-200 dark:bg-manor-800 rounded mb-2" />
-              <div className="h-10 w-full bg-gray-200 dark:bg-manor-800 rounded" />
+              <div className="h-3 w-24 bg-border rounded mb-2" />
+              <div className="h-10 w-full bg-border rounded" />
             </div>
           ))}
         </div>
@@ -149,8 +160,8 @@ export default function ProfilePage() {
   return (
     <div className="max-w-2xl space-y-6">
       <div>
-        <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Preferências do senhor</h1>
-        <p className="text-sm text-gray-500 dark:text-manor-400 mt-0.5">
+        <h1 className="text-xl font-semibold text-main">Preferências {prefTitle}</h1>
+        <p className="text-sm text-muted mt-0.5">
           Como posso tornar sua experiência mais agradável hoje?
         </p>
       </div>
@@ -167,11 +178,11 @@ export default function ProfilePage() {
       )}
 
       {/* O Retrato */}
-      <div className="rounded-xl border border-gray-200 dark:border-manor-800 bg-white dark:bg-manor-900 p-6">
-        <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">O Retrato</h2>
+      <div className="rounded-xl border border-border bg-surface p-6">
+        <h2 className="text-sm font-semibold text-main mb-4">O Retrato</h2>
         <div className="flex items-center gap-6">
           <div className="relative group">
-            <div className="h-24 w-24 rounded-full border-2 border-gold-500/40 overflow-hidden bg-gray-200 dark:bg-manor-800 flex items-center justify-center">
+            <div className="h-24 w-24 rounded-full border-2 border-brand/40 overflow-hidden bg-border flex items-center justify-center">
               {avatarUrl ? (
                 <img
                   src={avatarUrl}
@@ -179,7 +190,7 @@ export default function ProfilePage() {
                   className="h-full w-full object-cover"
                 />
               ) : (
-                <span className="text-2xl font-semibold text-gold-500 dark:text-gold-400">
+                <span className="text-2xl font-semibold text-brand">
                   {initials}
                 </span>
               )}
@@ -205,15 +216,15 @@ export default function ProfilePage() {
             />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+            <p className="text-sm font-medium text-main truncate">
               {fullName || email.split('@')[0] || 'Senhor'}
             </p>
-            <p className="text-xs text-gray-400 dark:text-manor-500 mt-0.5">{email}</p>
+            <p className="text-xs text-muted mt-0.5">{email}</p>
             <button
               type="button"
               disabled={uploadingAvatar}
               onClick={() => fileRef.current?.click()}
-              className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-gold-600 dark:text-gold-500 hover:text-gold-500 dark:hover:text-gold-400 transition-colors disabled:opacity-50"
+              className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-brand hover:opacity-80 transition-colors disabled:opacity-50"
             >
               <Camera className="h-3.5 w-3.5" />
               {uploadingAvatar ? 'Atualizando...' : 'Atualizar retrato'}
@@ -223,22 +234,22 @@ export default function ProfilePage() {
       </div>
 
       {/* Informações pessoais */}
-      <div className="rounded-xl border border-gray-200 dark:border-manor-800 bg-white dark:bg-manor-900 p-6 space-y-5">
-        <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Informações pessoais</h2>
+      <div className="rounded-xl border border-border bg-surface p-6 space-y-5">
+        <h2 className="text-sm font-semibold text-main">Informações pessoais</h2>
 
         <div>
-          <label className="block text-xs font-medium text-gray-500 dark:text-manor-400 uppercase tracking-wider mb-1.5">
+          <label className="block text-xs font-medium text-muted uppercase tracking-wider mb-1.5">
             Credencial de acesso
           </label>
-          <div className="flex items-center gap-2 rounded-lg border border-gray-300 dark:border-manor-700 bg-gray-50 dark:bg-manor-950 px-4 py-2.5">
-            <User className="h-4 w-4 text-gray-400 dark:text-manor-500 shrink-0" />
-            <span className="text-sm text-gray-500 dark:text-manor-400">{email}</span>
+          <div className="flex items-center gap-2 rounded-lg border border-border bg-background px-4 py-2.5">
+            <User className="h-4 w-4 text-muted shrink-0" />
+            <span className="text-sm text-muted">{email}</span>
           </div>
-          <p className="mt-1 text-xs text-gray-400 dark:text-manor-600">O e-mail de acesso não pode ser alterado por aqui.</p>
+          <p className="mt-1 text-xs text-muted">O e-mail de acesso não pode ser alterado por aqui.</p>
         </div>
 
         <div>
-          <label htmlFor="fullName" className="block text-xs font-medium text-gray-500 dark:text-manor-400 uppercase tracking-wider mb-1.5">
+          <label htmlFor="fullName" className="block text-xs font-medium text-muted uppercase tracking-wider mb-1.5">
             Como devo chamá-lo?
           </label>
           <input
@@ -247,20 +258,118 @@ export default function ProfilePage() {
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
             placeholder="Seu nome completo"
-            className="block w-full rounded-lg border border-gray-300 dark:border-manor-700 bg-gray-50 dark:bg-manor-950 px-4 py-2.5 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-manor-500 focus:outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500 transition-colors"
+            className="block w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm text-main placeholder-muted focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand transition-colors"
           />
         </div>
       </div>
 
       {/* Preferências do sistema */}
-      <div className="rounded-xl border border-gray-200 dark:border-manor-800 bg-white dark:bg-manor-900 p-6 space-y-5">
-        <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Preferências do sistema</h2>
+      <div className="rounded-xl border border-border bg-surface p-6 space-y-5">
+        <h2 className="text-sm font-semibold text-main">Preferências do sistema</h2>
 
-        <div className="space-y-4">
+        <div className="space-y-5">
+          <div>
+            <label className="block text-xs font-medium text-muted uppercase tracking-wider mb-2">
+              Gênero
+            </label>
+            <div className="flex flex-wrap gap-3">
+              {[
+                { value: 'M' as const, label: 'Masculino' },
+                { value: 'F' as const, label: 'Feminino' },
+                { value: 'O' as const, label: 'Prefiro não informar' },
+              ].map((opt) => (
+                <label
+                  key={opt.value}
+                  className={`flex items-center gap-2 cursor-pointer px-4 py-2.5 rounded-lg border-2 transition-colors ${
+                    gender === opt.value
+                      ? 'border-brand bg-brand/10 text-brand'
+                      : 'border-border hover:border-muted text-muted hover:text-main'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="gender"
+                    value={opt.value}
+                    checked={gender === opt.value}
+                    onChange={() => setGender(opt.value)}
+                    className="sr-only"
+                  />
+                  <span className="text-sm font-medium">{opt.label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div className="border-t border-border" />
+
+          {/* Dark Mode: Claro / Escuro / Sistema */}
           <div className="flex items-center justify-between gap-4">
             <div className="min-w-0">
-              <p className="text-sm font-medium text-gray-900 dark:text-white">Relatórios semanais por e-mail</p>
-              <p className="text-xs text-gray-400 dark:text-manor-500 mt-0.5">
+              <p className="text-sm font-medium text-main">Iluminação (Dark Mode)</p>
+              <p className="text-xs text-muted mt-0.5">
+                Escolha entre modo claro, escuro ou seguir a preferência do sistema
+              </p>
+            </div>
+            <div className="flex rounded-lg border border-border overflow-hidden">
+              {[
+                { value: 'light' as const, label: 'Claro', Icon: Sun },
+                { value: 'dark' as const, label: 'Escuro', Icon: Moon },
+                { value: 'system' as const, label: 'Sistema', Icon: Monitor },
+              ].map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => {
+                    document.documentElement.classList.add('theme-transition')
+                    setTheme(opt.value)
+                    setTimeout(() => document.documentElement.classList.remove('theme-transition'), 500)
+                  }}
+                  className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium transition-colors ${
+                    (theme ?? 'system') === opt.value
+                      ? 'bg-brand text-white'
+                      : 'bg-surface text-muted hover:text-main hover:bg-background'
+                  }`}
+                >
+                  <opt.Icon className="h-3.5 w-3.5" />
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="border-t border-border" />
+
+          {/* Modo Normal / Alfred */}
+          <div className="flex items-center justify-between gap-4">
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-main">Estilo visual</p>
+              <p className="text-xs text-muted mt-0.5">
+                {appTheme === 'normal' ? 'Modo Padrão (neutro)' : 'Modo Alfred (mordomo)'}
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={appTheme === 'alfred'}
+              onClick={() => setAppTheme((prev) => (prev === 'normal' ? 'alfred' : 'normal'))}
+              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ${
+                appTheme === 'alfred' ? 'bg-brand' : 'bg-border'
+              }`}
+            >
+              <span
+                className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-surface shadow ring-0 transition-transform duration-200 ${
+                  appTheme === 'alfred' ? 'translate-x-5' : 'translate-x-0'
+                }`}
+              />
+            </button>
+          </div>
+
+          <div className="border-t border-border" />
+
+          <div className="flex items-center justify-between gap-4">
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-main">Relatórios semanais por e-mail</p>
+              <p className="text-xs text-muted mt-0.5">
                 Receba um resumo semanal do patrimônio por pombo-correio eletrônico
               </p>
             </div>
@@ -270,23 +379,23 @@ export default function ProfilePage() {
               aria-checked={prefWeeklyReport}
               onClick={() => setPrefWeeklyReport(!prefWeeklyReport)}
               className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ${
-                prefWeeklyReport ? 'bg-gold-500' : 'bg-gray-200 dark:bg-manor-700'
+                prefWeeklyReport ? 'bg-brand' : 'bg-border'
               }`}
             >
               <span
-                className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow ring-0 transition-transform duration-200 ${
+                className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-surface shadow ring-0 transition-transform duration-200 ${
                   prefWeeklyReport ? 'translate-x-5' : 'translate-x-0'
                 }`}
               />
             </button>
           </div>
 
-          <div className="border-t border-gray-200 dark:border-manor-800" />
+          <div className="border-t border-border" />
 
           <div className="flex items-center justify-between gap-4">
             <div className="min-w-0">
-              <p className="text-sm font-medium text-gray-900 dark:text-white">Ocultar saldo na tela inicial</p>
-              <p className="text-xs text-gray-400 dark:text-manor-500 mt-0.5">
+              <p className="text-sm font-medium text-main">Ocultar saldo na tela inicial</p>
+              <p className="text-xs text-muted mt-0.5">
                 Mantenha discrição sobre o patrimônio ao abrir o sistema
               </p>
             </div>
@@ -296,11 +405,11 @@ export default function ProfilePage() {
               aria-checked={prefHideBalance}
               onClick={() => setPrefHideBalance(!prefHideBalance)}
               className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ${
-                prefHideBalance ? 'bg-gold-500' : 'bg-gray-200 dark:bg-manor-700'
+                prefHideBalance ? 'bg-brand' : 'bg-border'
               }`}
             >
               <span
-                className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow ring-0 transition-transform duration-200 ${
+                className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-surface shadow ring-0 transition-transform duration-200 ${
                   prefHideBalance ? 'translate-x-5' : 'translate-x-0'
                 }`}
               />
@@ -315,7 +424,7 @@ export default function ProfilePage() {
           type="button"
           disabled={saving}
           onClick={handleSave}
-          className="inline-flex items-center gap-2 rounded-lg bg-gold-600 dark:bg-gold-500 px-6 py-2.5 text-sm font-medium text-white dark:text-manor-950 hover:bg-gold-500 dark:hover:bg-gold-400 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-manor-950 disabled:opacity-50 transition-colors"
+          className="inline-flex items-center gap-2 rounded-lg bg-brand px-6 py-2.5 text-sm font-medium text-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2 focus:ring-offset-surface disabled:opacity-50 transition-colors"
         >
           {saving ? (
             <>

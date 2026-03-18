@@ -4,10 +4,11 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { createSupabaseClient } from '@/lib/supabaseClient'
-import { maskCurrency, parseBRL } from '@/lib/format'
+import CurrencyInput from '@/components/CurrencyInput'
 import { Loader2, Trash2, ArrowLeft, ExternalLink, Paperclip } from 'lucide-react'
 import ConfirmDangerModal from '@/components/ConfirmDangerModal'
 import { useToast, CONNECTION_ERROR_MSG, isConnectionError } from '@/lib/toastContext'
+import { useGreetingPronoun } from '@/lib/greeting'
 
 const DEFAULT_CATEGORIES = [
   { value: 'mercado', label: 'Mercado' },
@@ -25,23 +26,19 @@ const PAYMENT_METHODS = [
 
 type PaymentMethod = (typeof PAYMENT_METHODS)[number]['value']
 
-function numberToMask(val: number): string {
-  if (!val) return ''
-  return val.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-}
-
 export default function EditExpensePage() {
   const router = useRouter()
   const params = useParams()
   const id = params.id as string
   const supabase = createSupabaseClient()
   const { toastError } = useToast()
+  const pronoun = useGreetingPronoun()
 
   const [categories, setCategories] = useState(DEFAULT_CATEGORIES)
   const [fetching, setFetching] = useState(true)
   const [notFound, setNotFound] = useState(false)
 
-  const [amountDisplay, setAmountDisplay] = useState('')
+  const [amount, setAmount] = useState(0)
   const [description, setDescription] = useState('')
   const [category, setCategory] = useState('outros')
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('debito')
@@ -75,7 +72,7 @@ export default function EditExpensePage() {
         setCategories([...DEFAULT_CATEGORIES, ...userCats])
       }
 
-      setAmountDisplay(numberToMask(Number(expense.amount || 0)))
+      setAmount(Number(expense.amount || 0))
       setDescription(expense.description || '')
       setCategory(expense.category || 'outros')
       setPaymentMethod((expense.payment_method || 'debito') as PaymentMethod)
@@ -101,7 +98,6 @@ export default function EditExpensePage() {
     e.preventDefault()
     setError(null)
 
-    const amount = parseBRL(amountDisplay)
     if (amount <= 0) { setError('Informe um valor maior que zero.'); return }
     if (!description.trim()) { setError('Informe uma descrição.'); return }
     if (!dueDate) { setError('Informe a data de vencimento.'); return }
@@ -170,16 +166,16 @@ export default function EditExpensePage() {
 
   if (fetching) {
     return (
-      <div className="max-w-2xl space-y-6 bg-white dark:bg-manor-950 min-h-screen p-6">
+      <div className="max-w-2xl space-y-6 bg-background min-h-screen p-6">
         <div className="flex items-center gap-4 mb-6">
-          <div className="h-4 w-16 animate-pulse rounded bg-gray-200 dark:bg-manor-800" />
-          <div className="h-6 w-40 animate-pulse rounded bg-gray-200 dark:bg-manor-800" />
+          <div className="h-4 w-16 animate-pulse rounded bg-border" />
+          <div className="h-6 w-40 animate-pulse rounded bg-border" />
         </div>
-        <div className="rounded-xl border border-gray-200 dark:border-manor-800 bg-white dark:bg-manor-900 p-6 shadow-sm space-y-5">
+        <div className="rounded-xl border border-border bg-surface p-6 shadow-sm space-y-5">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i}>
-              <div className="h-4 w-24 animate-pulse rounded bg-gray-200 dark:bg-manor-800 mb-2" />
-              <div className="h-10 w-full animate-pulse rounded bg-gray-200 dark:bg-manor-800" />
+              <div className="h-4 w-24 animate-pulse rounded bg-border mb-2" />
+              <div className="h-10 w-full animate-pulse rounded bg-border" />
             </div>
           ))}
         </div>
@@ -189,9 +185,9 @@ export default function EditExpensePage() {
 
   if (notFound) {
     return (
-      <div className="max-w-2xl text-center py-16 bg-white dark:bg-manor-950 min-h-screen p-6">
-        <p className="text-gray-600 dark:text-manor-400 mb-4">Registro não encontrado, senhor.</p>
-        <Link href="/expenses" className="text-sm text-gold-500 dark:text-gold-400 hover:text-gold-600 dark:hover:text-gold-500 hover:underline">
+      <div className="max-w-2xl text-center py-16 bg-background min-h-screen p-6">
+        <p className="text-muted mb-4">Registro não encontrado, {pronoun}.</p>
+        <Link href="/expenses" className="text-sm text-brand hover:opacity-80 hover:underline">
           Retornar aos registros
         </Link>
       </div>
@@ -199,16 +195,16 @@ export default function EditExpensePage() {
   }
 
   return (
-    <div className="max-w-2xl bg-white dark:bg-manor-950 min-h-screen p-6">
+    <div className="max-w-2xl bg-background min-h-screen p-6">
       <div className="flex items-center gap-4 mb-6">
         <Link
           href="/expenses"
-          className="inline-flex items-center gap-1 text-sm text-gray-600 dark:text-manor-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+          className="inline-flex items-center gap-1 text-sm text-muted hover:text-main transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
           Voltar
         </Link>
-        <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Editar registro de saída</h1>
+        <h1 className="text-xl font-semibold text-main">Editar registro de saída</h1>
         {installmentInfo && (
           <span className="rounded-full bg-amber-50 dark:bg-amber-500/15 border border-amber-200 dark:border-amber-500/30 px-2.5 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-300">
             {installmentInfo}
@@ -228,29 +224,28 @@ export default function EditExpensePage() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-5 rounded-xl border border-gray-200 dark:border-manor-800 bg-white dark:bg-manor-900 p-6 shadow-sm">
+      <form onSubmit={handleSubmit} className="space-y-5 rounded-xl border border-border bg-surface p-6 shadow-sm">
         {/* Valor */}
         <div>
-          <label htmlFor="amount" className="block text-sm font-medium text-gray-600 dark:text-manor-400 mb-1">
+          <label htmlFor="amount" className="block text-sm font-medium text-muted mb-1">
             Valor (R$) <span className="text-red-400">*</span>
           </label>
           <div className="relative">
-            <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400 dark:text-manor-500 text-sm">R$</span>
-            <input
+            <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted text-sm">R$</span>
+            <CurrencyInput
               id="amount"
-              type="text"
-              inputMode="numeric"
-              value={amountDisplay}
-              onChange={(e) => setAmountDisplay(maskCurrency(e.target.value))}
+              value={amount}
+              onChange={setAmount}
               placeholder="0,00"
-              className="block w-full rounded-lg border border-gray-300 dark:border-manor-700 bg-gray-50 dark:bg-manor-950 py-2 pl-10 pr-3 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-manor-500 focus:border-gold-500 focus:ring-1 focus:ring-gold-500"
+              className="block w-full rounded-lg border border-border bg-background py-2 pl-10 pr-3 text-sm text-main placeholder-muted focus:border-brand focus:ring-1 focus:ring-brand"
+              required
             />
           </div>
         </div>
 
         {/* Descrição */}
         <div>
-          <label htmlFor="description" className="block text-sm font-medium text-gray-600 dark:text-manor-400 mb-1">
+          <label htmlFor="description" className="block text-sm font-medium text-muted mb-1">
             Descrição <span className="text-red-400">*</span>
           </label>
           <input
@@ -259,21 +254,21 @@ export default function EditExpensePage() {
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Ex.: Supermercado, combustível..."
-            className="block w-full rounded-lg border border-gray-300 dark:border-manor-700 bg-gray-50 dark:bg-manor-950 py-2 px-3 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-manor-500 focus:border-gold-500 focus:ring-1 focus:ring-gold-500"
+            className="block w-full rounded-lg border border-border bg-background py-2 px-3 text-sm text-main placeholder-muted focus:border-brand focus:ring-1 focus:ring-brand"
           />
         </div>
 
         {/* Categoria + Pagamento */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
-            <label htmlFor="category" className="block text-sm font-medium text-gray-600 dark:text-manor-400 mb-1">
+            <label htmlFor="category" className="block text-sm font-medium text-muted mb-1">
               Categoria <span className="text-red-400">*</span>
             </label>
             <select
               id="category"
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="block w-full rounded-lg border border-gray-300 dark:border-manor-700 bg-gray-50 dark:bg-manor-950 py-2 px-3 text-sm text-gray-900 dark:text-white focus:border-gold-500 focus:ring-1 focus:ring-gold-500"
+              className="block w-full rounded-lg border border-border bg-background py-2 px-3 text-sm text-main focus:border-brand focus:ring-1 focus:ring-brand"
             >
               {categories.map((c) => (
                 <option key={c.value} value={c.value}>{c.label}</option>
@@ -281,14 +276,14 @@ export default function EditExpensePage() {
             </select>
           </div>
           <div>
-            <label htmlFor="paymentMethod" className="block text-sm font-medium text-gray-600 dark:text-manor-400 mb-1">
+            <label htmlFor="paymentMethod" className="block text-sm font-medium text-muted mb-1">
               Método de pagamento <span className="text-red-400">*</span>
             </label>
             <select
               id="paymentMethod"
               value={paymentMethod}
               onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
-              className="block w-full rounded-lg border border-gray-300 dark:border-manor-700 bg-gray-50 dark:bg-manor-950 py-2 px-3 text-sm text-gray-900 dark:text-white focus:border-gold-500 focus:ring-1 focus:ring-gold-500"
+              className="block w-full rounded-lg border border-border bg-background py-2 px-3 text-sm text-main focus:border-brand focus:ring-1 focus:ring-brand"
             >
               {PAYMENT_METHODS.map((m) => (
                 <option key={m.value} value={m.value}>{m.label}</option>
@@ -299,7 +294,7 @@ export default function EditExpensePage() {
 
         {/* Data de vencimento */}
         <div className="max-w-xs">
-          <label htmlFor="dueDate" className="block text-sm font-medium text-gray-600 dark:text-manor-400 mb-1">
+          <label htmlFor="dueDate" className="block text-sm font-medium text-muted mb-1">
             Data de vencimento <span className="text-red-400">*</span>
           </label>
           <input
@@ -307,28 +302,28 @@ export default function EditExpensePage() {
             type="date"
             value={dueDate}
             onChange={(e) => setDueDate(e.target.value)}
-            className="block w-full rounded-lg border border-gray-300 dark:border-manor-700 bg-gray-50 dark:bg-manor-950 py-2 px-3 text-sm text-gray-900 dark:text-white focus:border-gold-500 focus:ring-1 focus:ring-gold-500"
+            className="block w-full rounded-lg border border-border bg-background py-2 px-3 text-sm text-main focus:border-brand focus:ring-1 focus:ring-brand"
           />
         </div>
 
         {/* Anexo existente + novo upload */}
         <div>
-          <label className="block text-sm font-medium text-gray-600 dark:text-manor-400 mb-1">
+          <label className="block text-sm font-medium text-muted mb-1">
             Comprovativo anexo
           </label>
 
           {invoiceUrl && !file && (
-            <div className="flex items-center gap-3 mb-2 rounded-lg border border-gray-200 dark:border-manor-800 bg-gray-100 dark:bg-manor-800 px-3 py-2">
-              <Paperclip className="h-4 w-4 text-gray-400 dark:text-manor-500 shrink-0" />
+            <div className="flex items-center gap-3 mb-2 rounded-lg border border-border bg-border px-3 py-2">
+              <Paperclip className="h-4 w-4 text-muted shrink-0" />
               <a
                 href={invoiceUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex-1 truncate text-sm text-gold-600 dark:text-gold-400 hover:text-gold-500 dark:hover:text-gold-500 hover:underline"
+                className="flex-1 truncate text-sm text-brand hover:opacity-80 hover:underline"
               >
                 Ver ficheiro atual
               </a>
-              <ExternalLink className="h-3.5 w-3.5 text-gray-400 dark:text-manor-500 shrink-0" />
+              <ExternalLink className="h-3.5 w-3.5 text-muted shrink-0" />
             </div>
           )}
 
@@ -336,8 +331,8 @@ export default function EditExpensePage() {
             <label className="flex-1 cursor-pointer">
               <div className={`flex items-center justify-center gap-2 rounded-lg border-2 border-dashed px-4 py-3 text-sm transition-colors ${
                 file
-                  ? 'border-gold-300 dark:border-gold-500/40 bg-gold-50 dark:bg-gold-500/10 text-gold-700 dark:text-gold-400'
-                  : 'border-gray-300 dark:border-manor-700 text-gray-500 dark:text-manor-400 hover:border-manor-500 hover:bg-gray-100 dark:hover:bg-manor-800'
+                  ? 'border-brand/40 bg-brand/15 text-brand'
+                  : 'border-border text-muted hover:border-brand/50 hover:bg-background'
               }`}>
                 <svg className="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
@@ -360,7 +355,7 @@ export default function EditExpensePage() {
             )}
           </div>
             {file && (
-            <p className="mt-1 text-xs text-gray-400 dark:text-manor-600">
+            <p className="mt-1 text-xs text-muted">
               {(file.size / 1024).toFixed(0)} KB · {file.type || 'arquivo'}
             </p>
           )}
@@ -374,7 +369,7 @@ export default function EditExpensePage() {
             aria-checked={paid}
             onClick={() => setPaid(!paid)}
             className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ${
-              paid ? 'bg-gold-500' : 'bg-gray-200 dark:bg-manor-700'
+              paid ? 'bg-brand' : 'bg-border'
             }`}
           >
             <span
@@ -383,7 +378,7 @@ export default function EditExpensePage() {
               }`}
             />
           </button>
-          <label className="text-sm font-medium text-gray-600 dark:text-manor-400 select-none cursor-pointer" onClick={() => setPaid(!paid)}>
+          <label className="text-sm font-medium text-muted select-none cursor-pointer" onClick={() => setPaid(!paid)}>
             Pago
           </label>
         </div>
@@ -394,7 +389,7 @@ export default function EditExpensePage() {
             <button
               type="submit"
               disabled={saving || deleting}
-              className="inline-flex items-center gap-2 rounded-lg bg-gold-600 dark:bg-gold-500 px-5 py-2.5 text-sm font-medium text-white dark:text-manor-950 hover:bg-gold-500 dark:hover:bg-gold-400 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:ring-offset-2 focus:ring-offset-manor-900 disabled:opacity-50 transition-colors"
+              className="inline-flex items-center gap-2 rounded-lg bg-brand px-5 py-2.5 text-sm font-medium text-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2 focus:ring-offset-surface disabled:opacity-50 transition-colors"
             >
               {saving ? (
                 <>
@@ -407,7 +402,7 @@ export default function EditExpensePage() {
             </button>
             <Link
               href="/expenses"
-            className="rounded-lg border border-gray-300 dark:border-manor-700 px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-manor-400 hover:bg-gray-100 dark:hover:bg-manor-800 transition-colors"
+            className="rounded-lg border border-border px-5 py-2.5 text-sm font-medium text-muted hover:bg-background transition-colors"
           >
               Cancelar
             </Link>
@@ -417,7 +412,7 @@ export default function EditExpensePage() {
             type="button"
             disabled={saving || deleting}
             onClick={() => setShowDeleteModal(true)}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 dark:border-red-500/30 px-4 py-2.5 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:ring-offset-2 focus:ring-offset-manor-900 disabled:opacity-50 transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 dark:border-red-500/30 px-4 py-2.5 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:ring-offset-2 focus:ring-offset-surface disabled:opacity-50 transition-colors"
           >
             {deleting ? (
               <Loader2 className="h-4 w-4 animate-spin" />

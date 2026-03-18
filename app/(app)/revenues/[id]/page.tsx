@@ -4,15 +4,11 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { createSupabaseClient } from '@/lib/supabaseClient'
-import { maskCurrency, parseBRL } from '@/lib/format'
+import CurrencyInput from '@/components/CurrencyInput'
 import { Loader2, Trash2, ArrowLeft } from 'lucide-react'
 import ConfirmDangerModal from '@/components/ConfirmDangerModal'
 import { useToast, CONNECTION_ERROR_MSG, isConnectionError } from '@/lib/toastContext'
-
-function numberToMask(val: number): string {
-  if (!val) return ''
-  return val.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-}
+import { useGreetingPronoun } from '@/lib/greeting'
 
 export default function EditRevenuePage() {
   const router = useRouter()
@@ -20,11 +16,12 @@ export default function EditRevenuePage() {
   const id = params.id as string
   const supabase = createSupabaseClient()
   const { toastError } = useToast()
+  const pronoun = useGreetingPronoun()
 
   const [fetching, setFetching] = useState(true)
   const [notFound, setNotFound] = useState(false)
 
-  const [amountDisplay, setAmountDisplay] = useState('')
+  const [amount, setAmount] = useState(0)
   const [description, setDescription] = useState('')
   const [date, setDate] = useState('')
   const [expectedDate, setExpectedDate] = useState('')
@@ -50,7 +47,7 @@ export default function EditRevenuePage() {
         return
       }
 
-      setAmountDisplay(numberToMask(Number(revenue.amount || 0)))
+      setAmount(Number(revenue.amount || 0))
       setDescription(revenue.description || '')
       setDate(revenue.date || '')
       setExpectedDate(revenue.expected_date || '')
@@ -70,7 +67,6 @@ export default function EditRevenuePage() {
     e.preventDefault()
     setError(null)
 
-    const amount = parseBRL(amountDisplay)
     if (amount <= 0) { setError('Informe um valor maior que zero.'); return }
     if (!description.trim()) { setError('Informe uma descrição.'); return }
     if (!date) { setError('Informe a data efetiva.'); return }
@@ -121,14 +117,14 @@ export default function EditRevenuePage() {
     return (
       <div className="max-w-2xl space-y-6">
         <div className="flex items-center gap-4 mb-6">
-          <div className="h-4 w-16 animate-pulse rounded bg-gray-200 dark:bg-manor-800" />
-          <div className="h-6 w-40 animate-pulse rounded bg-gray-200 dark:bg-manor-800" />
+          <div className="h-4 w-16 animate-pulse rounded bg-border" />
+          <div className="h-6 w-40 animate-pulse rounded bg-border" />
         </div>
-        <div className="rounded-xl border border-gray-200 dark:border-manor-800 bg-white dark:bg-manor-900 p-6 shadow-sm space-y-5">
+        <div className="rounded-xl border border-border bg-surface p-6 shadow-sm space-y-5">
           {Array.from({ length: 5 }).map((_, i) => (
             <div key={i}>
-              <div className="h-4 w-24 animate-pulse rounded bg-gray-200 dark:bg-manor-800 mb-2" />
-              <div className="h-10 w-full animate-pulse rounded bg-gray-200 dark:bg-manor-800" />
+              <div className="h-4 w-24 animate-pulse rounded bg-border mb-2" />
+              <div className="h-10 w-full animate-pulse rounded bg-border" />
             </div>
           ))}
         </div>
@@ -139,8 +135,8 @@ export default function EditRevenuePage() {
   if (notFound) {
     return (
       <div className="max-w-2xl text-center py-16">
-        <p className="text-gray-600 dark:text-manor-400 mb-4">Registro não encontrado, senhor.</p>
-        <Link href="/revenues" className="text-sm text-gray-600 dark:text-manor-400 hover:text-gray-900 dark:hover:text-white transition-colors">
+        <p className="text-muted mb-4">Registro não encontrado, {pronoun}.</p>
+        <Link href="/revenues" className="text-sm text-muted hover:text-main transition-colors">
           Retornar aos registros
         </Link>
       </div>
@@ -152,12 +148,12 @@ export default function EditRevenuePage() {
       <div className="flex items-center gap-4 mb-6">
         <Link
           href="/revenues"
-          className="inline-flex items-center gap-1 text-sm text-gray-600 dark:text-manor-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+          className="inline-flex items-center gap-1 text-sm text-muted hover:text-main transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
           Voltar
         </Link>
-        <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Editar registro de entrada</h1>
+        <h1 className="text-xl font-semibold text-main">Editar registro de entrada</h1>
       </div>
 
       {success && (
@@ -172,29 +168,28 @@ export default function EditRevenuePage() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-5 rounded-xl border border-gray-200 dark:border-manor-800 bg-white dark:bg-manor-900 p-6 shadow-sm">
+      <form onSubmit={handleSubmit} className="space-y-5 rounded-xl border border-border bg-surface p-6 shadow-sm">
         {/* Valor */}
         <div>
-          <label htmlFor="amount" className="block text-sm font-medium text-gray-600 dark:text-manor-300 mb-1">
+          <label htmlFor="amount" className="block text-sm font-medium text-muted mb-1">
             Valor (R$) <span className="text-red-400">*</span>
           </label>
           <div className="relative">
-            <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400 dark:text-manor-500 text-sm">R$</span>
-            <input
+            <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted text-sm">R$</span>
+            <CurrencyInput
               id="amount"
-              type="text"
-              inputMode="numeric"
-              value={amountDisplay}
-              onChange={(e) => setAmountDisplay(maskCurrency(e.target.value))}
+              value={amount}
+              onChange={setAmount}
               placeholder="0,00"
-              className="block w-full rounded-lg border border-gray-300 dark:border-manor-700 bg-gray-50 dark:bg-manor-950 py-2 pl-10 pr-3 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-manor-500 focus:border-gold-500 focus:ring-1 focus:ring-gold-500"
+              className="block w-full rounded-lg border border-border bg-background py-2 pl-10 pr-3 text-sm text-main placeholder-muted focus:border-brand focus:ring-1 focus:ring-brand"
+              required
             />
           </div>
         </div>
 
         {/* Descrição */}
         <div>
-          <label htmlFor="description" className="block text-sm font-medium text-gray-600 dark:text-manor-300 mb-1">
+          <label htmlFor="description" className="block text-sm font-medium text-muted mb-1">
             Descrição <span className="text-red-400">*</span>
           </label>
           <input
@@ -203,14 +198,14 @@ export default function EditRevenuePage() {
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Ex.: Salário, honorários..."
-            className="block w-full rounded-lg border border-gray-300 dark:border-manor-700 bg-gray-50 dark:bg-manor-950 py-2 px-3 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-manor-500 focus:border-gold-500 focus:ring-1 focus:ring-gold-500"
+            className="block w-full rounded-lg border border-border bg-background py-2 px-3 text-sm text-main placeholder-muted focus:border-brand focus:ring-1 focus:ring-brand"
           />
         </div>
 
         {/* Datas */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
-            <label htmlFor="date" className="block text-sm font-medium text-gray-600 dark:text-manor-300 mb-1">
+            <label htmlFor="date" className="block text-sm font-medium text-muted mb-1">
               Data efetiva <span className="text-red-400">*</span>
             </label>
             <input
@@ -218,19 +213,19 @@ export default function EditRevenuePage() {
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="block w-full rounded-lg border border-gray-300 dark:border-manor-700 bg-gray-50 dark:bg-manor-950 py-2 px-3 text-sm text-gray-900 dark:text-white focus:border-gold-500 focus:ring-1 focus:ring-gold-500"
+              className="block w-full rounded-lg border border-border bg-background py-2 px-3 text-sm text-main focus:border-brand focus:ring-1 focus:ring-brand"
             />
           </div>
           <div>
-            <label htmlFor="expectedDate" className="block text-sm font-medium text-gray-600 dark:text-manor-300 mb-1">
-              Data esperada <span className="text-gray-400 dark:text-manor-500 font-normal">(opcional)</span>
+            <label htmlFor="expectedDate" className="block text-sm font-medium text-muted mb-1">
+              Data esperada <span className="text-muted font-normal">(opcional)</span>
             </label>
             <input
               id="expectedDate"
               type="date"
               value={expectedDate}
               onChange={(e) => setExpectedDate(e.target.value)}
-              className="block w-full rounded-lg border border-gray-300 dark:border-manor-700 bg-gray-50 dark:bg-manor-950 py-2 px-3 text-sm text-gray-900 dark:text-white focus:border-gold-500 focus:ring-1 focus:ring-gold-500"
+              className="block w-full rounded-lg border border-border bg-background py-2 px-3 text-sm text-main focus:border-brand focus:ring-1 focus:ring-brand"
             />
           </div>
         </div>
@@ -243,7 +238,7 @@ export default function EditRevenuePage() {
             aria-checked={received}
             onClick={() => setReceived(!received)}
             className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ${
-              received ? 'bg-gold-500' : 'bg-gray-200 dark:bg-manor-700'
+              received ? 'bg-brand' : 'bg-border'
             }`}
           >
             <span
@@ -252,7 +247,7 @@ export default function EditRevenuePage() {
               }`}
             />
           </button>
-          <label className="text-sm font-medium text-gray-600 dark:text-manor-300 select-none cursor-pointer" onClick={() => setReceived(!received)}>
+          <label className="text-sm font-medium text-muted select-none cursor-pointer" onClick={() => setReceived(!received)}>
             Já recebido
           </label>
         </div>
@@ -263,7 +258,7 @@ export default function EditRevenuePage() {
             <button
               type="submit"
               disabled={saving || deleting}
-              className="inline-flex items-center gap-2 rounded-lg bg-gold-600 dark:bg-gold-500 px-5 py-2.5 text-sm font-medium text-white dark:text-manor-950 hover:bg-gold-500 dark:hover:bg-gold-400 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:ring-offset-2 focus:ring-offset-manor-900 disabled:opacity-50 transition-colors"
+              className="inline-flex items-center gap-2 rounded-lg bg-brand px-5 py-2.5 text-sm font-medium text-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2 focus:ring-offset-surface disabled:opacity-50 transition-colors"
             >
               {saving ? (
                 <>
@@ -276,7 +271,7 @@ export default function EditRevenuePage() {
             </button>
             <Link
               href="/revenues"
-            className="rounded-lg border border-gray-300 dark:border-manor-700 px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-manor-400 hover:bg-gray-100 dark:hover:bg-manor-800 transition-colors"
+            className="rounded-lg border border-border px-5 py-2.5 text-sm font-medium text-muted hover:bg-background transition-colors"
           >
               Cancelar
             </Link>
@@ -286,7 +281,7 @@ export default function EditRevenuePage() {
             type="button"
             disabled={saving || deleting}
             onClick={() => setShowDeleteModal(true)}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 dark:border-red-500/30 px-4 py-2.5 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:ring-offset-manor-900 disabled:opacity-50 transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 dark:border-red-500/30 px-4 py-2.5 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:ring-offset-surface disabled:opacity-50 transition-colors"
           >
             {deleting ? (
               <Loader2 className="h-4 w-4 animate-spin" />

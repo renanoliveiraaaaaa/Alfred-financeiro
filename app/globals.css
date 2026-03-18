@@ -2,32 +2,64 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Light mode (Morning Suit) */
+/* ============================================
+   MATRIZ DE 4 ESTADOS - Design Tokens
+   Dimensão 1: theme (normal | alfred)
+   Dimensão 2: dark mode (light | dark via .dark no html)
+   ============================================ */
+
+/* 1. Modo Normal Claro (:root) */
 :root {
-  --manor-bg: #f8f9fa;
-  --manor-surface: #ffffff;
-  --manor-border: #e5e7eb;
-  --gold-accent: #9a750e;
-  --silver-text: #6b7280;
+  --background: #f8fafc;   /* slate-50 */
+  --surface: #ffffff;       /* white */
+  --border: #e2e8f0;       /* slate-200 */
+  --text-main: #0f172a;    /* slate-900 */
+  --text-muted: #64748b;   /* slate-500 */
+  --brand: #2563eb;        /* blue-600 */
 }
 
-/* Dark mode (Tuxedo) */
+/* 2. Modo Normal Escuro (.dark) */
 .dark {
-  --manor-bg: #0a0a0a;
-  --manor-surface: #0f0f0f;
-  --manor-border: #1a1a1a;
-  --gold-accent: #b59410;
-  --silver-text: #c0c0c0;
+  --background: #020617;   /* slate-950 */
+  --surface: #0f172a;      /* slate-900 */
+  --border: #334155;       /* slate-700 */
+  --text-main: #f8fafc;    /* slate-50 */
+  --text-muted: #94a3b8;   /* slate-400 */
+  --brand: #3b82f6;        /* blue-500 */
+}
+
+/* 3. Modo Alfred Claro (.theme-alfred) */
+.theme-alfred {
+  --background: #fffbeb;   /* amber-50 - quente/luxuoso */
+  --surface: #ffffff;      /* white */
+  --border: #fde68a;       /* amber-200 */
+  --text-main: #1c1917;   /* stone-900 */
+  --text-muted: #78716c;   /* stone-500 */
+  --brand: #b45309;        /* amber-700 */
+}
+
+/* 4. Modo Alfred Escuro (.theme-alfred.dark) */
+.theme-alfred.dark {
+  --background: #09090b;   /* zinc-950 */
+  --surface: #18181b;      /* zinc-900 */
+  --border: #27272a;       /* zinc-800 */
+  --text-main: #fafafa;   /* zinc-50 */
+  --text-muted: #a1a1aa;  /* zinc-400 */
+  --brand: #eab308;        /* yellow-500 - gold */
 }
 
 body {
-  @apply bg-[#f8f9fa] text-gray-900 dark:bg-manor-950 dark:text-gray-100 antialiased;
+  @apply antialiased;
+  background-color: var(--background);
+  color: var(--text-main);
+  transition: background-color 0.25s ease, color 0.25s ease;
 }
 
+/* Transição suave entre temas */
 *, *::before, *::after {
   transition-property: color, background-color, border-color, box-shadow;
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  transition-duration: 0ms;
+  transition-duration: 200ms;
 }
 
 html.theme-transition *,
@@ -37,25 +69,30 @@ html.theme-transition *::after {
 }
 
 main {
-  @apply bg-[#f8f9fa] dark:bg-manor-950;
+  background-color: var(--background);
+  transition: background-color 0.25s ease;
 }
 
 ::selection {
-  background-color: rgba(181, 148, 16, 0.3);
+  background-color: color-mix(in srgb, var(--brand) 30%, transparent);
 }
 
-.dark ::-webkit-scrollbar {
+.dark ::-webkit-scrollbar,
+.theme-alfred ::-webkit-scrollbar {
   width: 6px;
 }
-.dark ::-webkit-scrollbar-track {
-  background: #0a0a0a;
+.dark ::-webkit-scrollbar-track,
+.theme-alfred ::-webkit-scrollbar-track {
+  background: var(--background);
 }
-.dark ::-webkit-scrollbar-thumb {
-  background: #333;
+.dark ::-webkit-scrollbar-thumb,
+.theme-alfred ::-webkit-scrollbar-thumb {
+  background: var(--border);
   border-radius: 3px;
 }
-.dark ::-webkit-scrollbar-thumb:hover {
-  background: #555;
+.dark ::-webkit-scrollbar-thumb:hover,
+.theme-alfred ::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
 }
 
 @keyframes fade-in {
@@ -98,6 +135,6 @@ main {
   transition: box-shadow 0.3s ease, transform 0.2s ease;
 }
 .glow-hover:hover {
-  box-shadow: 0 0 20px rgba(181, 148, 16, 0.12);
+  box-shadow: 0 0 20px color-mix(in srgb, var(--brand) 15%, transparent);
   transform: scale(1.02);
 }

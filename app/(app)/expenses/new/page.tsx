@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { maskCurrency, parseBRL } from '@/lib/format'
+import CurrencyInput from '@/components/CurrencyInput'
 import { createExpense } from '@/lib/actions/expenses'
 import { createSupabaseClient } from '@/lib/supabaseClient'
 import { useToast, CONNECTION_ERROR_MSG, isConnectionError } from '@/lib/toastContext'
@@ -111,7 +111,7 @@ export default function NewExpensePage() {
     loadData()
   }, [supabase])
 
-  const [amountDisplay, setAmountDisplay] = useState('')
+  const [amount, setAmount] = useState(0)
   const [description, setDescription] = useState('')
   const [category, setCategory] = useState('outros')
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('debito')
@@ -183,15 +183,11 @@ export default function NewExpensePage() {
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
   }, [])
 
-  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setAmountDisplay(maskCurrency(e.target.value))
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
 
-    const totalAmount = parseBRL(amountDisplay)
+    const totalAmount = amount
     if (totalAmount <= 0) { setError('Informe um valor maior que zero.'); return }
     if (!description.trim()) { setError('Informe uma descrição.'); return }
     if (!dueDate) { setError('Informe a data de vencimento.'); return }
@@ -286,20 +282,19 @@ export default function NewExpensePage() {
           </label>
           <div className="relative">
             <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400 dark:text-manor-500 text-sm">R$</span>
-            <input
+            <CurrencyInput
               id="amount"
-              type="text"
-              inputMode="numeric"
-              value={amountDisplay}
-              onChange={handleAmountChange}
+              value={amount}
+              onChange={setAmount}
               placeholder="0,00"
               className="block w-full rounded-lg border border-gray-300 dark:border-manor-700 bg-gray-50 dark:bg-manor-950 py-2 pl-10 pr-3 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-manor-500 focus:border-gold-500 focus:ring-1 focus:ring-gold-500"
+              required
             />
           </div>
-          {isParcelado && parseBRL(amountDisplay) > 0 && (
+          {isParcelado && amount > 0 && (
             <p className="mt-1 text-xs text-gray-400 dark:text-manor-600">
               {installments}x de{' '}
-              {(parseBRL(amountDisplay) / installments).toLocaleString('pt-BR', {
+              {(amount / installments).toLocaleString('pt-BR', {
                 style: 'currency',
                 currency: 'BRL',
               })}

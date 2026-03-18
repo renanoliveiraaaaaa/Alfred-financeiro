@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation'
 import { X, Loader2, ArrowDownLeft, ArrowUpRight, Check } from 'lucide-react'
 import { createExpense } from '@/lib/actions/expenses'
 import { createRevenue } from '@/lib/actions/revenues'
-import { parseBRL, maskCurrency } from '@/lib/format'
+import CurrencyInput from '@/components/CurrencyInput'
 import { useToast, CONNECTION_ERROR_MSG, isConnectionError } from '@/lib/toastContext'
+import { useGreetingPronoun } from '@/lib/greeting'
 
 type Tab = 'expense' | 'revenue'
 
@@ -18,12 +19,13 @@ type Props = {
 export default function QuickAddModal({ open, onClose }: Props) {
   const router = useRouter()
   const { toastError } = useToast()
+  const pronoun = useGreetingPronoun()
   const [tab, setTab] = useState<Tab>('expense')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
 
-  const [amount, setAmount] = useState('')
+  const [amount, setAmount] = useState(0)
   const [description, setDescription] = useState('')
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [category, setCategory] = useState('outros')
@@ -32,7 +34,7 @@ export default function QuickAddModal({ open, onClose }: Props) {
   const [received, setReceived] = useState(false)
 
   const reset = useCallback(() => {
-    setAmount('')
+    setAmount(0)
     setDescription('')
     setDate(new Date().toISOString().slice(0, 10))
     setCategory('outros')
@@ -59,7 +61,7 @@ export default function QuickAddModal({ open, onClose }: Props) {
     setError(null)
     setSuccess(false)
 
-    const value = parseBRL(amount)
+    const value = amount
 
     try {
       if (tab === 'expense') {
@@ -109,22 +111,22 @@ export default function QuickAddModal({ open, onClose }: Props) {
   if (!open) return null
 
   const cls = {
-    label: 'block text-xs font-medium text-gray-500 dark:text-manor-400 uppercase tracking-wider mb-1.5',
-    input: 'block w-full rounded-lg border border-gray-300 dark:border-manor-700 bg-gray-50 dark:bg-manor-950 px-3.5 py-2.5 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-manor-500 focus:outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500 transition-colors',
+    label: 'block text-xs font-medium text-muted uppercase tracking-wider mb-1.5',
+    input: 'block w-full rounded-lg border border-border bg-background px-3.5 py-2.5 text-sm text-main placeholder-muted focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand transition-colors',
   }
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col sm:items-start sm:justify-center sm:pt-24 bg-black/50 px-0 sm:px-4 animate-backdrop-enter overflow-y-auto" onClick={handleClose}>
       <div
-        className="w-full min-h-full sm:min-h-0 sm:max-w-md sm:rounded-xl sm:my-4 border-0 sm:border border-gray-200 dark:border-manor-800 bg-white dark:bg-manor-900 shadow-2xl animate-modal-enter flex flex-col"
+        className="w-full min-h-full sm:min-h-0 sm:max-w-md sm:rounded-xl sm:my-4 border-0 sm:border border-border bg-surface shadow-2xl animate-modal-enter flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-5 pt-5 pb-3 shrink-0">
-          <h2 className="text-base font-semibold text-gray-900 dark:text-white">Novo lançamento</h2>
+          <h2 className="text-base font-semibold text-main">Novo lançamento</h2>
           <button
             onClick={handleClose}
-            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-gray-400 dark:text-manor-500 hover:text-gray-600 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-manor-800 transition-colors touch-manipulation"
+            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-muted hover:text-main hover:bg-background transition-colors touch-manipulation"
             aria-label="Fechar"
           >
             <X className="h-5 w-5" />
@@ -132,13 +134,13 @@ export default function QuickAddModal({ open, onClose }: Props) {
         </div>
 
         {/* Tabs */}
-        <div className="flex mx-5 rounded-lg bg-gray-100 dark:bg-manor-800 p-0.5">
+        <div className="flex mx-5 rounded-lg bg-border p-0.5">
           <button
             onClick={() => switchTab('expense')}
             className={`flex-1 inline-flex items-center justify-center gap-1.5 rounded-md px-3 py-2 text-xs font-medium transition-colors ${
               tab === 'expense'
-                ? 'bg-white dark:bg-manor-900 text-gray-900 dark:text-white shadow-sm'
-                : 'text-gray-500 dark:text-manor-400 hover:text-gray-700 dark:hover:text-white'
+                ? 'bg-surface text-main shadow-sm'
+                : 'text-muted hover:text-main'
             }`}
           >
             <ArrowDownLeft className="h-3.5 w-3.5" /> Despesa
@@ -147,8 +149,8 @@ export default function QuickAddModal({ open, onClose }: Props) {
             onClick={() => switchTab('revenue')}
             className={`flex-1 inline-flex items-center justify-center gap-1.5 rounded-md px-3 py-2 text-xs font-medium transition-colors ${
               tab === 'revenue'
-                ? 'bg-white dark:bg-manor-900 text-gray-900 dark:text-white shadow-sm'
-                : 'text-gray-500 dark:text-manor-400 hover:text-gray-700 dark:hover:text-white'
+                ? 'bg-surface text-main shadow-sm'
+                : 'text-muted hover:text-main'
             }`}
           >
             <ArrowUpRight className="h-3.5 w-3.5" /> Receita
@@ -165,21 +167,24 @@ export default function QuickAddModal({ open, onClose }: Props) {
 
           {success && (
             <div className="rounded-lg border border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 px-3 py-2.5 text-xs text-emerald-700 dark:text-emerald-300 flex items-center gap-2">
-              <Check className="h-3.5 w-3.5" /> Lançamento registrado, senhor.
+              <Check className="h-3.5 w-3.5" /> Lançamento registrado, {pronoun}.
             </div>
           )}
 
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className={cls.label}>Valor (R$)</label>
-              <input
-                className={cls.input}
-                placeholder="0,00"
-                value={amount}
-                onChange={(e) => setAmount(maskCurrency(e.target.value))}
-                required
-                autoFocus
-              />
+              <div className="relative">
+                <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted text-sm">R$</span>
+                <CurrencyInput
+                  value={amount}
+                  onChange={setAmount}
+                  placeholder="0,00"
+                  className={`${cls.input} pl-10`}
+                  required
+                  autoFocus
+                />
+              </div>
             </div>
             <div>
               <label className={cls.label}>Data</label>
@@ -231,17 +236,17 @@ export default function QuickAddModal({ open, onClose }: Props) {
           <label className="flex items-center gap-2.5 cursor-pointer select-none">
             <span
               className={`relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ${
-                (tab === 'expense' ? paid : received) ? 'bg-gold-500' : 'bg-gray-200 dark:bg-manor-700'
+                (tab === 'expense' ? paid : received) ? 'bg-brand' : 'bg-border'
               }`}
               onClick={() => tab === 'expense' ? setPaid(!paid) : setReceived(!received)}
             >
               <span
-                className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ${
+                className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-surface shadow transition-transform duration-200 ${
                   (tab === 'expense' ? paid : received) ? 'translate-x-4' : 'translate-x-0'
                 }`}
               />
             </span>
-            <span className="text-xs text-gray-600 dark:text-manor-300">
+            <span className="text-xs text-muted">
               {tab === 'expense' ? (paid ? 'Quitado' : 'Em aberto') : (received ? 'Recebido' : 'Pendente')}
             </span>
           </label>
@@ -251,14 +256,14 @@ export default function QuickAddModal({ open, onClose }: Props) {
             <button
               type="button"
               onClick={handleClose}
-              className="flex-1 min-h-[44px] inline-flex items-center justify-center px-4 py-2.5 rounded-lg text-sm font-medium border border-gray-300 dark:border-manor-700 text-gray-600 dark:text-manor-400 hover:bg-gray-100 dark:hover:bg-manor-800 transition-colors touch-manipulation"
+              className="flex-1 min-h-[44px] inline-flex items-center justify-center px-4 py-2.5 rounded-lg text-sm font-medium border border-border text-muted hover:bg-background transition-colors touch-manipulation"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={saving || success}
-              className="flex-1 min-h-[44px] inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium bg-gold-600 dark:bg-gold-500 text-white dark:text-manor-950 hover:bg-gold-500 dark:hover:bg-gold-400 disabled:opacity-50 transition-colors touch-manipulation"
+              className="flex-1 min-h-[44px] inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium bg-brand text-white hover:opacity-90 disabled:opacity-50 transition-colors touch-manipulation"
             >
               {saving ? <><Loader2 className="h-4 w-4 animate-spin" /> Registrando...</> : success ? <><Check className="h-4 w-4" /> Registrado</> : 'Registrar'}
             </button>

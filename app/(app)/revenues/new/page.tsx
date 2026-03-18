@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Loader2 } from 'lucide-react'
-import { maskCurrency, parseBRL } from '@/lib/format'
+import CurrencyInput from '@/components/CurrencyInput'
 import { createRevenue } from '@/lib/actions/revenues'
 import { useToast, CONNECTION_ERROR_MSG, isConnectionError } from '@/lib/toastContext'
 
@@ -12,7 +12,7 @@ export default function NewRevenuePage() {
   const router = useRouter()
   const { toastError } = useToast()
 
-  const [amountDisplay, setAmountDisplay] = useState('')
+  const [amount, setAmount] = useState(0)
   const [description, setDescription] = useState('')
   const [date, setDate] = useState('')
   const [expectedDate, setExpectedDate] = useState('')
@@ -21,15 +21,10 @@ export default function NewRevenuePage() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
 
-  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setAmountDisplay(maskCurrency(e.target.value))
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
 
-    const amount = parseBRL(amountDisplay)
     if (amount <= 0) { setError('Informe um valor maior que zero.'); return }
     if (!description.trim()) { setError('Informe uma descrição.'); return }
     if (!date) { setError('Informe a data efetiva.'); return }
@@ -96,14 +91,13 @@ export default function NewRevenuePage() {
             <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400 dark:text-manor-500 text-sm">
               R$
             </span>
-            <input
+            <CurrencyInput
               id="amount"
-              type="text"
-              inputMode="numeric"
-              value={amountDisplay}
-              onChange={handleAmountChange}
+              value={amount}
+              onChange={setAmount}
               placeholder="0,00"
               className="block w-full rounded-lg border border-gray-300 dark:border-manor-700 bg-gray-50 dark:bg-manor-950 py-2 pl-10 pr-3 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-manor-500 focus:border-gold-500 focus:ring-1 focus:ring-gold-500"
+              required
             />
           </div>
         </div>
