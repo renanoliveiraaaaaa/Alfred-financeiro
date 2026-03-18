@@ -3,8 +3,11 @@
 import { useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
 import { createSupabaseClient } from '@/lib/supabaseClient'
+import { seedCategoriesIfEmpty } from '@/lib/seedCategories'
 import { formatCurrency, formatDate, getGreeting, getMonthName } from '@/lib/format'
 import MaskedValue from '@/components/MaskedValue'
+import WelcomeModal, { shouldShowWelcomeModal } from '@/components/WelcomeModal'
+import { useToast, CONNECTION_ERROR_MSG, isConnectionError } from '@/lib/toastContext'
 import { RefreshCw, Loader2 } from 'lucide-react'
 import type { Database } from '@/types/supabase'
 
@@ -46,6 +49,7 @@ function dueBadge(dateStr: string | null) {
 
 export default function DashboardPage() {
   const supabase = createSupabaseClient()
+  const { toastError } = useToast()
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -62,6 +66,7 @@ export default function DashboardPage() {
   const [processingSubId, setProcessingSubId] = useState<string | null>(null)
   const [dueIncomeSources, setDueIncomeSources] = useState<IncomeSource[]>([])
   const [processingIncomeId, setProcessingIncomeId] = useState<string | null>(null)
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false)
 
   const balance = totalRevenues - totalExpenses
   const budgetPercent = projectedExpenses > 0 ? (totalExpenses / projectedExpenses) * 100 : 0
@@ -81,6 +86,11 @@ export default function DashboardPage() {
             .eq('id', userData.user.id)
             .maybeSingle()
           if (prof?.full_name) setProfileName(prof.full_name)
+
+          const isNewUser = await seedCategoriesIfEmpty(supabase)
+          if (isNewUser && shouldShowWelcomeModal()) {
+            setShowWelcomeModal(true)
+          }
         }
 
         const now = new Date()
@@ -145,7 +155,7 @@ export default function DashboardPage() {
       const { data: userData } = await supabase.auth.getUser()
       if (!userData.user) return
 
-      await supabase.from('expenses').insert({
+      const { error: insertErr } = await supabase.from('expenses').insert({
         user_id: userData.user.id,
         amount: sub.amount,
         description: `${sub.name} (assinatura)`,
@@ -154,6 +164,7 @@ export default function DashboardPage() {
         due_date: sub.next_billing_date,
         paid: true,
       })
+      if (insertErr) throw insertErr
 
       const next = new Date(sub.next_billing_date + 'T12:00:00')
       if (sub.billing_cycle === 'anual') {
@@ -163,12 +174,14 @@ export default function DashboardPage() {
       }
       const nextDate = next.toISOString().slice(0, 10)
 
-      await supabase.from('subscriptions').update({ next_billing_date: nextDate }).eq('id', sub.id)
+      const { error: updateErr } = await supabase.from('subscriptions').update({ next_billing_date: nextDate }).eq('id', sub.id)
+      if (updateErr) throw updateErr
 
       setDueSubs((prev) => prev.filter((s) => s.id !== sub.id))
       setTotalExpenses((prev) => prev + Number(sub.amount))
-    } catch (err) {
+    } catch (err: unknown) {
       console.error(err)
+      toastError(isConnectionError(err) ? CONNECTION_ERROR_MSG : (err instanceof Error ? err.message : 'Erro ao registrar.'))
     } finally {
       setProcessingSubId(null)
     }
@@ -182,7 +195,7 @@ export default function DashboardPage() {
 
       const today = new Date().toISOString().slice(0, 10)
 
-      await supabase.from('revenues').insert({
+      const { error: insertErr } = await supabase.from('revenues').insert({
         user_id: userData.user.id,
         amount: source.amount,
         description: source.name,
@@ -190,6 +203,7 @@ export default function DashboardPage() {
         expected_date: null,
         received: true,
       })
+      if (insertErr) throw insertErr
 
       const base = new Date(source.next_receipt_date + 'T12:00:00')
       if (source.frequency === 'mensal') {
@@ -201,12 +215,14 @@ export default function DashboardPage() {
       }
       const nextDate = base.toISOString().slice(0, 10)
 
-      await supabase.from('income_sources').update({ next_receipt_date: nextDate }).eq('id', source.id)
+      const { error: updateErr } = await supabase.from('income_sources').update({ next_receipt_date: nextDate }).eq('id', source.id)
+      if (updateErr) throw updateErr
 
       setDueIncomeSources((prev) => prev.filter((s) => s.id !== source.id))
       setTotalRevenues((prev) => prev + Number(source.amount))
-    } catch (err) {
+    } catch (err: unknown) {
       console.error(err)
+      toastError(isConnectionError(err) ? CONNECTION_ERROR_MSG : (err instanceof Error ? err.message : 'Erro ao confirmar.'))
     } finally {
       setProcessingIncomeId(null)
     }
@@ -251,6 +267,8 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      <WelcomeModal open={showWelcomeModal} onClose={() => setShowWelcomeModal(false)} />
+
       <div>
         <h1 className={c.h1}>{getGreeting()}, {firstName || 'senhor'}</h1>
         <p className={`${c.sub} mt-0.5`}>Visão geral do patrimônio — {getMonthName()}</p>

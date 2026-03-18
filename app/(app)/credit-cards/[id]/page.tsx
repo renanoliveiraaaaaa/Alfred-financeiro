@@ -1,13 +1,14 @@
 'use client'
 
 import { useEffect, useState, useMemo, useCallback } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { createSupabaseClient } from '@/lib/supabaseClient'
 import { formatCurrency, formatDate } from '@/lib/format'
 import MaskedValue from '@/components/MaskedValue'
 import CardBrandIcon from '@/components/CardBrandIcon'
 import CardChipIcon from '@/components/CardChipIcon'
+import { useToast, CONNECTION_ERROR_MSG, isConnectionError } from '@/lib/toastContext'
 import { ArrowLeft, CheckCircle2, ChevronLeft, ChevronRight, CreditCard, Loader2 } from 'lucide-react'
 import type { Database } from '@/types/supabase'
 
@@ -30,8 +31,8 @@ function monthLabel(key: string): string {
 
 export default function CreditCardDetailPage() {
   const params = useParams()
-  const router = useRouter()
   const supabase = createSupabaseClient()
+  const { toastError } = useToast()
   const cardId = params.id as string
 
   const [card, setCard] = useState<Card | null>(null)
@@ -108,15 +109,17 @@ export default function CreditCardDetailPage() {
     const ids = currentGroup.expenses.filter((e) => !e.paid).map((e) => e.id)
 
     if (ids.length > 0) {
-      const { error } = await supabase
-        .from('expenses')
-        .update({ paid: true })
-        .in('id', ids)
-
-      if (!error) {
+      try {
+        const { error } = await supabase
+          .from('expenses')
+          .update({ paid: true })
+          .in('id', ids)
+        if (error) throw error
         setExpenses((prev) =>
           prev.map((e) => ids.includes(e.id) ? { ...e, paid: true } : e)
         )
+      } catch (err: unknown) {
+        toastError(isConnectionError(err) ? CONNECTION_ERROR_MSG : (err instanceof Error ? err.message : 'Erro ao pagar fatura.'))
       }
     }
     setPayingAll(false)

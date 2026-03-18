@@ -7,6 +7,7 @@ import { createSupabaseClient } from '@/lib/supabaseClient'
 import { maskCurrency, parseBRL } from '@/lib/format'
 import { Loader2, Trash2, ArrowLeft } from 'lucide-react'
 import ConfirmDangerModal from '@/components/ConfirmDangerModal'
+import { useToast, CONNECTION_ERROR_MSG, isConnectionError } from '@/lib/toastContext'
 
 function numberToMask(val: number): string {
   if (!val) return ''
@@ -18,6 +19,7 @@ export default function EditRevenuePage() {
   const params = useParams()
   const id = params.id as string
   const supabase = createSupabaseClient()
+  const { toastError } = useToast()
 
   const [fetching, setFetching] = useState(true)
   const [notFound, setNotFound] = useState(false)
@@ -53,8 +55,10 @@ export default function EditRevenuePage() {
       setDate(revenue.date || '')
       setExpectedDate(revenue.expected_date || '')
       setReceived(revenue.received ?? false)
-    } catch {
-      setError('Erro ao carregar receita.')
+    } catch (err: unknown) {
+      const msg = isConnectionError(err) ? CONNECTION_ERROR_MSG : 'Erro ao carregar receita.'
+      setError(msg)
+      toastError(msg)
     } finally {
       setFetching(false)
     }
@@ -88,8 +92,10 @@ export default function EditRevenuePage() {
 
       setSuccess(true)
       setTimeout(() => router.push('/revenues'), 800)
-    } catch (err: any) {
-      setError(err?.message || 'Erro ao atualizar receita.')
+    } catch (err: unknown) {
+      const msg = isConnectionError(err) ? CONNECTION_ERROR_MSG : (err instanceof Error ? err.message : 'Erro ao atualizar receita.')
+      setError(msg)
+      toastError(msg)
     } finally {
       setSaving(false)
     }
@@ -102,8 +108,10 @@ export default function EditRevenuePage() {
       const { error: deleteErr } = await supabase.from('revenues').delete().eq('id', id)
       if (deleteErr) throw new Error(deleteErr.message)
       router.push('/revenues')
-    } catch (err: any) {
-      setError(err?.message || 'Erro ao excluir receita.')
+    } catch (err: unknown) {
+      const msg = isConnectionError(err) ? CONNECTION_ERROR_MSG : (err instanceof Error ? err.message : 'Erro ao excluir receita.')
+      setError(msg)
+      toastError(msg)
       setDeleting(false)
       setShowDeleteModal(false)
     }

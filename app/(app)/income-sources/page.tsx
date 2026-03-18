@@ -5,6 +5,7 @@ import { createSupabaseClient } from '@/lib/supabaseClient'
 import { maskCurrency } from '@/lib/format'
 import MaskedValue from '@/components/MaskedValue'
 import EmptyState from '@/components/EmptyState'
+import { useToast, CONNECTION_ERROR_MSG, isConnectionError } from '@/lib/toastContext'
 import {
   Plus, X, Loader2, Pencil, Wallet, Calendar, Repeat,
 } from 'lucide-react'
@@ -20,6 +21,7 @@ const FREQUENCY_LABELS: Record<string, string> = {
 
 export default function IncomeSourcesPage() {
   const supabase = createSupabaseClient()
+  const { toastError } = useToast()
 
   const [sources, setSources] = useState<IncomeSource[]>([])
   const [loading, setLoading] = useState(true)
@@ -95,7 +97,13 @@ export default function IncomeSourcesPage() {
         frequency: fFrequency,
         next_receipt_date: fNextDate,
       }).eq('id', editId)
-      if (error) { setFormError(error.message); setSaving(false); return }
+      if (error) {
+        const msg = isConnectionError(error) ? CONNECTION_ERROR_MSG : error.message
+        setFormError(msg)
+        toastError(msg)
+        setSaving(false)
+        return
+      }
     } else {
       const { error } = await supabase.from('income_sources').insert({
         user_id: userData.user.id,
@@ -104,7 +112,13 @@ export default function IncomeSourcesPage() {
         frequency: fFrequency,
         next_receipt_date: fNextDate,
       })
-      if (error) { setFormError(error.message); setSaving(false); return }
+      if (error) {
+        const msg = isConnectionError(error) ? CONNECTION_ERROR_MSG : error.message
+        setFormError(msg)
+        toastError(msg)
+        setSaving(false)
+        return
+      }
     }
 
     resetForm()
@@ -116,16 +130,18 @@ export default function IncomeSourcesPage() {
   const toggleActive = async (id: string, current: boolean) => {
     setTogglingId(id)
     setSources((prev) => prev.map((s) => s.id === id ? { ...s, active: !current } : s))
-
-    const { error } = await supabase
-      .from('income_sources')
-      .update({ active: !current })
-      .eq('id', id)
-
-    if (error) {
+    try {
+      const { error } = await supabase
+        .from('income_sources')
+        .update({ active: !current })
+        .eq('id', id)
+      if (error) throw error
+    } catch (err: unknown) {
       setSources((prev) => prev.map((s) => s.id === id ? { ...s, active: current } : s))
+      toastError(isConnectionError(err) ? CONNECTION_ERROR_MSG : (err instanceof Error ? err.message : 'Erro ao atualizar.'))
+    } finally {
+      setTogglingId(null)
     }
-    setTogglingId(null)
   }
 
   const cls = {
@@ -162,15 +178,19 @@ export default function IncomeSourcesPage() {
         </button>
       </div>
 
-      {/* Modal */}
+      {/* Modal - full screen no mobile */}
       {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 animate-backdrop-enter">
-          <div className={`${cls.card} w-full max-w-lg p-6 space-y-5 shadow-2xl animate-modal-enter`}>
-            <div className="flex items-center justify-between">
+        <div className="fixed inset-0 z-50 flex flex-col sm:items-center sm:justify-center bg-black/50 px-0 sm:px-4 py-4 sm:py-0 overflow-y-auto animate-backdrop-enter">
+          <div className={`${cls.card} w-full max-w-lg p-6 space-y-5 shadow-2xl animate-modal-enter mt-auto sm:mt-0 max-h-[95vh] sm:max-h-none overflow-y-auto`}>
+            <div className="flex items-center justify-between shrink-0">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
                 {editId ? 'Ajustar contrato' : 'Nova fonte de renda'}
               </h2>
-              <button onClick={() => { setShowForm(false); resetForm() }} className="text-gray-400 dark:text-manor-500 hover:text-gray-600 dark:hover:text-white transition-colors">
+              <button
+                onClick={() => { setShowForm(false); resetForm() }}
+                className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-gray-400 dark:text-manor-500 hover:text-gray-600 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-manor-800 transition-colors touch-manipulation"
+                aria-label="Fechar"
+              >
                 <X className="h-5 w-5" />
               </button>
             </div>
@@ -208,11 +228,11 @@ export default function IncomeSourcesPage() {
                 <label className={cls.label}>Próximo recebimento</label>
                 <input type="date" className={cls.input} value={fNextDate} onChange={(e) => setFNextDate(e.target.value)} required />
               </div>
-              <div className="flex justify-end gap-3 pt-2">
-                <button type="button" onClick={() => { setShowForm(false); resetForm() }} className="px-4 py-2.5 rounded-lg text-sm font-medium border border-gray-300 dark:border-manor-700 text-gray-600 dark:text-manor-400 hover:bg-gray-100 dark:hover:bg-manor-800 transition-colors">
+              <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-2">
+                <button type="button" onClick={() => { setShowForm(false); resetForm() }} className="min-h-[44px] w-full sm:w-auto px-4 py-2.5 rounded-lg text-sm font-medium border border-gray-300 dark:border-manor-700 text-gray-600 dark:text-manor-400 hover:bg-gray-100 dark:hover:bg-manor-800 transition-colors touch-manipulation">
                   Cancelar
                 </button>
-                <button type="submit" disabled={saving} className={cls.btnPrimary}>
+                <button type="submit" disabled={saving} className={`${cls.btnPrimary} min-h-[44px] w-full sm:w-auto touch-manipulation inline-flex items-center justify-center`}>
                   {saving ? <><Loader2 className="h-4 w-4 animate-spin" /> Processando...</> : editId ? 'Salvar alterações' : 'Adicionar'}
                 </button>
               </div>
@@ -270,10 +290,11 @@ export default function IncomeSourcesPage() {
 
                 <button
                   onClick={() => openEdit(s)}
-                  className="inline-flex items-center gap-1 text-xs text-gray-400 dark:text-manor-500 hover:text-gray-700 dark:hover:text-white transition-colors"
+                  className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center gap-1 rounded-lg text-xs text-gray-400 dark:text-manor-500 hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-manor-800 transition-colors touch-manipulation"
                   title="Ajustar contrato"
+                  aria-label="Editar"
                 >
-                  <Pencil className="h-3.5 w-3.5" /> Ajustar
+                  <Pencil className="h-4 w-4" />
                 </button>
               </div>
             </div>

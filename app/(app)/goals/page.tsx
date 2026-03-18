@@ -6,6 +6,7 @@ import { formatCurrency } from '@/lib/format'
 import MaskedValue from '@/components/MaskedValue'
 import EmptyState from '@/components/EmptyState'
 import ConfirmDangerModal from '@/components/ConfirmDangerModal'
+import { useToast, CONNECTION_ERROR_MSG, isConnectionError } from '@/lib/toastContext'
 import { Plus, X, Loader2, Vault, Trophy, PiggyBank, ArrowUpCircle } from 'lucide-react'
 import type { Database } from '@/types/supabase'
 
@@ -33,6 +34,7 @@ function progressColor(pct: number) {
 
 export default function GoalsPage() {
   const supabase = createSupabaseClient()
+  const { toastError } = useToast()
 
   const [goals, setGoals] = useState<Goal[]>([])
   const [loading, setLoading] = useState(true)
@@ -94,7 +96,9 @@ export default function GoalsPage() {
     })
 
     if (error) {
-      setFormError(error.message)
+      const msg = isConnectionError(error) ? CONNECTION_ERROR_MSG : error.message
+      setFormError(msg)
+      toastError(msg)
     } else {
       resetNewForm()
       setShowNewForm(false)
@@ -136,10 +140,16 @@ export default function GoalsPage() {
   const handleDelete = async () => {
     if (!deleteTargetId) return
     setDeletingGoal(true)
-    await supabase.from('goals').delete().eq('id', deleteTargetId)
-    setGoals((prev) => prev.filter((g) => g.id !== deleteTargetId))
-    setDeletingGoal(false)
-    setDeleteTargetId(null)
+    try {
+      const { error } = await supabase.from('goals').delete().eq('id', deleteTargetId)
+      if (error) throw error
+      setGoals((prev) => prev.filter((g) => g.id !== deleteTargetId))
+    } catch (err: unknown) {
+      toastError(isConnectionError(err) ? CONNECTION_ERROR_MSG : (err instanceof Error ? err.message : 'Erro ao excluir.'))
+    } finally {
+      setDeletingGoal(false)
+      setDeleteTargetId(null)
+    }
   }
 
   const cls = {

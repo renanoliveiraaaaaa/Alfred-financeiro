@@ -7,6 +7,7 @@ import { createSupabaseClient } from '@/lib/supabaseClient'
 import { maskCurrency, parseBRL } from '@/lib/format'
 import { Loader2, Trash2, ArrowLeft, ExternalLink, Paperclip } from 'lucide-react'
 import ConfirmDangerModal from '@/components/ConfirmDangerModal'
+import { useToast, CONNECTION_ERROR_MSG, isConnectionError } from '@/lib/toastContext'
 
 const DEFAULT_CATEGORIES = [
   { value: 'mercado', label: 'Mercado' },
@@ -34,6 +35,7 @@ export default function EditExpensePage() {
   const params = useParams()
   const id = params.id as string
   const supabase = createSupabaseClient()
+  const { toastError } = useToast()
 
   const [categories, setCategories] = useState(DEFAULT_CATEGORIES)
   const [fetching, setFetching] = useState(true)
@@ -84,8 +86,10 @@ export default function EditExpensePage() {
       if (expense.installments && expense.installment_number) {
         setInstallmentInfo(`Parcela ${expense.installment_number}/${expense.installments}`)
       }
-    } catch {
-      setError('Erro ao carregar despesa.')
+    } catch (err: unknown) {
+      const msg = isConnectionError(err) ? CONNECTION_ERROR_MSG : 'Erro ao carregar despesa.'
+      setError(msg)
+      toastError(msg)
     } finally {
       setFetching(false)
     }
@@ -139,8 +143,10 @@ export default function EditExpensePage() {
 
       setSuccess(true)
       setTimeout(() => router.push('/expenses'), 800)
-    } catch (err: any) {
-      setError(err?.message || 'Erro ao atualizar despesa.')
+    } catch (err: unknown) {
+      const msg = isConnectionError(err) ? CONNECTION_ERROR_MSG : (err instanceof Error ? err.message : 'Erro ao atualizar despesa.')
+      setError(msg)
+      toastError(msg)
     } finally {
       setSaving(false)
     }
@@ -153,8 +159,10 @@ export default function EditExpensePage() {
       const { error: deleteErr } = await supabase.from('expenses').delete().eq('id', id)
       if (deleteErr) throw new Error(deleteErr.message)
       router.push('/expenses')
-    } catch (err: any) {
-      setError(err?.message || 'Erro ao excluir despesa.')
+    } catch (err: unknown) {
+      const msg = isConnectionError(err) ? CONNECTION_ERROR_MSG : (err instanceof Error ? err.message : 'Erro ao excluir despesa.')
+      setError(msg)
+      toastError(msg)
       setDeleting(false)
       setShowDeleteModal(false)
     }

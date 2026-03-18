@@ -2,12 +2,14 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { createSupabaseClient } from '@/lib/supabaseClient'
+import { useToast, CONNECTION_ERROR_MSG, isConnectionError } from '@/lib/toastContext'
 import type { Database } from '@/types/supabase'
 
 type Category = Database['public']['Tables']['categories']['Row']
 
 export default function SettingsPage() {
   const supabase = createSupabaseClient()
+  const { toastError } = useToast()
 
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
@@ -26,8 +28,9 @@ export default function SettingsPage() {
       .order('name', { ascending: true })
 
     if (fetchErr) {
-      console.error(fetchErr)
-      setError('Erro ao carregar categorias.')
+      const msg = isConnectionError(fetchErr) ? CONNECTION_ERROR_MSG : 'Erro ao carregar categorias.'
+      setError(msg)
+      toastError(msg)
     } else {
       setCategories((data ?? []) as Category[])
     }
@@ -64,9 +67,10 @@ export default function SettingsPage() {
         setSuccess('Categoria registrada com distinção.')
         await fetchCategories()
       }
-    } catch (err: any) {
-      console.error(err)
-      setError(err?.message || 'Erro ao criar categoria.')
+    } catch (err: unknown) {
+      const msg = isConnectionError(err) ? CONNECTION_ERROR_MSG : (err instanceof Error ? err.message : 'Erro ao criar categoria.')
+      setError(msg)
+      toastError(msg)
     } finally {
       setSaving(false)
     }
@@ -80,9 +84,10 @@ export default function SettingsPage() {
       if (delErr) throw delErr
       setCategories((prev) => prev.filter((c) => c.id !== id))
       setSuccess('Categoria removida dos seus registros.')
-    } catch (err: any) {
-      console.error(err)
-      setError(err?.message || 'Erro ao remover categoria.')
+    } catch (err: unknown) {
+      const msg = isConnectionError(err) ? CONNECTION_ERROR_MSG : (err instanceof Error ? err.message : 'Erro ao remover categoria.')
+      setError(msg)
+      toastError(msg)
     } finally {
       setDeletingId(null)
     }

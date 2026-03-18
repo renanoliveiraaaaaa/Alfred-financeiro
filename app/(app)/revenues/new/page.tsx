@@ -3,11 +3,14 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { Loader2 } from 'lucide-react'
 import { maskCurrency, parseBRL } from '@/lib/format'
 import { createRevenue } from '@/lib/actions/revenues'
+import { useToast, CONNECTION_ERROR_MSG, isConnectionError } from '@/lib/toastContext'
 
 export default function NewRevenuePage() {
   const router = useRouter()
+  const { toastError } = useToast()
 
   const [amountDisplay, setAmountDisplay] = useState('')
   const [description, setDescription] = useState('')
@@ -45,9 +48,12 @@ export default function NewRevenuePage() {
 
       setSuccess(true)
       setTimeout(() => router.push('/revenues'), 800)
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err)
-      setError(err?.message || 'Erro ao salvar receita.')
+      const msg = err instanceof Error ? err.message : 'Erro ao salvar receita.'
+      const displayMsg = isConnectionError(err) ? CONNECTION_ERROR_MSG : msg
+      setError(displayMsg)
+      toastError(displayMsg)
     } finally {
       setSaving(false)
     }
@@ -172,9 +178,9 @@ export default function NewRevenuePage() {
           <button
             type="submit"
             disabled={saving}
-            className="inline-flex items-center gap-2 rounded-lg bg-gold-600 dark:bg-gold-500 px-5 py-2.5 text-sm font-medium text-white dark:text-manor-950 hover:bg-gold-500 dark:hover:bg-gold-400 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:ring-offset-2 focus:ring-offset-manor-900 disabled:opacity-50"
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-gold-600 dark:bg-gold-500 px-5 py-2.5 text-sm font-medium text-white dark:text-manor-950 hover:bg-gold-500 dark:hover:bg-gold-400 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:ring-offset-2 focus:ring-offset-manor-900 disabled:opacity-50 min-h-[44px]"
           >
-            {saving ? 'Processando...' : 'Registrar entrada'}
+            {saving ? <><Loader2 className="h-4 w-4 animate-spin" /> Processando...</> : 'Registrar entrada'}
           </button>
           <Link
             href="/revenues"

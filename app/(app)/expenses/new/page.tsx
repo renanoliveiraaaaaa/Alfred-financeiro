@@ -6,6 +6,8 @@ import Link from 'next/link'
 import { maskCurrency, parseBRL } from '@/lib/format'
 import { createExpense } from '@/lib/actions/expenses'
 import { createSupabaseClient } from '@/lib/supabaseClient'
+import { useToast, CONNECTION_ERROR_MSG, isConnectionError } from '@/lib/toastContext'
+import { Loader2 } from 'lucide-react'
 import type { Database } from '@/types/supabase'
 
 type CreditCard = Database['public']['Tables']['credit_cards']['Row']
@@ -86,6 +88,7 @@ const KEYWORD_MAP: Record<string, string> = {
 export default function NewExpensePage() {
   const router = useRouter()
   const supabase = createSupabaseClient()
+  const { toastError } = useToast()
 
   const [categories, setCategories] = useState(DEFAULT_CATEGORIES)
   const [creditCards, setCreditCards] = useState<CreditCard[]>([])
@@ -235,9 +238,12 @@ export default function NewExpensePage() {
 
       setSuccess(true)
       setTimeout(() => router.push('/expenses'), 800)
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err)
-      setError(err?.message || 'Erro ao salvar despesa.')
+      const msg = err instanceof Error ? err.message : 'Erro ao salvar despesa.'
+      const displayMsg = isConnectionError(err) ? CONNECTION_ERROR_MSG : msg
+      setError(displayMsg)
+      toastError(displayMsg)
     } finally {
       setSaving(false)
     }
@@ -491,13 +497,9 @@ export default function NewExpensePage() {
           <button
             type="submit"
             disabled={saving}
-            className="inline-flex items-center gap-2 rounded-lg bg-gold-600 dark:bg-gold-500 px-5 py-2.5 text-sm font-medium text-white dark:text-manor-950 hover:bg-gold-500 dark:hover:bg-gold-400 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:ring-offset-2 focus:ring-offset-manor-900 disabled:opacity-50"
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-gold-600 dark:bg-gold-500 px-5 py-2.5 text-sm font-medium text-white dark:text-manor-950 hover:bg-gold-500 dark:hover:bg-gold-400 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:ring-offset-2 focus:ring-offset-manor-900 disabled:opacity-50 min-h-[44px]"
           >
-            {saving
-              ? 'Processando...'
-              : isParcelado
-              ? `Registrar ${installments} parcelas`
-              : 'Registrar saída'}
+            {saving ? <><Loader2 className="h-4 w-4 animate-spin" /> Processando...</> : isParcelado ? `Registrar ${installments} parcelas` : 'Registrar saída'}
           </button>
           <Link
             href="/expenses"

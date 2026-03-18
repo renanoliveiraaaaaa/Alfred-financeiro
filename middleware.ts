@@ -70,7 +70,8 @@ export async function middleware(request: NextRequest) {
     request.nextUrl.pathname.startsWith('/income-sources') ||
     request.nextUrl.pathname.startsWith('/subscriptions') ||
     request.nextUrl.pathname.startsWith('/settings') ||
-    request.nextUrl.pathname.startsWith('/profile')
+    request.nextUrl.pathname.startsWith('/profile') ||
+    request.nextUrl.pathname.startsWith('/expired')
   ) {
     if (!user) {
       return NextResponse.redirect(new URL('/', request.url))

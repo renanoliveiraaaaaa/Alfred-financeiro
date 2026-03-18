@@ -7,6 +7,7 @@ import MaskedValue from '@/components/MaskedValue'
 import EmptyState from '@/components/EmptyState'
 import CardBrandIcon, { BRAND_OPTIONS } from '@/components/CardBrandIcon'
 import CardChipIcon from '@/components/CardChipIcon'
+import { useToast, CONNECTION_ERROR_MSG, isConnectionError } from '@/lib/toastContext'
 import { Plus, CreditCard, X, Loader2, Settings2, AlertTriangle } from 'lucide-react'
 import type { Database } from '@/types/supabase'
 
@@ -44,6 +45,7 @@ const COLOR_OPTIONS = [
 
 export default function CreditCardsPage() {
   const supabase = createSupabaseClient()
+  const { toastError } = useToast()
 
   const [cards, setCards] = useState<Card[]>([])
   const [loading, setLoading] = useState(true)
@@ -131,7 +133,9 @@ export default function CreditCardsPage() {
         .eq('id', editingCard.id)
 
       if (err) {
-        setFormError(err.message)
+        const msg = isConnectionError(err) ? CONNECTION_ERROR_MSG : err.message
+        setFormError(msg)
+        toastError(msg)
       } else {
         setFormSuccess('Cartão atualizado com sucesso, senhor.')
         setCards((prev) =>
@@ -158,7 +162,9 @@ export default function CreditCardsPage() {
       })
 
       if (err) {
-        setFormError(err.message)
+        const msg = isConnectionError(err) ? CONNECTION_ERROR_MSG : err.message
+        setFormError(msg)
+        toastError(msg)
       } else {
         resetForm()
         setShowForm(false)
@@ -184,11 +190,13 @@ export default function CreditCardsPage() {
       .eq('id', deleteTarget.id)
 
     if (error) {
-      if (error.message.includes('violates foreign key') || error.code === '23503') {
-        setDeleteError('Não é possível excluir este cartão, senhor, pois existem despesas vinculadas a ele no histórico.')
-      } else {
-        setDeleteError(error.message)
-      }
+      const msg = isConnectionError(error)
+        ? CONNECTION_ERROR_MSG
+        : (error.message.includes('violates foreign key') || error.code === '23503'
+          ? 'Não é possível excluir este cartão, senhor, pois existem despesas vinculadas a ele no histórico.'
+          : error.message)
+      setDeleteError(msg)
+      toastError(msg)
     } else {
       setCards((prev) => prev.filter((c) => c.id !== deleteTarget.id))
       setDeleteTarget(null)

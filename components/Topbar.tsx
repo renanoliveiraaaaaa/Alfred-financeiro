@@ -25,6 +25,8 @@ export default function Topbar() {
 
   const [displayName, setDisplayName] = useState('')
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+  const [trialEndsAt, setTrialEndsAt] = useState<string | null>(null)
+  const [planStatus, setPlanStatus] = useState<string>('trial')
   const [quickAddOpen, setQuickAddOpen] = useState(false)
   const [showLogoutModal, setShowLogoutModal] = useState(false)
   const [loggingOut, setLoggingOut] = useState(false)
@@ -41,7 +43,7 @@ export default function Topbar() {
 
       const { data: profile } = await supabase
         .from('profiles')
-        .select('full_name, avatar_url')
+        .select('full_name, avatar_url, plan_status, trial_ends_at')
         .eq('id', userData.user.id)
         .maybeSingle()
 
@@ -51,12 +53,27 @@ export default function Topbar() {
       if (profile?.avatar_url) {
         setAvatarUrl(profile.avatar_url)
       }
+      if (profile?.plan_status) {
+        setPlanStatus(profile.plan_status)
+      }
+      if (profile?.trial_ends_at) {
+        setTrialEndsAt(profile.trial_ends_at)
+      }
     }
     loadProfile()
   }, [supabase])
 
   const initials = displayName ? displayName[0].toUpperCase() : '?'
   const isDark = resolvedTheme === 'dark'
+
+  const trialDaysLeft = planStatus === 'trial' && trialEndsAt
+    ? Math.ceil((new Date(trialEndsAt).getTime() - Date.now()) / 86_400_000)
+    : null
+  const trialBadgeLabel =
+    trialDaysLeft === null ? null
+    : trialDaysLeft < 1 ? 'Último dia de teste'
+    : trialDaysLeft === 1 ? '1 dia de teste grátis'
+    : `${trialDaysLeft} dias de teste grátis`
 
   const handleLogout = async () => {
     setLoggingOut(true)
@@ -100,6 +117,12 @@ export default function Topbar() {
           </nav>
         </div>
         <div className="flex items-center gap-1.5">
+          {/* Trial badge */}
+          {trialBadgeLabel && trialDaysLeft !== null && trialDaysLeft >= 0 && (
+            <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-300 ring-1 ring-inset ring-amber-200 dark:ring-amber-500/30">
+              {trialBadgeLabel}
+            </span>
+          )}
           {/* Quick add */}
           <button
             onClick={() => setQuickAddOpen(true)}

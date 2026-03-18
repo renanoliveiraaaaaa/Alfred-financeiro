@@ -24,8 +24,8 @@ export default function ConfirmDangerModal({
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4 animate-backdrop-enter">
-      <div className="w-full max-w-md rounded-xl border border-gray-200 dark:border-manor-800 bg-white dark:bg-manor-900 shadow-2xl p-6 space-y-4 animate-modal-enter">
+    <div className="fixed inset-0 z-[70] flex flex-col sm:items-center sm:justify-center bg-black/60 backdrop-blur-sm px-0 sm:px-4 py-4 sm:py-0 overflow-y-auto animate-backdrop-enter">
+      <div className="w-full max-w-md sm:rounded-xl rounded-t-xl border-0 sm:border border-gray-200 dark:border-manor-800 bg-white dark:bg-manor-900 shadow-2xl p-6 space-y-4 animate-modal-enter mt-auto sm:mt-0">
         <div className="flex items-center gap-3">
           <div className="h-11 w-11 rounded-full bg-red-100 dark:bg-red-500/15 flex items-center justify-center shrink-0">
             <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
@@ -35,18 +35,18 @@ export default function ConfirmDangerModal({
 
         <p className="text-sm text-gray-600 dark:text-manor-300 leading-relaxed">{description}</p>
 
-        <div className="flex justify-end gap-3 pt-2">
+        <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-2">
           <button
             onClick={onCancel}
             disabled={loading}
-            className="px-4 py-2.5 rounded-lg text-sm font-medium border border-gray-300 dark:border-manor-700 text-gray-600 dark:text-manor-400 hover:bg-gray-100 dark:hover:bg-manor-800 disabled:opacity-50 transition-colors"
+            className="min-h-[44px] w-full sm:w-auto px-4 py-2.5 rounded-lg text-sm font-medium border border-gray-300 dark:border-manor-700 text-gray-600 dark:text-manor-400 hover:bg-gray-100 dark:hover:bg-manor-800 disabled:opacity-50 transition-colors touch-manipulation"
           >
             Cancelar
           </button>
           <button
             onClick={onConfirm}
             disabled={loading}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 transition-colors"
+            className="min-h-[44px] w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 transition-colors touch-manipulation"
           >
             {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Excluindo...</> : confirmLabel}
           </button>

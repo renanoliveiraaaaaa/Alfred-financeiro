@@ -34,6 +34,9 @@ O Alfred Financeiro é um SaaS de gestão financeira pessoal que combina interfa
 | **Interface Dark/Light** | Temas **Tuxedo** (escuro) e **Morning Suit** (claro) com transições suaves via `next-themes`. |
 | **Animações** | Framer Motion para transições de página, modais e feedback visual. |
 | **Adição Rápida** | Botão "+ Novo" na Topbar para lançamento rápido de despesa ou receita. |
+| **Free Trial SaaS** | Período de teste gratuito de 7 dias, bloqueio automático ao expirar, badge de dias restantes na Topbar e página dedicada para contato com o administrador. |
+| **Onboarding** | Seed automático de categorias para novos usuários e modal de boas-vindas. |
+| **Tratamento de Erros** | Toasts globais, mensagens de conexão e feedback visual em todas as operações CRUD. |
 
 ---
 
@@ -59,7 +62,7 @@ O sistema utiliza o Supabase (PostgreSQL) com as seguintes tabelas principais:
 | Tabela | Propósito |
 |--------|-----------|
 | `users` | Usuários do Supabase Auth (id, email, created_at) |
-| `profiles` | Perfil estendido (full_name, avatar_url) vinculado ao usuário |
+| `profiles` | Perfil estendido (full_name, avatar_url, plan_status, trial_ends_at) vinculado ao usuário |
 | `revenues` | Receitas (valor, descrição, data, data esperada, recebido) |
 | `expenses` | Despesas (valor, descrição, categoria, forma de pagamento, parcelas, vencimento, pago, fatura, cartão) |
 | `categories` | Categorias personalizadas por usuário |
@@ -108,7 +111,14 @@ O sistema utiliza o Supabase (PostgreSQL) com as seguintes tabelas principais:
 
 4. **Configure o banco de dados**
    
-   Crie as tabelas no Supabase conforme o schema em `types/supabase.ts` ou utilize migrations do Supabase CLI.
+   Execute as migrações no **Supabase Dashboard** → **SQL Editor** (em ordem):
+   
+   - `supabase/migrations/20260218000000_income_sources.sql` — tabelas base
+   - `supabase/migrations/20260218010000_rls_audit.sql` — políticas RLS
+   - `supabase/migrations/20260218100000_free_trial_saas.sql` — colunas trial (plan_status, trial_ends_at)
+   - `supabase/migrations/20260218100001_update_existing_profiles_trial.sql` — atualização de perfis existentes
+   
+   Ou utilize `supabase db push` se preferir o CLI.
 
 5. **Inicie o servidor de desenvolvimento**
    ```bash
@@ -168,18 +178,21 @@ finance-manager/
 │   │   ├── projections/
 │   │   ├── reports/
 │   │   ├── settings/
-│   │   └── profile/
+│   │   ├── profile/
+│   │   └── expired/         # Página de trial expirado (sem Sidebar/Topbar)
 │   ├── layout.tsx
 │   └── page.tsx            # Login
 ├── components/
 │   ├── Topbar.tsx
 │   ├── Sidebar.tsx
+│   ├── AppLayoutClient.tsx  # Layout com verificação de trial
 │   ├── MaskedValue.tsx      # Modo privacidade
 │   ├── CardBrandIcon.tsx
 │   ├── CardChipIcon.tsx
 │   ├── QuickAddModal.tsx
 │   ├── ConfirmDangerModal.tsx
 │   ├── EmptyState.tsx
+│   ├── WelcomeModal.tsx
 │   ├── Spinner.tsx
 │   ├── AnimatedPage.tsx
 │   └── Providers.tsx
@@ -187,13 +200,29 @@ finance-manager/
 │   ├── supabaseClient.ts
 │   ├── supabaseServer.ts
 │   ├── privacyContext.tsx
+│   ├── toastContext.tsx    # Toasts e tratamento de erros
+│   ├── seedCategories.ts   # Seed de categorias para onboarding
 │   ├── format.ts
 │   ├── installments.ts
 │   └── actions/
+├── docs/
+│   ├── AUDITORIA_RLS.md    # Políticas RLS e segurança
+│   └── FREE_TRIAL_SAAS.md  # Free Trial e gestão de acesso
+├── supabase/
+│   └── migrations/         # Scripts SQL (RLS, Free Trial, etc.)
 ├── types/
 │   └── supabase.ts
 └── tailwind.config.ts
 ```
+
+---
+
+## Documentação Adicional
+
+| Documento | Conteúdo |
+|-----------|----------|
+| [docs/AUDITORIA_RLS.md](docs/AUDITORIA_RLS.md) | Políticas RLS, tabelas protegidas e revisão do frontend |
+| [docs/FREE_TRIAL_SAAS.md](docs/FREE_TRIAL_SAAS.md) | Free Trial de 7 dias, migrações e como estender acesso |
 
 ---
 

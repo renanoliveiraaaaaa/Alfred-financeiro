@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { createSupabaseClient } from '@/lib/supabaseClient'
 import { formatCurrency, maskCurrency, parseBRL } from '@/lib/format'
+import { useToast, CONNECTION_ERROR_MSG, isConnectionError } from '@/lib/toastContext'
 
 type Projection = {
   id: string
@@ -31,6 +32,7 @@ function clamp(v: number, min: number, max: number) {
 
 export default function ProjectionsPage() {
   const supabase = createSupabaseClient()
+  const { toastError } = useToast()
   const now = new Date()
 
   const [year, setYear] = useState(now.getFullYear())
@@ -95,9 +97,10 @@ export default function ProjectionsPage() {
       )
       setActualRevenues(totalRev)
       setActualExpenses(totalExp)
-    } catch (err: any) {
-      console.error(err)
-      setError(err?.message || 'Erro ao carregar projeções.')
+    } catch (err: unknown) {
+      const msg = isConnectionError(err) ? CONNECTION_ERROR_MSG : (err instanceof Error ? err.message : 'Erro ao carregar projeções.')
+      setError(msg)
+      toastError(msg)
     } finally {
       setLoading(false)
     }
@@ -146,9 +149,10 @@ export default function ProjectionsPage() {
 
       setSuccess('Metas registradas com distinção, senhor.')
       await loadData()
-    } catch (err: any) {
-      console.error(err)
-      setError(err?.message || 'Erro ao salvar orçamento.')
+    } catch (err: unknown) {
+      const msg = isConnectionError(err) ? CONNECTION_ERROR_MSG : (err instanceof Error ? err.message : 'Erro ao salvar orçamento.')
+      setError(msg)
+      toastError(msg)
     } finally {
       setSaving(false)
     }

@@ -6,6 +6,7 @@ import { X, Loader2, ArrowDownLeft, ArrowUpRight, Check } from 'lucide-react'
 import { createExpense } from '@/lib/actions/expenses'
 import { createRevenue } from '@/lib/actions/revenues'
 import { parseBRL, maskCurrency } from '@/lib/format'
+import { useToast, CONNECTION_ERROR_MSG, isConnectionError } from '@/lib/toastContext'
 
 type Tab = 'expense' | 'revenue'
 
@@ -16,6 +17,7 @@ type Props = {
 
 export default function QuickAddModal({ open, onClose }: Props) {
   const router = useRouter()
+  const { toastError } = useToast()
   const [tab, setTab] = useState<Tab>('expense')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -59,42 +61,49 @@ export default function QuickAddModal({ open, onClose }: Props) {
 
     const value = parseBRL(amount)
 
-    if (tab === 'expense') {
-      const result = await createExpense({
-        amount: value,
-        description,
-        category,
-        payment_method: paymentMethod as any,
-        installments: 1,
-        due_date: date,
-        paid,
-      })
-      if (!result.success) {
-        setError(result.error)
-        setSaving(false)
-        return
+    try {
+      if (tab === 'expense') {
+        const result = await createExpense({
+          amount: value,
+          description,
+          category,
+          payment_method: paymentMethod as any,
+          installments: 1,
+          due_date: date,
+          paid,
+        })
+        if (!result.success) {
+          setError(result.error)
+          setSaving(false)
+          return
+        }
+      } else {
+        const result = await createRevenue({
+          amount: value,
+          description,
+          date,
+          expected_date: null,
+          received,
+        })
+        if (!result.success) {
+          setError(result.error)
+          setSaving(false)
+          return
+        }
       }
-    } else {
-      const result = await createRevenue({
-        amount: value,
-        description,
-        date,
-        expected_date: null,
-        received,
-      })
-      if (!result.success) {
-        setError(result.error)
-        setSaving(false)
-        return
-      }
-    }
 
-    setSaving(false)
-    setSuccess(true)
-    setTimeout(() => {
-      handleClose()
-      router.refresh()
-    }, 800)
+      setSuccess(true)
+      setTimeout(() => {
+        handleClose()
+        router.refresh()
+      }, 800)
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erro inesperado.'
+      setError(isConnectionError(err) ? CONNECTION_ERROR_MSG : msg)
+      toastError(isConnectionError(err) ? CONNECTION_ERROR_MSG : msg)
+    } finally {
+      setSaving(false)
+    }
   }
 
   if (!open) return null
@@ -105,15 +114,19 @@ export default function QuickAddModal({ open, onClose }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 sm:pt-24 bg-black/50 px-4 animate-backdrop-enter" onClick={handleClose}>
+    <div className="fixed inset-0 z-50 flex flex-col sm:items-start sm:justify-center sm:pt-24 bg-black/50 px-0 sm:px-4 animate-backdrop-enter overflow-y-auto" onClick={handleClose}>
       <div
-        className="w-full max-w-md rounded-xl border border-gray-200 dark:border-manor-800 bg-white dark:bg-manor-900 shadow-2xl animate-modal-enter"
+        className="w-full min-h-full sm:min-h-0 sm:max-w-md sm:rounded-xl sm:my-4 border-0 sm:border border-gray-200 dark:border-manor-800 bg-white dark:bg-manor-900 shadow-2xl animate-modal-enter flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 pt-5 pb-3">
+        <div className="flex items-center justify-between px-5 pt-5 pb-3 shrink-0">
           <h2 className="text-base font-semibold text-gray-900 dark:text-white">Novo lançamento</h2>
-          <button onClick={handleClose} className="text-gray-400 dark:text-manor-500 hover:text-gray-600 dark:hover:text-white transition-colors">
+          <button
+            onClick={handleClose}
+            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-gray-400 dark:text-manor-500 hover:text-gray-600 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-manor-800 transition-colors touch-manipulation"
+            aria-label="Fechar"
+          >
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -142,8 +155,8 @@ export default function QuickAddModal({ open, onClose }: Props) {
           </button>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="p-5 space-y-4">
+        {/* Form - scrollável no mobile */}
+        <form onSubmit={handleSubmit} className="p-5 pb-8 sm:pb-5 space-y-4 flex-1 overflow-y-auto">
           {error && (
             <div className="rounded-lg border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 px-3 py-2.5 text-xs text-red-700 dark:text-red-300">
               {error}
@@ -233,19 +246,19 @@ export default function QuickAddModal({ open, onClose }: Props) {
             </span>
           </label>
 
-          {/* Actions */}
+          {/* Actions - touch targets 44px */}
           <div className="flex gap-3 pt-1">
             <button
               type="button"
               onClick={handleClose}
-              className="flex-1 px-4 py-2.5 rounded-lg text-sm font-medium border border-gray-300 dark:border-manor-700 text-gray-600 dark:text-manor-400 hover:bg-gray-100 dark:hover:bg-manor-800 transition-colors"
+              className="flex-1 min-h-[44px] inline-flex items-center justify-center px-4 py-2.5 rounded-lg text-sm font-medium border border-gray-300 dark:border-manor-700 text-gray-600 dark:text-manor-400 hover:bg-gray-100 dark:hover:bg-manor-800 transition-colors touch-manipulation"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={saving || success}
-              className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium bg-gold-600 dark:bg-gold-500 text-white dark:text-manor-950 hover:bg-gold-500 dark:hover:bg-gold-400 disabled:opacity-50 transition-colors"
+              className="flex-1 min-h-[44px] inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium bg-gold-600 dark:bg-gold-500 text-white dark:text-manor-950 hover:bg-gold-500 dark:hover:bg-gold-400 disabled:opacity-50 transition-colors touch-manipulation"
             >
               {saving ? <><Loader2 className="h-4 w-4 animate-spin" /> Registrando...</> : success ? <><Check className="h-4 w-4" /> Registrado</> : 'Registrar'}
             </button>

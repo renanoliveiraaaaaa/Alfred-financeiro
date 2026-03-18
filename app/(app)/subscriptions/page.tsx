@@ -6,6 +6,7 @@ import { formatCurrency } from '@/lib/format'
 import MaskedValue from '@/components/MaskedValue'
 import EmptyState from '@/components/EmptyState'
 import ConfirmDangerModal from '@/components/ConfirmDangerModal'
+import { useToast, CONNECTION_ERROR_MSG, isConnectionError } from '@/lib/toastContext'
 import {
   Plus, X, Loader2, RefreshCw, Pencil,
   Tv, Music, Cloud, ShoppingBag, Dumbbell, BookOpen, Gamepad2, Wifi, Shield, Sparkles,
@@ -46,6 +47,7 @@ function getIcon(category: string) {
 
 export default function SubscriptionsPage() {
   const supabase = createSupabaseClient()
+  const { toastError } = useToast()
 
   const [subs, setSubs] = useState<Subscription[]>([])
   const [loading, setLoading] = useState(true)
@@ -132,7 +134,13 @@ export default function SubscriptionsPage() {
         billing_cycle: fCycle,
         next_billing_date: fNextDate,
       }).eq('id', editId)
-      if (error) { setFormError(error.message); setSaving(false); return }
+      if (error) {
+        const msg = isConnectionError(error) ? CONNECTION_ERROR_MSG : error.message
+        setFormError(msg)
+        toastError(msg)
+        setSaving(false)
+        return
+      }
     } else {
       const { error } = await supabase.from('subscriptions').insert({
         user_id: userData.user.id,
@@ -142,7 +150,13 @@ export default function SubscriptionsPage() {
         billing_cycle: fCycle,
         next_billing_date: fNextDate,
       })
-      if (error) { setFormError(error.message); setSaving(false); return }
+      if (error) {
+        const msg = isConnectionError(error) ? CONNECTION_ERROR_MSG : error.message
+        setFormError(msg)
+        toastError(msg)
+        setSaving(false)
+        return
+      }
     }
 
     resetForm()
@@ -154,25 +168,33 @@ export default function SubscriptionsPage() {
   const toggleActive = async (id: string, current: boolean) => {
     setTogglingId(id)
     setSubs((prev) => prev.map((s) => s.id === id ? { ...s, active: !current } : s))
-
-    const { error } = await supabase
-      .from('subscriptions')
-      .update({ active: !current })
-      .eq('id', id)
-
-    if (error) {
+    try {
+      const { error } = await supabase
+        .from('subscriptions')
+        .update({ active: !current })
+        .eq('id', id)
+      if (error) throw error
+    } catch (err: unknown) {
       setSubs((prev) => prev.map((s) => s.id === id ? { ...s, active: current } : s))
+      toastError(isConnectionError(err) ? CONNECTION_ERROR_MSG : (err instanceof Error ? err.message : 'Erro ao atualizar.'))
+    } finally {
+      setTogglingId(null)
     }
-    setTogglingId(null)
   }
 
   const handleDelete = async () => {
     if (!deleteTargetId) return
     setDeletingSub(true)
-    await supabase.from('subscriptions').delete().eq('id', deleteTargetId)
-    setSubs((prev) => prev.filter((s) => s.id !== deleteTargetId))
-    setDeletingSub(false)
-    setDeleteTargetId(null)
+    try {
+      const { error } = await supabase.from('subscriptions').delete().eq('id', deleteTargetId)
+      if (error) throw error
+      setSubs((prev) => prev.filter((s) => s.id !== deleteTargetId))
+    } catch (err: unknown) {
+      toastError(isConnectionError(err) ? CONNECTION_ERROR_MSG : (err instanceof Error ? err.message : 'Erro ao excluir.'))
+    } finally {
+      setDeletingSub(false)
+      setDeleteTargetId(null)
+    }
   }
 
   const cls = {
@@ -216,15 +238,19 @@ export default function SubscriptionsPage() {
         <p className="text-xs text-gray-400 dark:text-manor-500 mt-0.5">{subs.filter((s) => s.active).length} assinatura{subs.filter((s) => s.active).length !== 1 ? 's' : ''} ativa{subs.filter((s) => s.active).length !== 1 ? 's' : ''}</p>
       </div>
 
-      {/* Modal */}
+      {/* Modal - full screen no mobile */}
       {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-          <div className={`${cls.card} w-full max-w-lg p-6 space-y-5 shadow-2xl`}>
-            <div className="flex items-center justify-between">
+        <div className="fixed inset-0 z-50 flex flex-col sm:items-center sm:justify-center bg-black/50 px-0 sm:px-4 py-4 sm:py-0 overflow-y-auto">
+          <div className={`${cls.card} w-full max-w-lg p-6 space-y-5 shadow-2xl mt-auto sm:mt-0 max-h-[95vh] sm:max-h-none overflow-y-auto`}>
+            <div className="flex items-center justify-between shrink-0">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
                 {editId ? 'Editar assinatura' : 'Nova assinatura'}
               </h2>
-              <button onClick={() => { setShowForm(false); resetForm() }} className="text-gray-400 dark:text-manor-500 hover:text-gray-600 dark:hover:text-white transition-colors">
+              <button
+                onClick={() => { setShowForm(false); resetForm() }}
+                className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-gray-400 dark:text-manor-500 hover:text-gray-600 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-manor-800 transition-colors touch-manipulation"
+                aria-label="Fechar"
+              >
                 <X className="h-5 w-5" />
               </button>
             </div>
@@ -263,11 +289,11 @@ export default function SubscriptionsPage() {
                   <input type="date" className={cls.input} value={fNextDate} onChange={(e) => setFNextDate(e.target.value)} required />
                 </div>
               </div>
-              <div className="flex justify-end gap-3 pt-2">
-                <button type="button" onClick={() => { setShowForm(false); resetForm() }} className="px-4 py-2.5 rounded-lg text-sm font-medium border border-gray-300 dark:border-manor-700 text-gray-600 dark:text-manor-400 hover:bg-gray-100 dark:hover:bg-manor-800 transition-colors">
+              <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-2">
+                <button type="button" onClick={() => { setShowForm(false); resetForm() }} className="min-h-[44px] w-full sm:w-auto px-4 py-2.5 rounded-lg text-sm font-medium border border-gray-300 dark:border-manor-700 text-gray-600 dark:text-manor-400 hover:bg-gray-100 dark:hover:bg-manor-800 transition-colors touch-manipulation">
                   Cancelar
                 </button>
-                <button type="submit" disabled={saving} className={cls.btnPrimary}>
+                <button type="submit" disabled={saving} className={`${cls.btnPrimary} min-h-[44px] w-full sm:w-auto touch-manipulation inline-flex items-center justify-center`}>
                   {saving ? <><Loader2 className="h-4 w-4 animate-spin" /> Processando...</> : editId ? 'Salvar alterações' : 'Adicionar'}
                 </button>
               </div>
