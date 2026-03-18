@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { createSupabaseClient } from '@/lib/supabaseClient'
 import MaskedValue from '@/components/MaskedValue'
@@ -343,7 +344,8 @@ export default function CreditCardsPage() {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ── Modal Confirmar Exclusão ── */}
