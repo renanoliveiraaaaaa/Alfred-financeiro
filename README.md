@@ -82,8 +82,8 @@ O sistema utiliza o Supabase (PostgreSQL) com as seguintes tabelas principais:
 
 1. **Clone o repositório**
    ```bash
-   git clone https://github.com/seu-usuario/finance-manager.git
-   cd finance-manager
+   git clone https://github.com/seu-usuario/alfred-financeiro.git
+   cd alfred-financeiro
    ```
 
 2. **Instale as dependências**
@@ -108,7 +108,17 @@ O sistema utiliza o Supabase (PostgreSQL) com as seguintes tabelas principais:
 
 4. **Configure o banco de dados**
    
-   Crie as tabelas no Supabase conforme o schema em `types/supabase.ts` ou utilize migrations do Supabase CLI.
+   **Ambiente novo:** Execute o arquivo `SUPABASE_SCHEMA.sql` completo no Supabase SQL Editor.
+   
+   **Ambiente existente (migração):** Execute apenas o arquivo de migração:
+   ```
+   supabase/migrations/20260318000000_schema_sync.sql
+   ```
+   
+   > **Nota sobre geração de tipos:** O arquivo `types/supabase.ts` é mantido manualmente neste repositório. Para regenerá-lo automaticamente a partir do schema real do Supabase, utilize o CLI:
+   > ```bash
+   > npx supabase gen types typescript --project-id SEU_PROJECT_ID > types/supabase.ts
+   > ```
 
 5. **Inicie o servidor de desenvolvimento**
    ```bash
@@ -122,6 +132,28 @@ O sistema utiliza o Supabase (PostgreSQL) com as seguintes tabelas principais:
    npm run build
    npm start
    ```
+
+---
+
+## Histórico de Mudanças no Schema
+
+### v2 — Sincronização Schema × Código (2026-03-18)
+
+As seguintes inconsistências entre o `SUPABASE_SCHEMA.sql` e o código da aplicação foram corrigidas:
+
+| # | Problema | Solução |
+|---|----------|---------|
+| 1 | Tabelas `credit_cards`, `subscriptions`, `goals` ausentes no SQL | Adicionadas ao `SUPABASE_SCHEMA.sql` com colunas, índices, RLS e políticas |
+| 2 | Tabela `profiles` ausente no SQL e em `types/supabase.ts` | Criada com `id` (PK/FK para `auth.users`), `full_name`, `avatar_url`; adicionada ao `types/supabase.ts`; trigger automático na criação de usuário |
+| 3 | Coluna `credit_card_id` ausente em `expenses` no SQL | Adicionada como FK opcional para `credit_cards(id)` com `ON DELETE SET NULL` |
+| 4 | CHECK de `expenses.category` cobria apenas 4 categorias (`mercado`, `combustivel`, `manutencao_carro`, `outros`) | Expandido para cobrir todas as categorias usadas no frontend: `mercado`, `combustivel`, `manutencao_carro`, `alimentacao`, `transporte`, `assinaturas`, `saude`, `educacao`, `lazer`, `moradia`, `outros` |
+
+#### Arquivos alterados
+
+- `SUPABASE_SCHEMA.sql` — schema completo e corrigido para novos ambientes
+- `supabase/migrations/20260318000000_schema_sync.sql` — migração incremental para ambientes existentes
+- `types/supabase.ts` — adicionada definição de `profiles`
+- `README.md` — documentação atualizada
 
 ---
 
