@@ -46,6 +46,7 @@ export default function CreditCardsPage() {
   const supabase = createSupabaseClient()
 
   const [cards, setCards] = useState<Card[]>([])
+  const [usedByCard, setUsedByCard] = useState<Record<string, number>>({})
   const [loading, setLoading] = useState(true)
 
   // Form modal (create + edit)
@@ -74,6 +75,23 @@ export default function CreditCardsPage() {
       .select('*')
       .order('created_at', { ascending: false })
     if (data) setCards(data as Card[])
+
+    // Fetch unpaid credit card expenses to calculate used balance
+    const { data: expData } = await supabase
+      .from('expenses')
+      .select('credit_card_id, amount')
+      .not('credit_card_id', 'is', null)
+      .eq('paid', false)
+    if (expData) {
+      const map: Record<string, number> = {}
+      expData.forEach((e: any) => {
+        if (e.credit_card_id) {
+          map[e.credit_card_id] = (map[e.credit_card_id] || 0) + Number(e.amount || 0)
+        }
+      })
+      setUsedByCard(map)
+    }
+
     setLoading(false)
   }, [supabase])
 
@@ -409,6 +427,20 @@ export default function CreditCardsPage() {
                           value={Number(card.credit_limit)}
                           className="text-base font-semibold tracking-tight"
                         />
+                        {(usedByCard[card.id] || 0) > 0 && (
+                          <div className="mt-1">
+                            <div className="flex gap-3 text-[10px] text-white/60">
+                              <span>Usado <strong className="text-red-300">{((usedByCard[card.id] / Number(card.credit_limit)) * 100).toFixed(0)}%</strong></span>
+                              <span>Disp. <strong className="text-emerald-300">{(((Number(card.credit_limit) - usedByCard[card.id]) / Number(card.credit_limit)) * 100).toFixed(0)}%</strong></span>
+                            </div>
+                            <div className="mt-1 h-1 w-full rounded-full bg-white/20 overflow-hidden">
+                              <div
+                                className="h-full rounded-full bg-red-400/80"
+                                style={{ width: `${Math.min((usedByCard[card.id] / Number(card.credit_limit)) * 100, 100)}%` }}
+                              />
+                            </div>
+                          </div>
+                        )}
                         <div className="flex gap-3 mt-1.5 text-[10px] text-white/60">
                           <span>Fecha <strong className="text-white/80">{card.closing_day}</strong></span>
                           <span>Vence <strong className="text-white/80">{card.due_day}</strong></span>

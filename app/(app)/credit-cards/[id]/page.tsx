@@ -89,6 +89,12 @@ export default function CreditCardDetailPage() {
       }))
   }, [expenses])
 
+  const usedBalance = useMemo(() => {
+    return expenses.filter((e) => !e.paid).reduce((s, e) => s + Number(e.amount || 0), 0)
+  }, [expenses])
+
+  const availableBalance = Number(card?.credit_limit || 0) - usedBalance
+
   const [selectedMonth, setSelectedMonth] = useState<string>('')
 
   useEffect(() => {
@@ -193,12 +199,28 @@ export default function CreditCardDetailPage() {
             <CardChipIcon size={28} className="text-white/50" />
             <CardBrandIcon brand={card?.brand} size="md" className="text-white/90" />
           </div>
-          <div>
-            <p className="text-xs text-white/50 mb-0.5">Limite disponível</p>
-            <MaskedValue
-              value={Number(card?.credit_limit || 0)}
-              className="text-2xl font-semibold tracking-tight"
-            />
+          <div className="space-y-2">
+            <div>
+              <p className="text-xs text-white/50 mb-0.5">Disponível</p>
+              <MaskedValue
+                value={availableBalance}
+                className="text-2xl font-semibold tracking-tight"
+              />
+            </div>
+            {usedBalance > 0 && (
+              <div>
+                <div className="flex gap-4 text-xs text-white/60">
+                  <span>Limite: <strong className="text-white/80">{formatCurrency(Number(card?.credit_limit || 0))}</strong></span>
+                  <span>Usado: <strong className="text-red-300">{formatCurrency(usedBalance)}</strong></span>
+                </div>
+                <div className="mt-1.5 h-1.5 w-full rounded-full bg-white/20 overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-red-400/80 transition-all"
+                    style={{ width: `${Math.min((usedBalance / Number(card?.credit_limit || 1)) * 100, 100)}%` }}
+                  />
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
