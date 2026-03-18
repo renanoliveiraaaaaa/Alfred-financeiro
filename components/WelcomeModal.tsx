@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { TrendingUp, Receipt, X } from 'lucide-react'
 
@@ -25,8 +26,8 @@ export default function WelcomeModal({ open, onClose, pronoun = 'senhor' }: Prop
 
   if (!open) return null
 
-  return (
-    <div className="fixed inset-0 z-[70] flex flex-col sm:items-center sm:justify-center bg-black/60 backdrop-blur-sm px-0 sm:px-4 py-4 sm:py-0 overflow-y-auto animate-backdrop-enter">
+  const modal = (
+    <div className="fixed inset-0 z-[999] flex flex-col sm:items-center sm:justify-center bg-black/60 backdrop-blur-sm px-0 sm:px-4 py-4 sm:py-0 overflow-y-auto animate-backdrop-enter">
       <div className="w-full max-w-md sm:rounded-xl rounded-t-xl border-0 sm:border border-border bg-surface shadow-2xl overflow-hidden animate-modal-enter mt-auto sm:mt-0 max-h-[90vh] sm:max-h-none flex flex-col">
         <div className="p-6 space-y-4 overflow-y-auto flex-1">
           <div className="flex items-start justify-between gap-4">
@@ -91,6 +92,8 @@ export default function WelcomeModal({ open, onClose, pronoun = 'senhor' }: Prop
       </div>
     </div>
   )
+
+  return typeof document !== 'undefined' ? createPortal(modal, document.body) : null
 }
 
 export function shouldShowWelcomeModal(): boolean {

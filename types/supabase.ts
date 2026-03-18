@@ -19,7 +19,7 @@ export interface Database {
           full_name: string | null
           avatar_url: string | null
           gender: 'M' | 'F' | 'O' | null
-          app_theme: 'normal' | 'alfred'
+          app_theme: 'normal' | 'gala' | 'classic' | 'club'
           created_at: string
         }
         Insert: {

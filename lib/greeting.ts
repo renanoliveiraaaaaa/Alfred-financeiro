@@ -50,6 +50,26 @@ export function getGreetingWithName(
   return pronoun ? `${greeting}, ${pronoun}` : greeting
 }
 
+/**
+ * Retorna a saudação em partes para destacar o pronome+nome com cor de acento.
+ * base: "Boa noite" | accent: ", senhor Renan" (para text-brand)
+ */
+export function getGreetingParts(
+  greeting: string,
+  firstName: string,
+  gender: Gender | null
+): { base: string; accent: string } {
+  const pronoun = getGreetingPronoun(gender)
+  if (firstName) {
+    const accent = pronoun ? `, ${pronoun} ${firstName}` : `, ${firstName}`
+    return { base: greeting, accent }
+  }
+  if (pronoun) {
+    return { base: greeting, accent: `, ${pronoun}` }
+  }
+  return { base: greeting, accent: '' }
+}
+
 /** Hook que retorna o pronome de tratamento do usuário logado */
 export function useGreetingPronoun(): string {
   const { gender } = useUserPreferences()

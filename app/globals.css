@@ -3,22 +3,21 @@
 @tailwind utilities;
 
 /* ============================================
-   MATRIZ DE 4 ESTADOS - Design Tokens
-   Dimensão 1: theme (normal | alfred)
+   MATRIZ DE MÚLTIPLOS TEMAS - Design Tokens
+   Dimensão 1: theme (normal | gala | classic | club)
    Dimensão 2: dark mode (light | dark via .dark no html)
    ============================================ */
 
-/* 1. Modo Normal Claro (:root) */
+/* 1. Tema Padrão Institucional (:root e .dark) */
 :root {
   --background: #f8fafc;   /* slate-50 */
-  --surface: #ffffff;       /* white */
+  --surface: #ffffff;
   --border: #e2e8f0;       /* slate-200 */
   --text-main: #0f172a;    /* slate-900 */
   --text-muted: #64748b;   /* slate-500 */
   --brand: #2563eb;        /* blue-600 */
 }
 
-/* 2. Modo Normal Escuro (.dark) */
 .dark {
   --background: #020617;   /* slate-950 */
   --surface: #0f172a;      /* slate-900 */
@@ -28,24 +27,61 @@
   --brand: #3b82f6;        /* blue-500 */
 }
 
-/* 3. Modo Alfred Claro (.theme-alfred) */
-.theme-alfred {
-  --background: #fffbeb;   /* amber-50 - quente/luxuoso */
-  --surface: #ffffff;      /* white */
-  --border: #fde68a;       /* amber-200 */
-  --text-main: #1c1917;   /* stone-900 */
+/* 2. Traje de Gala - dourado/champagne */
+html.theme-gala:not(.dark) {
+  --background: #fafafa;   /* zinc-50 */
+  --surface: #ffffff;
+  --border: #e4e4e7;       /* zinc-200 */
+  --text-main: #18181b;    /* zinc-900 */
+  --text-muted: #71717a;   /* zinc-500 */
+  --brand: #ca8a04;        /* yellow-600 */
+}
+
+.theme-gala.dark {
+  --background: #09090b;   /* zinc-950 */
+  --surface: #18181b;      /* zinc-900 */
+  --border: #27272a;       /* zinc-800 */
+  --text-main: #fafafa;    /* zinc-50 */
+  --text-muted: #a1a1aa;   /* zinc-400 */
+  --brand: #eab308;        /* yellow-500 */
+}
+
+/* 3. Clássico Atemporal - âmbar */
+html.theme-classic:not(.dark) {
+  --background: #fafaf9;   /* stone-50 */
+  --surface: #ffffff;
+  --border: #e7e5e4;       /* stone-200 */
+  --text-main: #1c1917;    /* stone-900 */
   --text-muted: #78716c;   /* stone-500 */
   --brand: #b45309;        /* amber-700 */
 }
 
-/* 4. Modo Alfred Escuro (.theme-alfred.dark) */
-.theme-alfred.dark {
-  --background: #09090b;   /* zinc-950 */
-  --surface: #18181b;      /* zinc-900 */
-  --border: #27272a;       /* zinc-800 */
-  --text-main: #fafafa;   /* zinc-50 */
-  --text-muted: #a1a1aa;  /* zinc-400 */
-  --brand: #eab308;        /* yellow-500 - gold */
+.theme-classic.dark {
+  --background: #0c0a09;   /* stone-950 */
+  --surface: #1c1917;      /* stone-900 */
+  --border: #44403c;       /* stone-700 */
+  --text-main: #f5f5f4;    /* stone-100 */
+  --text-muted: #a8a29e;   /* stone-400 */
+  --brand: #f59e0b;        /* amber-500 */
+}
+
+/* 4. Clube Exclusivo - esmeralda */
+html.theme-club:not(.dark) {
+  --background: #f8fafc;   /* slate-50 */
+  --surface: #ffffff;
+  --border: #e2e8f0;       /* slate-200 */
+  --text-main: #0f172a;    /* slate-900 */
+  --text-muted: #64748b;   /* slate-500 */
+  --brand: #065f46;        /* emerald-800 */
+}
+
+.theme-club.dark {
+  --background: #022c22;   /* emerald-950 */
+  --surface: #064e3b;      /* emerald-900 */
+  --border: #047857;       /* emerald-700 */
+  --text-main: #f1f5f9;    /* slate-100 */
+  --text-muted: #94a3b8;   /* slate-400 */
+  --brand: #f59e0b;        /* amber-500 */
 }
 
 body {
@@ -78,20 +114,28 @@ main {
 }
 
 .dark ::-webkit-scrollbar,
-.theme-alfred ::-webkit-scrollbar {
+.theme-gala ::-webkit-scrollbar,
+.theme-classic ::-webkit-scrollbar,
+.theme-club ::-webkit-scrollbar {
   width: 6px;
 }
 .dark ::-webkit-scrollbar-track,
-.theme-alfred ::-webkit-scrollbar-track {
+.theme-gala ::-webkit-scrollbar-track,
+.theme-classic ::-webkit-scrollbar-track,
+.theme-club ::-webkit-scrollbar-track {
   background: var(--background);
 }
 .dark ::-webkit-scrollbar-thumb,
-.theme-alfred ::-webkit-scrollbar-thumb {
+.theme-gala ::-webkit-scrollbar-thumb,
+.theme-classic ::-webkit-scrollbar-thumb,
+.theme-club ::-webkit-scrollbar-thumb {
   background: var(--border);
   border-radius: 3px;
 }
 .dark ::-webkit-scrollbar-thumb:hover,
-.theme-alfred ::-webkit-scrollbar-thumb:hover {
+.theme-gala ::-webkit-scrollbar-thumb:hover,
+.theme-classic ::-webkit-scrollbar-thumb:hover,
+.theme-club ::-webkit-scrollbar-thumb:hover {
   background: var(--text-muted);
 }
 

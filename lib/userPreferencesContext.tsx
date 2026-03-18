@@ -4,7 +4,7 @@ import { createContext, useContext, useState, useCallback, type ReactNode } from
 import { createSupabaseClient } from '@/lib/supabaseClient'
 
 export type Gender = 'M' | 'F' | 'O'
-export type AppTheme = 'normal' | 'alfred'
+export type AppTheme = 'normal' | 'gala' | 'classic' | 'club'
 
 type UserPreferencesContextType = {
   gender: Gender | null

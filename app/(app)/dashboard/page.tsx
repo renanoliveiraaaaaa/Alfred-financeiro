@@ -42,11 +42,11 @@ function dueBadge(dateStr: string | null) {
   if (diff < 0)
     return { label: 'Em atraso', cls: 'bg-red-100 dark:bg-red-500/15 text-red-700 dark:text-red-400 ring-1 ring-inset ring-red-200 dark:ring-red-500/30' }
   if (diff === 0)
-    return { label: 'Vence hoje', cls: 'bg-amber-100 dark:bg-amber-500/15 text-amber-700 dark:text-amber-400 ring-1 ring-inset ring-amber-200 dark:ring-amber-500/30' }
+    return { label: 'Vence hoje', cls: 'bg-brand/15 text-brand ring-1 ring-inset ring-brand/30' }
   if (diff <= 3)
     return {
       label: `Vence em ${diff} dia${diff > 1 ? 's' : ''}`,
-      cls: 'bg-yellow-50 dark:bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 ring-1 ring-inset ring-yellow-200 dark:ring-yellow-500/30',
+      cls: 'bg-brand/10 text-brand ring-1 ring-inset ring-brand/20',
     }
   return { label: formatDate(dateStr), cls: 'bg-border text-muted ring-1 ring-inset ring-border' }
 }
@@ -276,7 +276,9 @@ export default function DashboardPage() {
       <WelcomeModal open={showWelcomeModal} onClose={() => setShowWelcomeModal(false)} pronoun={pronoun} />
 
       <div>
-        <h1 className={c.h1}>{getGreetingWithName(getGreeting(), firstName || '', gender)}</h1>
+        <h1 className={c.h1}>
+          {getGreetingWithName(getGreeting(), firstName || '', gender)}!
+        </h1>
         <p className={`${c.sub} mt-0.5`}>Visão geral do patrimônio — {getMonthName()}</p>
       </div>
 
@@ -364,14 +366,14 @@ export default function DashboardPage() {
           {projectedExpenses > 0 ? (
             <>
               <p className={`mt-1.5 text-2xl font-semibold ${
-                budgetPercent > 100 ? 'text-red-600 dark:text-red-400' : budgetPercent > 80 ? 'text-amber-600 dark:text-amber-400' : 'text-main'
+                budgetPercent > 100 ? 'text-red-600 dark:text-red-400' : budgetPercent > 80 ? 'text-brand' : 'text-main'
               }`}>
                 {Math.round(budgetPercent)}%
               </p>
               <div className="mt-2 h-1.5 w-full rounded-full bg-border overflow-hidden">
                 <div
                   className={`h-full rounded-full transition-all duration-700 ${
-                    budgetPercent > 100 ? 'bg-red-500' : budgetPercent > 80 ? 'bg-amber-500' : 'bg-brand'
+                    budgetPercent > 100 ? 'bg-red-500' : budgetPercent > 80 ? 'bg-brand' : 'bg-brand'
                   }`}
                   style={{ width: `${Math.min(budgetPercent, 100)}%` }}
                 />

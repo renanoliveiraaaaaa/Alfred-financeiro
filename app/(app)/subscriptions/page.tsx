@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { createSupabaseClient } from '@/lib/supabaseClient'
 import { formatCurrency } from '@/lib/format'
 import MaskedValue from '@/components/MaskedValue'
@@ -241,8 +242,8 @@ export default function SubscriptionsPage() {
       </div>
 
       {/* Modal - full screen no mobile */}
-      {showForm && (
-        <div className="fixed inset-0 z-50 flex flex-col sm:items-center sm:justify-center bg-black/50 px-0 sm:px-4 py-4 sm:py-0 overflow-y-auto">
+      {showForm && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[999] flex flex-col sm:items-center sm:justify-center bg-black/50 px-0 sm:px-4 py-4 sm:py-0 overflow-y-auto">
           <div className={`${cls.card} w-full max-w-lg p-6 space-y-5 shadow-2xl mt-auto sm:mt-0 max-h-[95vh] sm:max-h-none overflow-y-auto`}>
             <div className="flex items-center justify-between shrink-0">
               <h2 className="text-lg font-semibold text-main">
@@ -301,7 +302,8 @@ export default function SubscriptionsPage() {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Listagem */}

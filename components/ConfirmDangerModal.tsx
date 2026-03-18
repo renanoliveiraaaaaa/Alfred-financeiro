@@ -1,5 +1,6 @@
 'use client'
 
+import { createPortal } from 'react-dom'
 import { AlertTriangle, Loader2 } from 'lucide-react'
 
 type Props = {
@@ -23,8 +24,8 @@ export default function ConfirmDangerModal({
 }: Props) {
   if (!open) return null
 
-  return (
-    <div className="fixed inset-0 z-[70] flex flex-col sm:items-center sm:justify-center bg-black/60 backdrop-blur-sm px-0 sm:px-4 py-4 sm:py-0 overflow-y-auto animate-backdrop-enter">
+  const modal = (
+    <div className="fixed inset-0 z-[999] flex flex-col sm:items-center sm:justify-center bg-black/60 backdrop-blur-sm px-0 sm:px-4 py-4 sm:py-0 overflow-y-auto animate-backdrop-enter">
       <div className="w-full max-w-md sm:rounded-xl rounded-t-xl border-0 sm:border border-gray-200 dark:border-manor-800 bg-white dark:bg-manor-900 shadow-2xl p-6 space-y-4 animate-modal-enter mt-auto sm:mt-0">
         <div className="flex items-center gap-3">
           <div className="h-11 w-11 rounded-full bg-red-100 dark:bg-red-500/15 flex items-center justify-center shrink-0">
@@ -54,4 +55,6 @@ export default function ConfirmDangerModal({
       </div>
     </div>
   )
+
+  return typeof document !== 'undefined' ? createPortal(modal, document.body) : null
 }

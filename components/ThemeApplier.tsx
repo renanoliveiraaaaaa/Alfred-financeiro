@@ -3,20 +3,21 @@
 import { useEffect } from 'react'
 import { useUserPreferences } from '@/lib/userPreferencesContext'
 
+const THEME_CLASSES = ['theme-gala', 'theme-classic', 'theme-club'] as const
+
 /**
- * Adiciona ou remove a classe theme-alfred no html conforme app_theme do perfil.
- * Tema Padrão: :root (Confiança Institucional)
- * Tema Alfred: .theme-alfred (paleta luxuosa)
+ * Aplica a classe de tema no html conforme app_theme do perfil.
+ * Tema Padrão: :root (normal) - sem classe extra
+ * Temas Premium: theme-gala | theme-classic | theme-club
  */
 export default function ThemeApplier() {
   const { appTheme } = useUserPreferences()
 
   useEffect(() => {
     const html = document.documentElement
-    if (appTheme === 'alfred') {
-      html.classList.add('theme-alfred')
-    } else {
-      html.classList.remove('theme-alfred')
+    THEME_CLASSES.forEach((c) => html.classList.remove(c))
+    if (appTheme !== 'normal') {
+      html.classList.add(`theme-${appTheme}`)
     }
   }, [appTheme])
 

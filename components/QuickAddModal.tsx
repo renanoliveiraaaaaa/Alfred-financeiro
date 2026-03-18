@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { X, Loader2, ArrowDownLeft, ArrowUpRight, Check } from 'lucide-react'
 import { createExpense } from '@/lib/actions/expenses'
@@ -115,8 +116,8 @@ export default function QuickAddModal({ open, onClose }: Props) {
     input: 'block w-full rounded-lg border border-border bg-background px-3.5 py-2.5 text-sm text-main placeholder-muted focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand transition-colors',
   }
 
-  return (
-    <div className="fixed inset-0 z-50 flex flex-col sm:items-start sm:justify-center sm:pt-24 bg-black/50 px-0 sm:px-4 animate-backdrop-enter overflow-y-auto" onClick={handleClose}>
+  const modal = (
+    <div className="fixed inset-0 z-[999] flex flex-col sm:items-start sm:justify-center sm:pt-24 bg-black/50 px-0 sm:px-4 animate-backdrop-enter overflow-y-auto" onClick={handleClose}>
       <div
         className="w-full min-h-full sm:min-h-0 sm:max-w-md sm:rounded-xl sm:my-4 border-0 sm:border border-border bg-surface shadow-2xl animate-modal-enter flex flex-col"
         onClick={(e) => e.stopPropagation()}
@@ -272,4 +273,6 @@ export default function QuickAddModal({ open, onClose }: Props) {
       </div>
     </div>
   )
+
+  return typeof document !== 'undefined' ? createPortal(modal, document.body) : null
 }

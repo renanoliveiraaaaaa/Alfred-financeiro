@@ -1,13 +1,13 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useTheme } from 'next-themes'
 import { createSupabaseClient } from '@/lib/supabaseClient'
 import { usePrivacy } from '@/lib/privacyContext'
-import { LogOut, Sun, Moon, Eye, EyeOff, Plus, Loader2, DoorOpen } from 'lucide-react'
-import QuickAddModal from '@/components/QuickAddModal'
+import { LogOut, Sun, Moon, Eye, EyeOff, Loader2, DoorOpen } from 'lucide-react'
 import { useGreetingPronoun } from '@/lib/greeting'
 
 const mainNav = [
@@ -28,7 +28,6 @@ export default function Topbar() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [trialEndsAt, setTrialEndsAt] = useState<string | null>(null)
   const [planStatus, setPlanStatus] = useState<string>('trial')
-  const [quickAddOpen, setQuickAddOpen] = useState(false)
   const [showLogoutModal, setShowLogoutModal] = useState(false)
   const pronoun = useGreetingPronoun()
   const [loggingOut, setLoggingOut] = useState(false)
@@ -119,21 +118,12 @@ export default function Topbar() {
           </nav>
         </div>
         <div className="flex items-center gap-1.5">
-          {/* Trial badge */}
-          {trialBadgeLabel && trialDaysLeft !== null && trialDaysLeft >= 0 && (
-            <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-300 ring-1 ring-inset ring-amber-200 dark:ring-amber-500/30">
+          {/* Trial badge - só exibe quando restam 7 dias ou menos */}
+          {trialBadgeLabel && trialDaysLeft !== null && trialDaysLeft >= 0 && trialDaysLeft <= 7 && (
+            <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-brand/15 text-brand ring-1 ring-inset ring-brand/30">
               {trialBadgeLabel}
             </span>
           )}
-          {/* Quick add */}
-          <button
-            onClick={() => setQuickAddOpen(true)}
-            title="Novo lançamento rápido"
-            className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium bg-brand text-white hover:opacity-90 transition-colors"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Novo</span>
-          </button>
 
           <div className="w-px h-6 bg-border mx-0.5" />
 
@@ -195,11 +185,9 @@ export default function Topbar() {
         </div>
       </div>
 
-      <QuickAddModal open={quickAddOpen} onClose={() => setQuickAddOpen(false)} />
-
       {/* Logout modal */}
-      {showLogoutModal && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4 animate-backdrop-enter">
+      {showLogoutModal && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4 animate-backdrop-enter">
           <div className="w-full max-w-sm rounded-xl border border-border bg-surface shadow-2xl p-6 space-y-4 animate-modal-enter">
             <div className="flex items-center gap-3">
               <div className="h-11 w-11 rounded-full bg-brand/15 flex items-center justify-center shrink-0">
@@ -229,7 +217,8 @@ export default function Topbar() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </header>
   )

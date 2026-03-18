@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { createSupabaseClient } from '@/lib/supabaseClient'
 import CurrencyInput from '@/components/CurrencyInput'
 import { useUserPreferences } from '@/lib/userPreferencesContext'
@@ -263,8 +264,8 @@ export default function SettingsPage() {
         </div>
 
         {/* Modal Editar Orçamento */}
-        {editId && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+        {editId && typeof document !== 'undefined' && createPortal(
+          <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/50 px-4">
             <div className="rounded-xl border border-border bg-surface w-full max-w-sm p-6 space-y-4 shadow-2xl">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-main">Orçamento Mensal (R$)</h3>
@@ -301,7 +302,8 @@ export default function SettingsPage() {
                 </button>
               </div>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
 
         {/* Rodapé com contagem */}

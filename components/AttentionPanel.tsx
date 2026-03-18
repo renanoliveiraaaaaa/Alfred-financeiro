@@ -77,17 +77,17 @@ export default function AttentionPanel() {
     <motion.div
       initial={{ opacity: 0, y: -8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="rounded-xl border border-amber-200 dark:border-amber-700/50 bg-amber-50 dark:bg-amber-900/20 p-4 space-y-3"
+      className="rounded-xl border border-brand bg-brand/5 p-4 space-y-3"
     >
       <div className="flex items-center gap-2">
-        <div className="h-9 w-9 rounded-lg bg-amber-100 dark:bg-amber-500/20 flex items-center justify-center shrink-0">
-          <BellRing className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+        <div className="h-9 w-9 rounded-lg bg-brand/15 flex items-center justify-center shrink-0">
+          <BellRing className="h-4 w-4 text-brand" />
         </div>
         <div>
           <p className="text-sm font-semibold text-main">
             Atenção, {pronoun} — vencimentos próximos
           </p>
-          <p className="text-xs text-amber-700/80 dark:text-amber-400/80">
+          <p className="text-xs text-brand/90">
             {expenses.length} despesa{expenses.length > 1 ? 's' : ''} pendente{expenses.length > 1 ? 's' : ''} nos próximos dias
           </p>
         </div>
@@ -105,7 +105,7 @@ export default function AttentionPanel() {
                 initial={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0, marginBottom: 0 }}
                 transition={{ duration: 0.25 }}
-                className="flex items-center gap-3 py-2.5 px-3 rounded-lg bg-surface/60 border border-amber-100 dark:border-amber-800/40"
+                className="flex items-center gap-3 py-2.5 px-3 rounded-lg bg-surface/60 border border-brand/30"
               >
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-main truncate">

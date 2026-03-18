@@ -247,8 +247,8 @@ export default function CreditCardsPage() {
       </div>
 
       {/* ── Modal Criar/Editar ── */}
-      {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+      {showForm && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/50 px-4">
           <div className={`${cls.card} w-full max-w-lg p-6 space-y-5 shadow-2xl`}>
             <div className="flex items-center justify-between">
               <div>
@@ -347,8 +347,8 @@ export default function CreditCardsPage() {
       )}
 
       {/* ── Modal Confirmar Exclusão ── */}
-      {deleteTarget && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 px-4">
+      {deleteTarget && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/60 px-4">
           <div className={`${cls.card} w-full max-w-md p-6 space-y-4 shadow-2xl`}>
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 rounded-full bg-red-100 dark:bg-red-500/15 flex items-center justify-center shrink-0">
@@ -384,7 +384,8 @@ export default function CreditCardsPage() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ── Lista de Cartões ── */}

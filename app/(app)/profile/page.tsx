@@ -25,7 +25,7 @@ export default function ProfilePage() {
   const [gender, setGender] = useState<Gender | null>(null)
   const [appTheme, setAppTheme] = useState<AppTheme>('normal')
 
-  const { setLocalPreferences } = useUserPreferences()
+  const { setLocalPreferences, updatePreferences } = useUserPreferences()
   const { theme, setTheme } = useTheme()
   const pronoun = useGreetingPronoun()
   const prefTitle = getPrefTitle(gender)
@@ -55,10 +55,12 @@ export default function ProfilePage() {
         .maybeSingle()
 
       if (profile) {
+        const theme = (profile.app_theme as AppTheme) || 'normal'
         setFullName(profile.full_name ?? '')
         setAvatarUrl(profile.avatar_url ?? null)
         setGender((profile.gender as Gender) || null)
-        setAppTheme((profile.app_theme as AppTheme) || 'normal')
+        setAppTheme(theme)
+        setLocalPreferences({ gender: (profile.gender as Gender) || null, appTheme: theme })
       }
     } catch (err: any) {
       setError(err?.message || 'Falha ao carregar perfil.')
@@ -269,35 +271,20 @@ export default function ProfilePage() {
 
         <div className="space-y-5">
           <div>
-            <label className="block text-xs font-medium text-muted uppercase tracking-wider mb-2">
+            <label htmlFor="gender" className="block text-xs font-medium text-muted uppercase tracking-wider mb-2">
               Gênero
             </label>
-            <div className="flex flex-wrap gap-3">
-              {[
-                { value: 'M' as const, label: 'Masculino' },
-                { value: 'F' as const, label: 'Feminino' },
-                { value: 'O' as const, label: 'Prefiro não informar' },
-              ].map((opt) => (
-                <label
-                  key={opt.value}
-                  className={`flex items-center gap-2 cursor-pointer px-4 py-2.5 rounded-lg border-2 transition-colors ${
-                    gender === opt.value
-                      ? 'border-brand bg-brand/10 text-brand'
-                      : 'border-border hover:border-muted text-muted hover:text-main'
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="gender"
-                    value={opt.value}
-                    checked={gender === opt.value}
-                    onChange={() => setGender(opt.value)}
-                    className="sr-only"
-                  />
-                  <span className="text-sm font-medium">{opt.label}</span>
-                </label>
-              ))}
-            </div>
+            <select
+              id="gender"
+              value={gender ?? ''}
+              onChange={(e) => setGender((e.target.value || null) as Gender | null)}
+              className="block w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm text-main placeholder-muted focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand transition-colors"
+            >
+              <option value="">Selecione...</option>
+              <option value="M">Masculino</option>
+              <option value="F">Feminino</option>
+              <option value="O">Prefiro não informar</option>
+            </select>
           </div>
 
           <div className="border-t border-border" />
@@ -339,29 +326,46 @@ export default function ProfilePage() {
 
           <div className="border-t border-border" />
 
-          {/* Modo Normal / Alfred */}
-          <div className="flex items-center justify-between gap-4">
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-main">Estilo visual</p>
-              <p className="text-xs text-muted mt-0.5">
-                {appTheme === 'normal' ? 'Modo Padrão (neutro)' : 'Modo Alfred (mordomo)'}
-              </p>
+          {/* Aparência e Temas */}
+          <div>
+            <p className="text-sm font-medium text-main mb-1">Aparência e Temas</p>
+            <p className="text-xs text-muted mb-3">
+              Escolha a paleta que combina com o seu escritório virtual
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {[
+                { value: 'normal' as const, label: 'Padrão Institucional', colors: ['#2563eb', '#f8fafc', '#0f172a'] },
+                { value: 'gala' as const, label: 'Traje de Gala', colors: ['#ca8a04', '#fafafa', '#18181b'] },
+                { value: 'classic' as const, label: 'Clássico Atemporal', colors: ['#b45309', '#fafaf9', '#1c1917'] },
+                { value: 'club' as const, label: 'Clube Exclusivo', colors: ['#065f46', '#f8fafc', '#0f172a'] },
+              ].map((t) => (
+                <button
+                  key={t.value}
+                  type="button"
+                  onClick={async () => {
+                    const prev = appTheme
+                    setAppTheme(t.value)
+                    try {
+                      await updatePreferences({ appTheme: t.value })
+                    } catch {
+                      setAppTheme(prev)
+                    }
+                  }}
+                  className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all text-left w-full ${
+                    appTheme === t.value
+                      ? 'border-brand bg-brand/5 ring-2 ring-brand/20'
+                      : 'border-border hover:border-muted hover:bg-background'
+                  }`}
+                >
+                  <div className="flex gap-1 w-full justify-center">
+                    {t.colors.map((c, i) => (
+                      <div key={i} className="w-6 h-6 rounded-full shrink-0" style={{ backgroundColor: c }} />
+                    ))}
+                  </div>
+                  <span className="text-xs font-medium text-main text-center leading-tight">{t.label}</span>
+                </button>
+              ))}
             </div>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={appTheme === 'alfred'}
-              onClick={() => setAppTheme((prev) => (prev === 'normal' ? 'alfred' : 'normal'))}
-              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ${
-                appTheme === 'alfred' ? 'bg-brand' : 'bg-border'
-              }`}
-            >
-              <span
-                className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-surface shadow ring-0 transition-transform duration-200 ${
-                  appTheme === 'alfred' ? 'translate-x-5' : 'translate-x-0'
-                }`}
-              />
-            </button>
           </div>
 
           <div className="border-t border-border" />

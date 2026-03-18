@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { createSupabaseClient } from '@/lib/supabaseClient'
 import { formatCurrency } from '@/lib/format'
 import MaskedValue from '@/components/MaskedValue'
@@ -193,8 +194,8 @@ export default function GoalsPage() {
       </div>
 
       {/* Modal: Novo cofre */}
-      {showNewForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+      {showNewForm && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/50 px-4">
           <div className={`${cls.card} w-full max-w-lg p-6 space-y-5 shadow-2xl`}>
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-main">Abrir novo cofre</h2>
@@ -250,12 +251,13 @@ export default function GoalsPage() {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Modal: Aportar */}
-      {fundGoalId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+      {fundGoalId && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/50 px-4">
           <div className={`${cls.card} w-full max-w-sm p-6 space-y-5 shadow-2xl`}>
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-main">Adicionar fundo</h2>
@@ -284,7 +286,8 @@ export default function GoalsPage() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Lista de metas */}
