@@ -5,7 +5,7 @@ import { useTheme } from 'next-themes'
 import { createSupabaseClient } from '@/lib/supabaseClient'
 import { formatCurrency } from '@/lib/format'
 import MaskedValue from '@/components/MaskedValue'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Download } from 'lucide-react'
 import type { Database } from '@/types/supabase'
 import {
   Chart as ChartJS,
@@ -246,6 +246,31 @@ export default function ReportsPage() {
     skel: 'bg-gray-200 dark:bg-manor-800 rounded animate-pulse',
   }
 
+  const exportCSV = () => {
+    const BOM = '\uFEFF'
+    const headers = 'Tipo;Descrição;Valor;Data;Categoria;Status'
+    const rows: string[] = []
+
+    yearRevenues.forEach((r) => {
+      rows.push(`Entrada;"${(r.description || '').replace(/"/g, '""')}";${Number(r.amount || 0).toFixed(2).replace('.', ',')};${r.date};-;${r.received ? 'Recebido' : 'Pendente'}`)
+    })
+
+    yearExpenses.forEach((e) => {
+      rows.push(`Saída;"${(e.description || '').replace(/"/g, '""')}";${Number(e.amount || 0).toFixed(2).replace('.', ',')};${e.due_date || ''};${e.category || '-'};${e.paid ? 'Pago' : 'Aberto'}`)
+    })
+
+    const csv = BOM + headers + '\n' + rows.join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `relatorio-${year}.csv`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+  }
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -259,9 +284,20 @@ export default function ReportsPage() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div>
-        <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Análise Patrimonial</h1>
-        <p className="text-sm text-gray-400 dark:text-manor-500 mt-0.5">Visão mensal e evolução anual do seu patrimônio, senhor</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Análise Patrimonial</h1>
+          <p className="text-sm text-gray-400 dark:text-manor-500 mt-0.5">Visão mensal e evolução anual do seu patrimônio, senhor</p>
+        </div>
+        <button
+          onClick={exportCSV}
+          disabled={yearRevenues.length === 0 && yearExpenses.length === 0}
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium border border-gray-300 dark:border-manor-700 text-gray-600 dark:text-manor-400 hover:bg-gray-100 dark:hover:bg-manor-800 disabled:opacity-30 transition-colors"
+          title="Exportar relatório em CSV"
+        >
+          <Download className="h-4 w-4" />
+          <span className="hidden sm:inline">Exportar CSV</span>
+        </button>
       </div>
 
       {error && (
