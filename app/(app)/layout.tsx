@@ -1,6 +1,7 @@
 import Topbar from '@/components/Topbar'
 import Sidebar from '@/components/Sidebar'
 import AnimatedPage from '@/components/AnimatedPage'
+import CommandPalette from '@/components/CommandPalette'
 
 export default function AppLayout({
   children,
@@ -16,6 +17,7 @@ export default function AppLayout({
           <AnimatedPage>{children}</AnimatedPage>
         </main>
       </div>
+      <CommandPalette />
     </div>
   )
 }

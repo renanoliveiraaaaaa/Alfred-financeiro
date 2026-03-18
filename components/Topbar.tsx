@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useTheme } from 'next-themes'
 import { createSupabaseClient } from '@/lib/supabaseClient'
 import { usePrivacy } from '@/lib/privacyContext'
-import { LogOut, Sun, Moon, Eye, EyeOff, Plus, Loader2, DoorOpen } from 'lucide-react'
+import { LogOut, Sun, Moon, Eye, EyeOff, Plus, Loader2, DoorOpen, Search } from 'lucide-react'
 import QuickAddModal from '@/components/QuickAddModal'
 
 const mainNav = [
@@ -100,6 +100,19 @@ export default function Topbar() {
           </nav>
         </div>
         <div className="flex items-center gap-1.5">
+          {/* Global search hint */}
+          <button
+            onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))}
+            title="Buscar (⌘K)"
+            className="inline-flex items-center gap-2 h-8 px-3 rounded-lg text-xs font-medium border border-gray-200 dark:border-manor-700 text-gray-400 dark:text-manor-500 hover:text-gray-600 dark:hover:text-manor-300 hover:bg-gray-50 dark:hover:bg-manor-800 transition-colors"
+          >
+            <Search className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Buscar…</span>
+            <kbd className="hidden md:inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] bg-gray-100 dark:bg-manor-800 border border-gray-200 dark:border-manor-700">
+              ⌘K
+            </kbd>
+          </button>
+
           {/* Quick add */}
           <button
             onClick={() => setQuickAddOpen(true)}
