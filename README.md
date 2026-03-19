@@ -142,6 +142,33 @@ O sistema utiliza o Supabase (PostgreSQL) com as seguintes tabelas principais:
 
 ## Histórico de Mudanças no Schema
 
+### v3 — Migration Robusta para CHECK de Categoria (2026-03-19)
+
+#### Problema
+
+O PostgreSQL pode gerar nomes automáticos para CHECK constraints inline (ex.: `expenses_category_check`, `expenses_category_check1`, etc.), e esse nome pode variar conforme o ambiente. A migration anterior usava `DROP CONSTRAINT IF EXISTS expenses_category_check`, que **não funciona** quando o constraint recebeu um nome diferente.
+
+#### Solução
+
+A migration `supabase/migrations/20260318000000_schema_sync.sql` foi reescrita para usar um bloco PL/pgSQL `DO $$ ... $$;` que:
+
+1. Consulta `pg_catalog` para encontrar **qualquer** CHECK constraint existente na coluna `category` da tabela `public.expenses`, independentemente do nome;
+2. Remove todos esses constraints dinamicamente via `EXECUTE format(...)`;
+3. Adiciona o novo constraint nomeado `expenses_category_check` com a lista expandida de categorias.
+
+A migration é **idempotente**: executá-la mais de uma vez não causa erros — o bloco simplesmente remove o constraint existente e o recria com os valores corretos.
+
+#### Categorias suportadas
+
+`mercado`, `combustivel`, `manutencao_carro`, `alimentacao`, `transporte`, `moradia`, `saude`, `educacao`, `lazer`, `vestuario`, `servicos`, `assinaturas`, `investimentos`, `impostos`, `pets`, `presentes`, `viagens`, `outros`
+
+#### Arquivos alterados
+
+- `supabase/migrations/20260318000000_schema_sync.sql` — bloco `DO $$ $$` robusto e idempotente
+- `SUPABASE_SCHEMA.sql` — constraint nomeado explicitamente (`CONSTRAINT expenses_category_check`) com lista expandida
+
+---
+
 ### v2 — Sincronização Schema × Código (2026-03-18)
 
 As seguintes inconsistências entre o `SUPABASE_SCHEMA.sql` e o código da aplicação foram corrigidas:

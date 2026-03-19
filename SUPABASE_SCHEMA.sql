@@ -88,10 +88,12 @@ CREATE TABLE IF NOT EXISTS public.expenses (
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   amount NUMERIC(10, 2) NOT NULL,
   description TEXT NOT NULL,
-  category TEXT NOT NULL CHECK (category IN (
+  category TEXT NOT NULL CONSTRAINT expenses_category_check CHECK (category IN (
     'mercado', 'combustivel', 'manutencao_carro', 'alimentacao',
-    'transporte', 'assinaturas', 'saude', 'educacao',
-    'lazer', 'moradia', 'outros'
+    'transporte', 'moradia', 'saude', 'educacao',
+    'lazer', 'vestuario', 'servicos', 'assinaturas',
+    'investimentos', 'impostos', 'pets', 'presentes',
+    'viagens', 'outros'
   )),
   payment_method TEXT NOT NULL CHECK (payment_method IN ('credito', 'debito', 'especie', 'credito_parcelado')),
   installments INTEGER,
