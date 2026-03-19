@@ -142,6 +142,42 @@ O sistema utiliza o Supabase (PostgreSQL) com as seguintes tabelas principais:
 
 ## Histórico de Mudanças no Schema
 
+### v3 — Robustez da Migration de `expenses.category` (2026-03-19)
+
+#### Contexto e Motivação
+
+O PostgreSQL não garante um nome previsível para constraints CHECK criados de forma inline (sem `CONSTRAINT nome CHECK …`). Dependendo da versão do banco ou da ordem de criação das colunas, o constraint pode receber um nome gerado automaticamente como `expenses_category_check1`, `expenses_category_check2` ou outro sufixo arbitrário. Por isso, um simples `DROP CONSTRAINT IF EXISTS expenses_category_check` falhava silenciosamente em bancos que tinham o constraint com nome diferente, deixando o CHECK desatualizado.
+
+#### Como a Migration foi Corrigida
+
+A migration `supabase/migrations/20260318000000_schema_sync.sql` agora utiliza um bloco **PL/pgSQL** (`DO $$ ... $$;`) que:
+
+1. **Consulta o catálogo do PostgreSQL** (`pg_constraint`, `pg_class`, `pg_namespace`, `pg_attribute`) para localizar **qualquer** constraint CHECK na tabela `public.expenses` que envolva a coluna `category` — independentemente do nome atribuído pelo banco.
+2. **Remove o constraint encontrado** dinamicamente via `EXECUTE format('ALTER TABLE … DROP CONSTRAINT %I', nome)`.
+3. **Adiciona o novo constraint nomeado** `expenses_category_check` com a lista expandida de categorias do frontend.
+
+#### Idempotência
+
+A migration é **segura para executar múltiplas vezes**:
+
+- Se nenhum constraint de categoria existir (banco novo), o bloco apenas cria o constraint correto.
+- Se o constraint já existir com o nome correto (`expenses_category_check`) e a definição correta, ele é removido e recriado — sem erros.
+- Se existir um constraint com nome diferente (banco legado), ele é localizado, removido e substituído pelo correto.
+
+#### Lista de Categorias Expandida
+
+| Antes | Depois |
+|-------|--------|
+| `mercado`, `combustivel`, `manutencao_carro`, `alimentacao`, `transporte`, `assinaturas`, `saude`, `educacao`, `lazer`, `moradia`, `outros` | `alimentação`, `transporte`, `moradia`, `saúde`, `educação`, `lazer`, `vestuário`, `serviços`, `outros`, `assinatura`, `cartão de crédito` |
+
+#### Arquivos alterados
+
+- `supabase/migrations/20260318000000_schema_sync.sql` — bloco PL/pgSQL robusto e idempotente
+- `SUPABASE_SCHEMA.sql` — constraint nomeado explicitamente como `expenses_category_check` para consistência
+- `README.md` — documentação desta melhoria
+
+---
+
 ### v2 — Sincronização Schema × Código (2026-03-18)
 
 As seguintes inconsistências entre o `SUPABASE_SCHEMA.sql` e o código da aplicação foram corrigidas:

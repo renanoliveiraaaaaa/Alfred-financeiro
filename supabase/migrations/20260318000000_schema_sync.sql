@@ -133,17 +133,45 @@ CREATE INDEX IF NOT EXISTS idx_expenses_credit_card_id ON public.expenses(credit
 -- =============================================
 -- 6. Corrigir CHECK constraint de expenses.category
 --    Expande a lista para cobrir todas as categorias do frontend.
+--    Usa bloco PL/pgSQL para localizar e remover qualquer CHECK existente
+--    na coluna category (independente do nome), garantindo idempotência.
 -- =============================================
 
-ALTER TABLE public.expenses
-  DROP CONSTRAINT IF EXISTS expenses_category_check;
+DO $$
+DECLARE
+  v_constraint_name TEXT;
+BEGIN
+  -- Localiza qualquer CHECK constraint na tabela public.expenses
+  -- que referencie a coluna category, independente do nome atribuído.
+  SELECT con.conname
+    INTO v_constraint_name
+    FROM pg_constraint con
+    JOIN pg_class rel ON rel.oid = con.conrelid
+    JOIN pg_namespace nsp ON nsp.oid = rel.relnamespace
+    JOIN pg_attribute att ON att.attrelid = rel.oid
+                         AND att.attnum = ANY(con.conkey)
+   WHERE con.contype = 'c'
+     AND nsp.nspname = 'public'
+     AND rel.relname = 'expenses'
+     AND att.attname = 'category'
+   LIMIT 1;
 
-ALTER TABLE public.expenses
-  ADD CONSTRAINT expenses_category_check CHECK (category IN (
-    'mercado', 'combustivel', 'manutencao_carro', 'alimentacao',
-    'transporte', 'assinaturas', 'saude', 'educacao',
-    'lazer', 'moradia', 'outros'
-  ));
+  -- Remove o constraint encontrado (se existir)
+  IF v_constraint_name IS NOT NULL THEN
+    EXECUTE format('ALTER TABLE public.expenses DROP CONSTRAINT %I', v_constraint_name);
+  END IF;
+
+  -- Adiciona o constraint nomeado com a lista expandida de categorias.
+  -- Se já existir com o nome correto e a definição correta, o IF acima
+  -- já o terá removido antes; se não existia, simplesmente o cria.
+  ALTER TABLE public.expenses
+    ADD CONSTRAINT expenses_category_check CHECK (category IN (
+      'alimentação', 'transporte', 'moradia', 'saúde', 'educação',
+      'lazer', 'vestuário', 'serviços', 'outros', 'assinatura',
+      'cartão de crédito'
+    ));
+END;
+$$;
 
 -- =============================================
 -- 7. Trigger: criar profile automaticamente ao registrar usuário
