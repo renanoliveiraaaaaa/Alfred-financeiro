@@ -133,17 +133,43 @@ CREATE INDEX IF NOT EXISTS idx_expenses_credit_card_id ON public.expenses(credit
 -- =============================================
 -- 6. Corrigir CHECK constraint de expenses.category
 --    Expande a lista para cobrir todas as categorias do frontend.
+--    Usa bloco PL/pgSQL para localizar e remover qualquer CHECK existente
+--    na coluna category (independente do nome gerado pelo PostgreSQL),
+--    garantindo idempotência: rodar 2x não causa erro.
 -- =============================================
 
-ALTER TABLE public.expenses
-  DROP CONSTRAINT IF EXISTS expenses_category_check;
+DO $$
+DECLARE
+  r RECORD;
+BEGIN
+  -- Remove todos os CHECK constraints existentes na coluna 'category'
+  -- da tabela public.expenses, independente do nome atribuído.
+  FOR r IN
+    SELECT cc.conname
+    FROM pg_catalog.pg_constraint cc
+    JOIN pg_catalog.pg_class cl ON cl.oid = cc.conrelid
+    JOIN pg_catalog.pg_namespace ns ON ns.oid = cl.relnamespace
+    JOIN pg_catalog.pg_attribute a ON a.attrelid = cl.oid
+    WHERE cc.contype = 'c'
+      AND cl.relname = 'expenses'
+      AND ns.nspname = 'public'
+      AND cc.conkey @> ARRAY[a.attnum]
+      AND a.attname = 'category'
+  LOOP
+    EXECUTE format('ALTER TABLE public.expenses DROP CONSTRAINT %I', r.conname);
+  END LOOP;
 
-ALTER TABLE public.expenses
-  ADD CONSTRAINT expenses_category_check CHECK (category IN (
-    'mercado', 'combustivel', 'manutencao_carro', 'alimentacao',
-    'transporte', 'assinaturas', 'saude', 'educacao',
-    'lazer', 'moradia', 'outros'
-  ));
+  -- Adiciona o constraint nomeado com a lista expandida de categorias.
+  ALTER TABLE public.expenses
+    ADD CONSTRAINT expenses_category_check CHECK (category IN (
+      'mercado', 'combustivel', 'manutencao_carro', 'alimentacao',
+      'transporte', 'moradia', 'saude', 'educacao',
+      'lazer', 'vestuario', 'servicos', 'assinaturas',
+      'investimentos', 'impostos', 'pets', 'presentes',
+      'viagens', 'outros'
+    ));
+END;
+$$;
 
 -- =============================================
 -- 7. Trigger: criar profile automaticamente ao registrar usuário
