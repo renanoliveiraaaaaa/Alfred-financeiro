@@ -65,6 +65,8 @@ export interface Database {
           date: string
           expected_date: string | null
           received: boolean
+          source: string
+          import_session_id: string | null
           created_at: string
         }
         Insert: {
@@ -75,6 +77,8 @@ export interface Database {
           date: string
           expected_date?: string | null
           received?: boolean
+          source?: string
+          import_session_id?: string | null
           created_at?: string
         }
         Update: {
@@ -85,6 +89,8 @@ export interface Database {
           date?: string
           expected_date?: string | null
           received?: boolean
+          source?: string
+          import_session_id?: string | null
           created_at?: string
         }
       }
@@ -102,6 +108,8 @@ export interface Database {
           paid: boolean
           invoice_url: string | null
           credit_card_id: string | null
+          source: string
+          import_session_id: string | null
           created_at: string
         }
         Insert: {
@@ -117,6 +125,8 @@ export interface Database {
           paid?: boolean
           invoice_url?: string | null
           credit_card_id?: string | null
+          source?: string
+          import_session_id?: string | null
           created_at?: string
         }
         Update: {
@@ -132,6 +142,52 @@ export interface Database {
           paid?: boolean
           invoice_url?: string | null
           credit_card_id?: string | null
+          source?: string
+          import_session_id?: string | null
+          created_at?: string
+        }
+      }
+      import_sessions: {
+        Row: {
+          id: string
+          user_id: string
+          file_name: string
+          file_url: string | null
+          bank: string
+          period_start: string
+          period_end: string
+          total_transactions: number
+          imported_transactions: number
+          skipped_transactions: number
+          status: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          file_name: string
+          file_url?: string | null
+          bank: string
+          period_start: string
+          period_end: string
+          total_transactions?: number
+          imported_transactions?: number
+          skipped_transactions?: number
+          status?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          file_name?: string
+          file_url?: string | null
+          bank?: string
+          period_start?: string
+          period_end?: string
+          total_transactions?: number
+          imported_transactions?: number
+          skipped_transactions?: number
+          status?: string
           created_at?: string
         }
       }
