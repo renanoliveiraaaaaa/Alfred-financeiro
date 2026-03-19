@@ -14,6 +14,7 @@ import {
   Settings,
   UserCircle,
   Wallet,
+  FileUp,
 } from 'lucide-react'
 
 const nav = [
@@ -26,6 +27,7 @@ const nav = [
   { href: '/goals', label: 'Cofres', Icon: PiggyBank },
   { href: '/projections', label: 'Orçamento', Icon: Target },
   { href: '/reports', label: 'Relatórios', Icon: BarChart3 },
+  { href: '/import-statement', label: 'Importar Extrato', Icon: FileUp },
   { href: '/settings', label: 'Cadastros', Icon: Settings },
   { href: '/profile', label: 'Perfil', Icon: UserCircle },
 ]

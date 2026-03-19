@@ -51,6 +51,22 @@ CREATE TABLE IF NOT EXISTS public.credit_cards (
 -- RECEITAS E DESPESAS
 -- =============================================
 
+-- Tabela de sessões de importação (deve vir antes de revenues/expenses por causa das FKs)
+CREATE TABLE IF NOT EXISTS public.import_sessions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  file_name TEXT NOT NULL,
+  file_url TEXT,
+  bank TEXT NOT NULL,
+  period_start DATE NOT NULL,
+  period_end DATE NOT NULL,
+  total_transactions INTEGER DEFAULT 0,
+  imported_transactions INTEGER DEFAULT 0,
+  skipped_transactions INTEGER DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'completed',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Tabela de receitas
 CREATE TABLE IF NOT EXISTS public.revenues (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -60,6 +76,8 @@ CREATE TABLE IF NOT EXISTS public.revenues (
   date DATE NOT NULL,
   expected_date DATE,
   received BOOLEAN DEFAULT FALSE,
+  source TEXT DEFAULT 'manual',
+  import_session_id UUID REFERENCES public.import_sessions(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -82,6 +100,8 @@ CREATE TABLE IF NOT EXISTS public.expenses (
   paid BOOLEAN DEFAULT FALSE,
   invoice_url TEXT,
   credit_card_id UUID REFERENCES public.credit_cards(id) ON DELETE SET NULL,
+  source TEXT DEFAULT 'manual',
+  import_session_id UUID REFERENCES public.import_sessions(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -154,10 +174,13 @@ CREATE TABLE IF NOT EXISTS public.projections (
 
 CREATE INDEX IF NOT EXISTS idx_revenues_user_id ON public.revenues(user_id);
 CREATE INDEX IF NOT EXISTS idx_revenues_date ON public.revenues(date);
+CREATE INDEX IF NOT EXISTS idx_revenues_source ON public.revenues(source);
 CREATE INDEX IF NOT EXISTS idx_expenses_user_id ON public.expenses(user_id);
 CREATE INDEX IF NOT EXISTS idx_expenses_due_date ON public.expenses(due_date);
 CREATE INDEX IF NOT EXISTS idx_expenses_category ON public.expenses(category);
 CREATE INDEX IF NOT EXISTS idx_expenses_credit_card_id ON public.expenses(credit_card_id);
+CREATE INDEX IF NOT EXISTS idx_expenses_source ON public.expenses(source);
+CREATE INDEX IF NOT EXISTS idx_import_sessions_user_id ON public.import_sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_categories_user_id ON public.categories(user_id);
 CREATE INDEX IF NOT EXISTS idx_credit_cards_user_id ON public.credit_cards(user_id);
 CREATE INDEX IF NOT EXISTS idx_subscriptions_user_id ON public.subscriptions(user_id);
@@ -182,6 +205,7 @@ ALTER TABLE public.subscriptions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.income_sources ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.goals ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.projections ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.import_sessions ENABLE ROW LEVEL SECURITY;
 
 -- Políticas RLS para users
 CREATE POLICY "Users can view own data" ON public.users
@@ -302,6 +326,19 @@ CREATE POLICY "Users can update own projections" ON public.projections
   FOR UPDATE USING (auth.uid() = user_id);
 
 CREATE POLICY "Users can delete own projections" ON public.projections
+  FOR DELETE USING (auth.uid() = user_id);
+
+-- Políticas RLS para import_sessions
+CREATE POLICY "Users can view own import_sessions" ON public.import_sessions
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert own import_sessions" ON public.import_sessions
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update own import_sessions" ON public.import_sessions
+  FOR UPDATE USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete own import_sessions" ON public.import_sessions
   FOR DELETE USING (auth.uid() = user_id);
 
 -- =============================================
