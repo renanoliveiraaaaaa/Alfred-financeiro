@@ -28,7 +28,7 @@ export default function WelcomeModal({ open, onClose, pronoun = 'senhor' }: Prop
 
   const modal = (
     <div className="fixed inset-0 z-[999] flex flex-col sm:items-center sm:justify-center bg-black/60 backdrop-blur-sm px-0 sm:px-4 py-4 sm:py-0 overflow-y-auto animate-backdrop-enter">
-      <div className="w-full max-w-md sm:rounded-xl rounded-t-xl border-0 sm:border border-border bg-surface shadow-2xl overflow-hidden animate-modal-enter mt-auto sm:mt-0 max-h-[90vh] sm:max-h-none flex flex-col">
+      <div className="w-full max-w-md sm:rounded-xl rounded-t-xl border-0 sm:border border-border bg-surface shadow-2xl overflow-hidden animate-modal-enter mt-auto sm:mt-0 max-h-[90vh] sm:max-h-none flex flex-col glass-card">
         <div className="p-6 space-y-4 overflow-y-auto flex-1">
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-center gap-3">

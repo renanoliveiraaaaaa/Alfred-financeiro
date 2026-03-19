@@ -6,7 +6,7 @@ import { useUserPreferences, type Gender, type AppTheme } from '@/lib/userPrefer
 import { getPrefTitle } from '@/lib/greeting'
 import { useTheme } from 'next-themes'
 import { useGreetingPronoun } from '@/lib/greeting'
-import { Loader2, Camera, User, Sun, Moon, Monitor } from 'lucide-react'
+import { Loader2, Camera, User, Sun, Moon, Monitor, Droplets } from 'lucide-react'
 
 export default function ProfilePage() {
   const supabase = createSupabaseClient()
@@ -140,7 +140,7 @@ export default function ProfilePage() {
     return (
       <div className="max-w-2xl space-y-6">
         <div className="h-6 w-52 bg-border rounded animate-pulse" />
-        <div className="rounded-xl border border-border bg-surface p-8 animate-pulse space-y-6">
+        <div className="rounded-xl border border-border bg-surface p-8 animate-pulse space-y-6 glass-card">
           <div className="flex items-center gap-6">
             <div className="h-24 w-24 rounded-full bg-border" />
             <div className="space-y-2 flex-1">
@@ -180,7 +180,7 @@ export default function ProfilePage() {
       )}
 
       {/* O Retrato */}
-      <div className="rounded-xl border border-border bg-surface p-6">
+      <div className="rounded-xl border border-border bg-surface p-6 glass-card">
         <h2 className="text-sm font-semibold text-main mb-4">O Retrato</h2>
         <div className="flex items-center gap-6">
           <div className="relative group">
@@ -236,7 +236,7 @@ export default function ProfilePage() {
       </div>
 
       {/* Informações pessoais */}
-      <div className="rounded-xl border border-border bg-surface p-6 space-y-5">
+      <div className="rounded-xl border border-border bg-surface p-6 space-y-5 glass-card">
         <h2 className="text-sm font-semibold text-main">Informações pessoais</h2>
 
         <div>
@@ -266,7 +266,7 @@ export default function ProfilePage() {
       </div>
 
       {/* Preferências do sistema */}
-      <div className="rounded-xl border border-border bg-surface p-6 space-y-5">
+      <div className="rounded-xl border border-border bg-surface p-6 space-y-5 glass-card">
         <h2 className="text-sm font-semibold text-main">Preferências do sistema</h2>
 
         <div className="space-y-5">
@@ -332,12 +332,13 @@ export default function ProfilePage() {
             <p className="text-xs text-muted mb-3">
               Escolha a paleta que combina com o seu escritório virtual
             </p>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
               {[
                 { value: 'normal' as const, label: 'Padrão Institucional', colors: ['#2563eb', '#f8fafc', '#0f172a'] },
                 { value: 'gala' as const, label: 'Traje de Gala', colors: ['#ca8a04', '#fafafa', '#18181b'] },
                 { value: 'classic' as const, label: 'Clássico Atemporal', colors: ['#b45309', '#fafaf9', '#1c1917'] },
                 { value: 'club' as const, label: 'Clube Exclusivo', colors: ['#065f46', '#f8fafc', '#0f172a'] },
+                { value: 'liquid' as const, label: 'Liquid Glass', colors: ['#6366f1', '#f0f4f8', '#0a0a1a'] },
               ].map((t) => (
                 <button
                   key={t.value}
@@ -358,9 +359,18 @@ export default function ProfilePage() {
                   }`}
                 >
                   <div className="flex gap-1 w-full justify-center">
-                    {t.colors.map((c, i) => (
-                      <div key={i} className="w-6 h-6 rounded-full shrink-0" style={{ backgroundColor: c }} />
-                    ))}
+                    {t.value === 'liquid' ? (
+                      <div className="flex items-center gap-1">
+                        <Droplets className="h-5 w-5 text-indigo-500" />
+                        {t.colors.map((c, i) => (
+                          <div key={i} className="w-5 h-5 rounded-full shrink-0" style={{ backgroundColor: c }} />
+                        ))}
+                      </div>
+                    ) : (
+                      t.colors.map((c, i) => (
+                        <div key={i} className="w-6 h-6 rounded-full shrink-0" style={{ backgroundColor: c }} />
+                      ))
+                    )}
                   </div>
                   <span className="text-xs font-medium text-main text-center leading-tight">{t.label}</span>
                 </button>

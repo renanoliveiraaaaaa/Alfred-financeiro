@@ -252,11 +252,11 @@ export default function ExpensesPage() {
 
       {/* Mini cards */}
       <div className="grid gap-4 sm:grid-cols-2">
-        <div className="rounded-xl border border-border bg-surface p-4 transition-colors">
+        <div className="rounded-xl border border-border bg-surface p-4 transition-colors glass-card">
           <p className="text-xs font-medium uppercase tracking-wide text-muted">Total quitado</p>
           <MaskedValue value={totalPaid} className="mt-1 text-lg font-semibold text-emerald-600 dark:text-emerald-400 block" />
         </div>
-        <div className="rounded-xl border border-border bg-surface p-4 transition-colors">
+        <div className="rounded-xl border border-border bg-surface p-4 transition-colors glass-card">
           <p className="text-xs font-medium uppercase tracking-wide text-muted">Pendências em aberto</p>
           <MaskedValue value={totalOpen} className="mt-1 text-lg font-semibold text-red-600 dark:text-red-400 block" />
         </div>
@@ -333,7 +333,7 @@ export default function ExpensesPage() {
       <div className="md:hidden space-y-3">
         {loading ? (
           Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="rounded-xl border border-border bg-surface p-4 animate-pulse">
+            <div key={i} className="rounded-xl border border-border bg-surface p-4 animate-pulse glass-card">
               <div className="h-4 w-3/4 rounded bg-border mb-2" />
               <div className="h-5 w-1/3 rounded bg-border" />
             </div>
@@ -348,7 +348,7 @@ export default function ExpensesPage() {
               onAction={() => window.location.href = '/expenses/new'}
             />
           ) : (
-            <div className="rounded-xl border border-border bg-surface px-4 py-12 text-center text-sm text-muted">
+            <div className="rounded-xl border border-border bg-surface px-4 py-12 text-center text-sm text-muted glass-card">
               Nenhum resultado para os filtros aplicados, {pronoun}.
             </div>
           )
@@ -423,7 +423,7 @@ export default function ExpensesPage() {
       </div>
 
       {/* Desktop: Tabela */}
-      <div className="hidden md:block rounded-xl border border-border bg-surface overflow-hidden transition-colors">
+      <div className="hidden md:block rounded-xl border border-border bg-surface overflow-hidden transition-colors glass-card">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-border text-sm">
             <thead className="bg-border">

@@ -201,7 +201,7 @@ export default function SubscriptionsPage() {
   }
 
   const cls = {
-    card: 'rounded-xl border border-border bg-surface transition-colors',
+    card: 'rounded-xl border border-border bg-surface transition-colors glass-card',
     h1: 'text-xl font-semibold text-main',
     sub: 'text-sm text-muted',
     label: 'block text-xs font-medium text-muted uppercase tracking-wider mb-1.5',

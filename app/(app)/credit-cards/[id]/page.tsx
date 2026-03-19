@@ -128,7 +128,7 @@ export default function CreditCardDetailPage() {
   }
 
   const cls = {
-    card: 'rounded-xl border border-border bg-surface transition-colors',
+    card: 'rounded-xl border border-border bg-surface transition-colors glass-card',
     h1: 'text-xl font-semibold text-main',
     h2: 'text-sm font-semibold text-main',
     sub: 'text-sm text-muted',

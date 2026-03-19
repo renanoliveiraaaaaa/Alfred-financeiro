@@ -235,7 +235,7 @@ export default function DashboardPage() {
   }
 
   const c = {
-    card: 'rounded-xl border border-border bg-surface transition-colors',
+    card: 'rounded-xl border border-border bg-surface transition-colors glass-card',
     label: 'text-xs font-medium uppercase tracking-wider text-muted',
     h1: 'text-xl font-semibold text-main',
     h2: 'text-sm font-semibold text-main',
@@ -349,19 +349,19 @@ export default function DashboardPage() {
       )}
 
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className={`${c.card} p-4`}>
+        <div className={`${c.card} p-4 glass-interactive`}>
           <p className={c.label}>Saldo do mês</p>
           <MaskedValue value={balance} className={`mt-1.5 text-2xl font-semibold ${balance >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`} />
         </div>
-        <div className={`${c.card} p-4`}>
+        <div className={`${c.card} p-4 glass-interactive`}>
           <p className={c.label}>Entradas</p>
           <MaskedValue value={totalRevenues} className="mt-1.5 text-2xl font-semibold text-emerald-600 dark:text-emerald-400" />
         </div>
-        <div className={`${c.card} p-4`}>
+        <div className={`${c.card} p-4 glass-interactive`}>
           <p className={c.label}>Saídas</p>
           <MaskedValue value={totalExpenses} className="mt-1.5 text-2xl font-semibold text-red-600 dark:text-red-400" />
         </div>
-        <div className={`${c.card} p-4`}>
+        <div className={`${c.card} p-4 glass-interactive`}>
           <p className={c.label}>Orçamento</p>
           {projectedExpenses > 0 ? (
             <>

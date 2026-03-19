@@ -159,7 +159,7 @@ export default function SettingsPage() {
       )}
 
       {/* Card Categorias */}
-      <div className="rounded-xl border border-border bg-surface shadow-sm">
+      <div className="rounded-xl border border-border bg-surface shadow-sm glass-card">
         <div className="border-b border-border px-6 py-4">
           <h2 className="text-sm font-semibold text-main">Categorias pessoais</h2>
           <p className="text-xs text-muted mt-0.5">
