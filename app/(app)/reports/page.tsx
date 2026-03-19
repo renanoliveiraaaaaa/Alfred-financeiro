@@ -242,7 +242,7 @@ export default function ReportsPage() {
   }), [isDark, baseTooltip, baseScales])
 
   const cls = {
-    card: 'rounded-xl border border-border bg-surface shadow-sm transition-colors',
+    card: 'rounded-xl border border-border bg-surface shadow-sm transition-colors glass-card',
     label: 'text-xs font-medium uppercase tracking-wide text-muted',
     h2: 'text-sm font-semibold text-main',
     skel: 'bg-border rounded animate-pulse',

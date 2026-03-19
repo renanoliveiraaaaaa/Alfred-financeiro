@@ -222,7 +222,7 @@ export default function ProjectionsPage() {
       {loading ? (
         <div className="grid gap-6 md:grid-cols-2">
           {[1, 2].map((i) => (
-            <div key={i} className="rounded-xl border border-border bg-surface p-6 animate-pulse">
+            <div key={i} className="rounded-xl border border-border bg-surface p-6 animate-pulse glass-card">
               <div className="h-4 w-32 bg-border rounded mb-4" />
               <div className="h-8 bg-border rounded mb-3" />
               <div className="h-3 bg-border rounded" />
@@ -234,7 +234,7 @@ export default function ProjectionsPage() {
           {/* Cards de Entradas vs Saídas */}
           <div className="grid gap-6 md:grid-cols-2">
             {/* Entradas */}
-            <div className="rounded-xl border border-border bg-surface p-6 space-y-4">
+            <div className="rounded-xl border border-border bg-surface p-6 space-y-4 glass-card">
               <h2 className="text-sm font-semibold text-main">Entradas</h2>
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
@@ -269,7 +269,7 @@ export default function ProjectionsPage() {
             </div>
 
             {/* Saídas */}
-            <div className="rounded-xl border border-border bg-surface p-6 space-y-4">
+            <div className="rounded-xl border border-border bg-surface p-6 space-y-4 glass-card">
               <h2 className="text-sm font-semibold text-main">Saídas</h2>
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
@@ -317,7 +317,7 @@ export default function ProjectionsPage() {
           </div>
 
           {/* Saldo projetado vs efetivo */}
-          <div className="rounded-xl border border-border bg-surface p-6">
+          <div className="rounded-xl border border-border bg-surface p-6 glass-card">
             <h2 className="text-sm font-semibold text-main mb-3">Balanço do período</h2>
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
@@ -342,7 +342,7 @@ export default function ProjectionsPage() {
           </div>
 
           {/* Formulário de metas */}
-          <div className="rounded-xl border border-border bg-surface p-6 space-y-5">
+          <div className="rounded-xl border border-border bg-surface p-6 space-y-5 glass-card">
             <div>
               <h2 className="text-sm font-semibold text-main">Definir orçamento</h2>
               <p className="text-xs text-muted mt-0.5">

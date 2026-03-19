@@ -215,7 +215,7 @@ export default function CreditCardsPage() {
   }
 
   const cls = {
-    card: 'rounded-xl border border-border bg-surface transition-colors',
+    card: 'rounded-xl border border-border bg-surface transition-colors glass-card',
     label: 'block text-xs font-medium text-muted uppercase tracking-wider mb-1.5',
     input: 'block w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm text-main placeholder-muted focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand transition-colors',
     btnPrimary: 'inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium bg-brand text-white hover:opacity-90 disabled:opacity-50 transition-colors',

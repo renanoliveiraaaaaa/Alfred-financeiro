@@ -12,7 +12,7 @@ type Props = {
 
 export default function EmptyState({ icon: Icon, title, description, actionLabel, onAction }: Props) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-xl border border-border bg-surface px-6 py-16 text-center transition-colors">
+    <div className="flex flex-col items-center justify-center rounded-xl border border-border bg-surface px-6 py-16 text-center transition-colors glass-card">
       <div className="h-14 w-14 rounded-2xl bg-border flex items-center justify-center mb-5">
         <Icon className="h-7 w-7 text-muted" />
       </div>

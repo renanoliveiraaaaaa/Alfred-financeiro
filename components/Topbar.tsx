@@ -84,7 +84,7 @@ export default function Topbar() {
   }
 
   return (
-    <header className="sticky top-0 z-40 bg-surface/80 backdrop-blur-md border-b border-border">
+    <header className="sticky top-0 z-40 bg-surface/80 backdrop-blur-md border-b border-border glass-topbar">
       <div className="h-14 flex items-center justify-between px-5 transition-colors">
         <div className="flex items-center gap-6">
           <Link

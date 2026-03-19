@@ -115,11 +115,11 @@ export default function RevenuesPage() {
 
       {/* Mini cards */}
       <div className="grid gap-4 sm:grid-cols-2">
-        <div className="rounded-xl border border-border bg-surface p-4 transition-colors">
+        <div className="rounded-xl border border-border bg-surface p-4 transition-colors glass-card">
           <p className="text-xs font-medium uppercase tracking-wide text-muted">Total recebido</p>
           <MaskedValue value={totalReceived} className="mt-1 text-lg font-semibold text-emerald-600 dark:text-emerald-400 block" />
         </div>
-        <div className="rounded-xl border border-border bg-surface p-4 transition-colors">
+        <div className="rounded-xl border border-border bg-surface p-4 transition-colors glass-card">
           <p className="text-xs font-medium uppercase tracking-wide text-muted">Pendente de recebimento</p>
           <MaskedValue value={totalPending} className="mt-1 text-lg font-semibold text-amber-600 dark:text-amber-400 block" />
         </div>
@@ -135,7 +135,7 @@ export default function RevenuesPage() {
       <div className="md:hidden space-y-3">
         {loading ? (
           Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="rounded-xl border border-border bg-surface p-4 animate-pulse">
+            <div key={i} className="rounded-xl border border-border bg-surface p-4 animate-pulse glass-card">
               <div className="h-4 w-3/4 rounded bg-border mb-2" />
               <div className="h-5 w-1/3 rounded bg-border" />
             </div>
@@ -152,7 +152,7 @@ export default function RevenuesPage() {
           revenues.map((r) => {
             const isToggling = togglingIds.has(r.id)
             return (
-              <div key={r.id} className="rounded-xl border border-border bg-surface p-4">
+              <div key={r.id} className="rounded-xl border border-border bg-surface p-4 glass-card">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="font-medium text-main">{r.description}</p>
@@ -187,7 +187,7 @@ export default function RevenuesPage() {
       </div>
 
       {/* Desktop: Tabela */}
-      <div className="hidden md:block rounded-xl border border-border bg-surface overflow-hidden transition-colors">
+      <div className="hidden md:block rounded-xl border border-border bg-surface overflow-hidden transition-colors glass-card">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-border text-sm">
             <thead className="bg-border">

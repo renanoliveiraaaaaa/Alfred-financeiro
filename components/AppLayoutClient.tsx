@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import Topbar from '@/components/Topbar'
 import Sidebar from '@/components/Sidebar'
 import AnimatedPage from '@/components/AnimatedPage'
+import LiquidBackground from '@/components/LiquidBackground'
 import { createSupabaseClient } from '@/lib/supabaseClient'
 import { useUserPreferences } from '@/lib/userPreferencesContext'
 
@@ -65,7 +66,8 @@ export default function AppLayoutClient({
   }
 
   return (
-    <div className="app-layout h-screen flex overflow-hidden transition-colors bg-background">
+    <div className="app-layout h-screen flex overflow-hidden transition-colors bg-background glass-background">
+        <LiquidBackground />
         <Sidebar />
       <div className="flex-1 flex flex-col min-w-0 ml-60 max-md:ml-16">
         <Topbar />

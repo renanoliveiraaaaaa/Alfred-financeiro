@@ -90,7 +90,7 @@ export default function BudgetsPanel() {
   if (loading || items.length === 0) return null
 
   return (
-    <div className="rounded-xl border border-border bg-surface p-5 space-y-4">
+    <div className="rounded-xl border border-border bg-surface p-5 space-y-4 glass-card">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="h-9 w-9 rounded-lg bg-brand/15 flex items-center justify-center shrink-0">
