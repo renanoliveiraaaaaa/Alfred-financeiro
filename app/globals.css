@@ -65,41 +65,41 @@ html.theme-classic:not(.dark) {
   --brand: #f59e0b;        /* amber-500 */
 }
 
-/* 5. Liquid Glass - Translúcido com refração */
+/* 5. Liquid Glass - vidro real: surface translúcida + bordas suaves */
 html.theme-liquid:not(.dark) {
-  --background: #f0f4f8;
-  --surface: rgba(255, 255, 255, 0.45);
+  --background: #e8eef5;
+  --surface: rgba(255, 255, 255, 0.4);
   --surface-solid: #ffffff;
-  --border: rgba(255, 255, 255, 0.6);
+  --border: rgba(255, 255, 255, 0.3);
   --text-main: #0f172a;
   --text-muted: #475569;
   --brand: #6366f1;          /* indigo-500 */
 
-  --glass-blur: 24px;
+  --glass-blur: 20px;
   --glass-saturation: 180%;
-  --glass-bg: rgba(255, 255, 255, 0.35);
-  --glass-border: rgba(255, 255, 255, 0.5);
-  --glass-shadow-outer: 0 8px 32px rgba(0, 0, 0, 0.08);
-  --glass-shadow-inset: inset 0 1px 1px rgba(255, 255, 255, 0.8), inset 0 -1px 1px rgba(0, 0, 0, 0.05);
-  --glass-highlight: linear-gradient(135deg, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.3) 100%);
+  --glass-bg: rgba(255, 255, 255, 0.4);
+  --glass-border: rgba(255, 255, 255, 0.35);
+  --glass-shadow-outer: 0 8px 32px rgba(0, 0, 0, 0.06);
+  --glass-shadow-inset: inset 0 1px 1px rgba(255, 255, 255, 0.85), inset 0 -1px 1px rgba(0, 0, 0, 0.04);
+  --glass-highlight: linear-gradient(135deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.25) 100%);
 }
 
 .theme-liquid.dark {
-  --background: #0a0a1a;
-  --surface: rgba(30, 30, 60, 0.45);
-  --surface-solid: #1a1a2e;
+  --background: #050510;
+  --surface: rgba(0, 0, 0, 0.4);
+  --surface-solid: #12121f;
   --border: rgba(255, 255, 255, 0.1);
   --text-main: #e2e8f0;
   --text-muted: #94a3b8;
   --brand: #818cf8;          /* indigo-400 */
 
-  --glass-blur: 28px;
-  --glass-saturation: 150%;
-  --glass-bg: rgba(30, 30, 60, 0.4);
-  --glass-border: rgba(255, 255, 255, 0.08);
-  --glass-shadow-outer: 0 8px 32px rgba(0, 0, 0, 0.3);
-  --glass-shadow-inset: inset 0 1px 1px rgba(255,255,255,0.1), inset 0 -1px 1px rgba(0,0,0,0.2);
-  --glass-highlight: linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 50%, rgba(255,255,255,0.05) 100%);
+  --glass-blur: 24px;
+  --glass-saturation: 160%;
+  --glass-bg: rgba(0, 0, 0, 0.4);
+  --glass-border: rgba(255, 255, 255, 0.12);
+  --glass-shadow-outer: 0 8px 32px rgba(0, 0, 0, 0.35);
+  --glass-shadow-inset: inset 0 1px 1px rgba(255,255,255,0.12), inset 0 -1px 1px rgba(0,0,0,0.25);
+  --glass-highlight: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.02) 50%, rgba(255,255,255,0.06) 100%);
 }
 
 /* 4. Clube Exclusivo - esmeralda */
@@ -206,26 +206,50 @@ main {
   z-index: 1;
 }
 
+/* Blur em qualquer superfície Tailwind (cards, modais, inputs em blocos) */
+.theme-liquid .bg-surface,
+.theme-liquid [class*="bg-surface/"] {
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+}
+
+.theme-liquid.dark .bg-surface,
+.theme-liquid.dark [class*="bg-surface/"] {
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+}
+
+/* Área de conteúdo transparente para o LiquidBackground aparecer atrás dos cards */
+.theme-liquid main {
+  background-color: transparent !important;
+}
+
+.theme-liquid .app-layout.glass-background {
+  background: transparent;
+}
+
 .theme-liquid .glass-sidebar {
-  background: var(--glass-bg);
-  backdrop-filter: blur(32px) saturate(var(--glass-saturation));
-  -webkit-backdrop-filter: blur(32px) saturate(var(--glass-saturation));
-  border-color: var(--glass-border);
+  background: var(--glass-bg) !important;
+  backdrop-filter: blur(24px) saturate(var(--glass-saturation));
+  -webkit-backdrop-filter: blur(24px) saturate(var(--glass-saturation));
+  border-color: var(--glass-border) !important;
 }
 
 .theme-liquid .glass-topbar {
-  background: var(--glass-bg);
+  background: var(--glass-bg) !important;
   backdrop-filter: blur(20px) saturate(var(--glass-saturation));
   -webkit-backdrop-filter: blur(20px) saturate(var(--glass-saturation));
-  border-color: var(--glass-border);
+  border-color: var(--glass-border) !important;
 }
 
+/* Camada base sutil; cores vivas vêm do LiquidBackground (fixed, z-0) */
 .theme-liquid .glass-background {
-  background:
-    radial-gradient(ellipse at 20% 50%, rgba(99, 102, 241, 0.08) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 20%, rgba(139, 92, 246, 0.06) 0%, transparent 50%),
-    radial-gradient(ellipse at 50% 80%, rgba(59, 130, 246, 0.05) 0%, transparent 50%),
-    var(--background);
+  background: linear-gradient(
+    165deg,
+    rgba(99, 102, 241, 0.06) 0%,
+    transparent 40%,
+    rgba(236, 72, 153, 0.05) 100%
+  );
 }
 
 .theme-liquid .glass-interactive {
@@ -258,6 +282,37 @@ main {
 .animate-liquid-float-1 { animation: liquid-float-1 20s ease-in-out infinite; }
 .animate-liquid-float-2 { animation: liquid-float-2 25s ease-in-out infinite; }
 .animate-liquid-float-3 { animation: liquid-float-3 18s ease-in-out infinite; }
+
+/* Pulso de opacidade (não conflita com transform do float quando em camadas separadas) */
+@keyframes liquid-blob-opacity {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 0.85; }
+}
+
+/* Float + pulso de opacidade no mesmo elemento (dois keyframes) */
+.animate-liquid-1-pulse {
+  animation:
+    liquid-float-1 22s ease-in-out infinite,
+    liquid-blob-opacity 5s ease-in-out infinite;
+}
+.animate-liquid-2-pulse {
+  animation:
+    liquid-float-2 26s ease-in-out infinite,
+    liquid-blob-opacity 6s ease-in-out infinite;
+  animation-delay: 0s, 1s;
+}
+.animate-liquid-3-pulse {
+  animation:
+    liquid-float-3 19s ease-in-out infinite,
+    liquid-blob-opacity 5.5s ease-in-out infinite;
+  animation-delay: 0s, 0.5s;
+}
+.animate-liquid-1-pulse-alt {
+  animation:
+    liquid-float-1 24s ease-in-out infinite reverse,
+    liquid-blob-opacity 7s ease-in-out infinite;
+  animation-delay: -6s, 0s;
+}
 
 @keyframes fade-in {
   from { opacity: 0; transform: translateY(-4px); }

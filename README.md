@@ -31,10 +31,11 @@ O Alfred Financeiro é um SaaS de gestão financeira pessoal que combina interfa
 | **Cofres (Metas)** | Metas financeiras de longo prazo com barra de progresso, aportes e prazo opcional. |
 | **Orçamento e Projeções** | Metas mensais de despesas e receitas, acompanhamento de projeção vs. realizado. |
 | **Relatórios Visuais** | Gráficos mensais e anuais com Chart.js (pizza, barras, linhas), evolução do patrimônio e análise por categoria. |
-| **Interface Dark/Light** | Temas **Tuxedo** (escuro) e **Morning Suit** (claro) com transições suaves via `next-themes`. |
+| **Importar extrato** | Upload de **CSV** ou **OFX/QFX** para revisar e importar despesas/receitas em lote (sem suporte a PDF de extrato — ver [docs/THEMES_GLASS_MODALS_IMPORT.md](docs/THEMES_GLASS_MODALS_IMPORT.md)). |
+| **Interface Dark/Light** | Modo claro/escuro via `next-themes`, além da **galeria de temas** no perfil (Padrão, Gala, Classic, Club, Liquid Glass). |
 | **Animações** | Framer Motion para transições de página, modais e feedback visual. |
-| **Adição Rápida** | Botão "+ Novo" na Topbar para lançamento rápido de despesa ou receita. |
-| **Free Trial SaaS** | Período de teste gratuito de 7 dias, bloqueio automático ao expirar, badge de dias restantes na Topbar e página dedicada para contato com o administrador. |
+| **Lançamentos** | Novas despesas/receitas pelas rotas dedicadas (ex.: `/expenses/new`, `/revenues/new`) e atalhos no dashboard. |
+| **Free Trial SaaS** | Período de teste gratuito; badge de dias restantes na Topbar só quando faltam **7 dias ou menos**; bloqueio ao expirar com página dedicada. |
 | **Onboarding** | Seed automático de categorias para novos usuários e modal de boas-vindas. |
 | **Tratamento de Erros** | Toasts globais, mensagens de conexão e feedback visual em todas as operações CRUD. |
 
@@ -71,6 +72,9 @@ O sistema utiliza o Supabase (PostgreSQL) com as seguintes tabelas principais:
 | `income_sources` | Fontes de renda (nome, valor, frequência, próxima data, ativo) |
 | `goals` | Metas/Cofres (nome, valor alvo, valor atual, prazo, cor, ícone) |
 | `projections` | Projeções mensais (despesas/receitas projetadas vs. realizadas) |
+| `import_sessions` | Sessões de importação de extrato (arquivo, banco, período, totais); vínculo opcional em `revenues`/`expenses` via `import_session_id` e coluna `source` |
+
+> **Importação:** formatos aceitos **CSV / OFX / QFX**. PDF não é usado para extrato em massa (apenas comprovantes em despesas). Detalhes em [docs/THEMES_GLASS_MODALS_IMPORT.md](docs/THEMES_GLASS_MODALS_IMPORT.md).
 
 ---
 
@@ -120,6 +124,11 @@ O sistema utiliza o Supabase (PostgreSQL) com as seguintes tabelas principais:
    - `supabase/migrations/20260218100000_free_trial_saas.sql` — colunas trial (plan_status, trial_ends_at)
    - `supabase/migrations/20260218100001_update_existing_profiles_trial.sql` — atualização de perfis existentes
    - `supabase/migrations/20260318000000_schema_sync.sql` — sincronização schema (se existir)
+   - `supabase/migrations/20260318100000_profiles_gender_app_theme.sql` — `gender`, `app_theme` em `profiles`
+   - `supabase/migrations/20260318100001_update_existing_profiles_gender_theme.sql` — dados legados
+   - `supabase/migrations/20260318100002_app_theme_galeria.sql` — temas `gala`, `classic`, `club` (substitui `alfred`)
+   - `supabase/migrations/20260319100000_add_liquid_theme.sql` — valor `liquid` em `app_theme`
+   - `supabase/migrations/20260319200000_import_statements.sql` — `import_sessions`, `source` e `import_session_id` em receitas/despesas
    
    Ou utilize `supabase db push` se preferir o CLI.
    
@@ -141,6 +150,11 @@ O sistema utiliza o Supabase (PostgreSQL) com as seguintes tabelas principais:
 ---
 
 ## Histórico de Mudanças no Schema
+
+### v3 — Documentação de temas, Liquid Glass e importação (2026-03)
+
+- Guia **[docs/THEMES_GLASS_MODALS_IMPORT.md](docs/THEMES_GLASS_MODALS_IMPORT.md)** cobre `app_theme`, efeito vidro Liquid, modais com Portal e extratos CSV/OFX.
+- Ajustes visuais do tema Liquid: superfícies translúcidas, blur em `bg-surface`, `LiquidBackground` e layout transparente na área principal.
 
 ### v2 — Sincronização Schema × Código (2026-03-18)
 
@@ -187,6 +201,10 @@ Essa voz deve ser mantida em textos de interface, mensagens de erro e tooltips p
 - **Tema Tuxedo (dark)**: `manor-900`, `manor-950` como fundos; `gold-400/500` para destaques.
 - **Tema Morning Suit (light)**: fundos claros, `gold-600/700` para CTAs.
 
+### Temas de aparência e Liquid Glass
+
+No **Perfil**, o usuário escolhe a paleta (`app_theme`): Padrão, Gala, Classic, Club ou **Liquid Glass**. As variáveis CSS em `app/globals.css` definem `--surface`, `--brand`, etc. O tema **Liquid** usa superfícies translúcidas, `backdrop-filter` e o componente `LiquidBackground` (blobs animados). Documentação completa: [docs/THEMES_GLASS_MODALS_IMPORT.md](docs/THEMES_GLASS_MODALS_IMPORT.md).
+
 ---
 
 ## Estrutura do Projeto
@@ -204,9 +222,13 @@ finance-manager/
 │   │   ├── income-sources/
 │   │   ├── projections/
 │   │   ├── reports/
+│   │   ├── import-statement/ # Importação CSV/OFX de extratos
 │   │   ├── settings/
 │   │   ├── profile/
 │   │   └── expired/         # Página de trial expirado (sem Sidebar/Topbar)
+│   ├── api/
+│   │   ├── cron/subscriptions/
+│   │   └── parse-statement/ # Parse de extrato no servidor
 │   ├── layout.tsx
 │   └── page.tsx            # Login
 ├── components/
@@ -217,6 +239,9 @@ finance-manager/
 │   ├── CardBrandIcon.tsx
 │   ├── CardChipIcon.tsx
 │   ├── QuickAddModal.tsx
+│   ├── LiquidBackground.tsx  # Fundo animado (tema Liquid)
+│   ├── ThemeApplier.tsx      # Classe theme-* no <html>
+│   ├── ImportReviewModal.tsx
 │   ├── ConfirmDangerModal.tsx
 │   ├── EmptyState.tsx
 │   ├── WelcomeModal.tsx
@@ -232,9 +257,12 @@ finance-manager/
 │   ├── format.ts
 │   ├── installments.ts
 │   └── actions/
+│       └── import-statement.ts
+├── lib/parsers/            # CSV/OFX por banco (Nubank, Inter, genérico)
 ├── docs/
-│   ├── AUDITORIA_RLS.md    # Políticas RLS e segurança
-│   └── FREE_TRIAL_SAAS.md  # Free Trial e gestão de acesso
+│   ├── AUDITORIA_RLS.md
+│   ├── FREE_TRIAL_SAAS.md
+│   └── THEMES_GLASS_MODALS_IMPORT.md  # Temas, Liquid Glass, modais, importação
 ├── supabase/
 │   └── migrations/         # Scripts SQL (RLS, Free Trial, etc.)
 ├── types/
@@ -250,6 +278,7 @@ finance-manager/
 |-----------|----------|
 | [docs/AUDITORIA_RLS.md](docs/AUDITORIA_RLS.md) | Políticas RLS, tabelas protegidas e revisão do frontend |
 | [docs/FREE_TRIAL_SAAS.md](docs/FREE_TRIAL_SAAS.md) | Free Trial de 7 dias, migrações e como estender acesso |
+| [docs/THEMES_GLASS_MODALS_IMPORT.md](docs/THEMES_GLASS_MODALS_IMPORT.md) | Temas (`app_theme`), Liquid Glass, modais (Portal + z-index), importação CSV/OFX e tabela `import_sessions` |
 
 ---
 
