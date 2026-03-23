@@ -15,6 +15,13 @@ export const getMonthName = (): string => {
   return name.charAt(0).toUpperCase() + name.slice(1)
 }
 
+/** Nome do mês + ano para um mês calendário (1–12), ex: "Março 2026" */
+export const getMonthYearLabel = (year: number, month1to12: number): string => {
+  const d = new Date(year, month1to12 - 1, 1)
+  const month = new Intl.DateTimeFormat('pt-BR', { month: 'long' }).format(d)
+  return `${month.charAt(0).toUpperCase() + month.slice(1)} ${year}`
+}
+
 export const formatDate = (dateStr: string | null) => {
   if (!dateStr) return '-'
   const [y, m, d] = dateStr.split('-')

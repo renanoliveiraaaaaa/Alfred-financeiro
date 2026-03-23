@@ -71,7 +71,8 @@ export async function middleware(request: NextRequest) {
     request.nextUrl.pathname.startsWith('/subscriptions') ||
     request.nextUrl.pathname.startsWith('/settings') ||
     request.nextUrl.pathname.startsWith('/profile') ||
-    request.nextUrl.pathname.startsWith('/expired')
+    request.nextUrl.pathname.startsWith('/expired') ||
+    request.nextUrl.pathname.startsWith('/import-history')
   ) {
     if (!user) {
       return NextResponse.redirect(new URL('/', request.url))
@@ -89,11 +90,25 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
+     * Allow-list: só rotas HTML da aplicação. Assim /_next/*, /api/*, imagens e assets
+     * nunca passam por este middleware (evita 404 de chunks/CSS no dev e edge cases de regex).
      */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/',
+    '/dashboard/:path*',
+    '/expenses/:path*',
+    '/revenues/:path*',
+    '/projections/:path*',
+    '/reports/:path*',
+    '/credit-cards/:path*',
+    '/goals/:path*',
+    '/income-sources/:path*',
+    '/subscriptions/:path*',
+    '/settings/:path*',
+    '/profile/:path*',
+    '/expired/:path*',
+    '/import-statement',
+    '/import-statement/:path*',
+    '/import-history',
+    '/import-history/:path*',
   ],
 }

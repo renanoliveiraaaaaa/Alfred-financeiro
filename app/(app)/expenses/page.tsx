@@ -13,7 +13,6 @@ import type { Database } from '@/types/supabase'
 import {
   Plus,
   Paperclip,
-  ExternalLink,
   CheckCircle2,
   Circle,
   Pencil,
@@ -22,25 +21,37 @@ import {
   Search,
   Trash2,
   Check,
+  Copy,
+  Download,
 } from 'lucide-react'
+import { downloadCsv, formatDateBR } from '@/lib/exportCsv'
+import {
+  allIdsInDuplicateClusters,
+  allSuggestedDeleteIds,
+  clusterDuplicatesByFingerprint,
+  expenseDuplicateFingerprint,
+} from '@/lib/transactionDuplicates'
 
 type Expense = Database['public']['Tables']['expenses']['Row']
 
 const CATEGORY_LABELS: Record<string, string> = {
   mercado: 'Mercado',
-  combustivel: 'Combustível',
-  manutencao_carro: 'Manutenção carro',
   alimentacao: 'Alimentação',
+  compras: 'Compras online',
   transporte: 'Transporte',
+  combustivel: 'Combustível',
+  veiculo: 'Veículo',
   assinaturas: 'Assinaturas',
   saude: 'Saúde',
   educacao: 'Educação',
   lazer: 'Lazer',
   moradia: 'Moradia',
+  fatura_cartao: 'Fatura de cartão',
   outros: 'Outros',
 }
 
 const PAYMENT_LABELS: Record<string, string> = {
+  pix: 'Pix',
   debito: 'Débito',
   credito: 'Crédito',
   especie: 'Espécie',
@@ -116,6 +127,35 @@ export default function ExpensesPage() {
     const cats = new Set(expenses.map((e) => e.category))
     return Array.from(cats).sort()
   }, [expenses])
+
+  const duplicateClusters = useMemo(
+    () => clusterDuplicatesByFingerprint(expenses, (e) => expenseDuplicateFingerprint(e)),
+    [expenses]
+  )
+  const duplicateHintIds = useMemo(() => allIdsInDuplicateClusters(duplicateClusters), [duplicateClusters])
+  const suggestedDuplicateDeleteIds = useMemo(
+    () => allSuggestedDeleteIds(duplicateClusters),
+    [duplicateClusters]
+  )
+
+  const selectSuggestedDuplicates = () => {
+    setSelectedIds(new Set(suggestedDuplicateDeleteIds))
+  }
+
+  const handleExportCsv = () => {
+    const rows = filtered.map((e) => ({
+      'Data vencimento': formatDateBR(e.due_date),
+      'Descrição': e.description,
+      'Categoria': CATEGORY_LABELS[e.category] ?? e.category,
+      'Valor (R$)': Number(e.amount || 0).toFixed(2).replace('.', ','),
+      'Pagamento': PAYMENT_LABELS[e.payment_method] ?? e.payment_method,
+      'Status': e.paid ? 'Pago' : 'Em aberto',
+      'Parcela': e.installment_number && e.installments ? `${e.installment_number}/${e.installments}` : '',
+      'Origem': e.source === 'import' ? 'Importado' : 'Manual',
+    }))
+    const today = new Date().toISOString().slice(0, 10)
+    downloadCsv(rows, `despesas-${today}.csv`)
+  }
 
   const togglePaid = useCallback(async (id: string, currentPaid: boolean) => {
     const newPaid = !currentPaid
@@ -198,6 +238,7 @@ export default function ExpensesPage() {
   }
 
   const confirmBatchDelete = async () => {
+    const ids = [...dangerModal.ids]
     setDangerModal((prev) => ({ ...prev, loading: true }))
     setError(null)
 
@@ -205,14 +246,14 @@ export default function ExpensesPage() {
       const { error: err } = await supabase
         .from('expenses')
         .delete()
-        .in('id', dangerModal.ids)
+        .in('id', ids)
 
       if (err) {
         const msg = isConnectionError(err) ? CONNECTION_ERROR_MSG : err.message
         setError(msg)
         toastError(msg)
       } else {
-        setExpenses((prev) => prev.filter((e) => !dangerModal.ids.includes(e.id)))
+        setExpenses((prev) => prev.filter((e) => !ids.includes(e.id)))
         setSelectedIds(new Set())
       }
     } catch (err: unknown) {
@@ -241,13 +282,24 @@ export default function ExpensesPage() {
           <h1 className="text-xl font-semibold text-main">Registro de Saídas</h1>
           <p className="text-sm text-muted mt-0.5">Controle detalhado das suas obrigações financeiras, senhor</p>
         </div>
-        <Link
-          href="/expenses/new"
-          className="inline-flex items-center gap-2 rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-white hover:opacity-90 transition-colors"
-        >
-          <Plus className="h-4 w-4" />
-          Registrar nova saída
-        </Link>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleExportCsv}
+            disabled={filtered.length === 0}
+            title="Exportar lista atual em CSV"
+            className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2.5 text-sm font-medium text-muted hover:text-main hover:bg-background disabled:opacity-40 transition-colors"
+          >
+            <Download className="h-4 w-4" />
+            <span className="hidden sm:inline">Exportar CSV</span>
+          </button>
+          <Link
+            href="/expenses/new"
+            className="inline-flex items-center gap-2 rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-white hover:opacity-90 transition-colors"
+          >
+            <Plus className="h-4 w-4" />
+            Registrar nova saída
+          </Link>
+        </div>
       </div>
 
       {/* Mini cards */}
@@ -265,6 +317,32 @@ export default function ExpensesPage() {
       {error && (
         <div className="rounded-lg border border-border bg-red-100 dark:bg-red-500/15 px-4 py-3 text-sm text-red-600 dark:text-red-400">
           {error}
+        </div>
+      )}
+
+      {!loading && duplicateClusters.length > 0 && (
+        <div className="rounded-xl border border-amber-200 dark:border-amber-500/40 bg-amber-50 dark:bg-amber-500/10 px-4 py-3 space-y-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-sm font-medium text-amber-900 dark:text-amber-200">
+                Possíveis duplicatas detectadas
+              </p>
+              <p className="text-xs text-amber-800/90 dark:text-amber-300/90 mt-1">
+                {duplicateClusters.length}{' '}
+                {duplicateClusters.length === 1 ? 'grupo' : 'grupos'} com o mesmo vencimento (ou data de criação),
+                valor, categoria e descrição. Parcelas diferentes não são agrupadas. Sugestão: manter o registro{' '}
+                <strong className="text-main">mais antigo</strong> de cada grupo.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={selectSuggestedDuplicates}
+              className="shrink-0 inline-flex items-center justify-center gap-2 rounded-lg border border-amber-300 dark:border-amber-500/50 bg-surface px-3 py-2 text-xs font-medium text-main hover:bg-amber-100/80 dark:hover:bg-amber-500/20 transition-colors touch-manipulation min-h-[44px]"
+            >
+              <Copy className="h-3.5 w-3.5" />
+              Selecionar sugeridos ({suggestedDuplicateDeleteIds.size})
+            </button>
+          </div>
         </div>
       )}
 
@@ -356,11 +434,16 @@ export default function ExpensesPage() {
           filtered.map((e) => {
             const isToggling = togglingIds.has(e.id)
             const isSelected = selectedIds.has(e.id)
+            const isDup = duplicateHintIds.has(e.id)
             return (
               <div
                 key={e.id}
                 className={`rounded-xl border p-4 transition-colors ${
-                  isSelected ? 'border-brand/50 bg-brand/5' : 'border-border bg-surface'
+                  isSelected
+                    ? 'border-brand/50 bg-brand/5'
+                    : isDup
+                      ? 'border-amber-300/80 dark:border-amber-500/35 bg-amber-50/40 dark:bg-amber-500/5'
+                      : 'border-border bg-surface'
                 }`}
               >
                 <div className="flex items-start gap-3">
@@ -377,7 +460,19 @@ export default function ExpensesPage() {
                     </span>
                   </button>
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-main">{e.description}</p>
+                    <p className="font-medium text-main flex flex-wrap items-center gap-2">
+                      {e.description}
+                      {isDup && (
+                        <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-amber-200/80 dark:bg-amber-500/25 text-amber-900 dark:text-amber-200">
+                          Duplicata?
+                        </span>
+                      )}
+                      {e.source === 'import' && (
+                        <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-sky-100 dark:bg-sky-500/20 text-sky-700 dark:text-sky-300">
+                          Importado
+                        </span>
+                      )}
+                    </p>
                     {e.installments && e.installment_number && (
                       <p className="text-xs text-muted">Parcela {e.installment_number}/{e.installments}</p>
                     )}
@@ -483,11 +578,14 @@ export default function ExpensesPage() {
                 filtered.map((e) => {
                   const isToggling = togglingIds.has(e.id)
                   const isSelected = selectedIds.has(e.id)
+                  const isDup = duplicateHintIds.has(e.id)
 
                   return (
                     <tr
                       key={e.id}
-                      className={`transition-colors ${isSelected ? 'bg-brand/5' : 'hover:bg-background'}`}
+                      className={`transition-colors ${
+                        isSelected ? 'bg-brand/5' : isDup ? 'bg-amber-50/50 dark:bg-amber-500/10' : 'hover:bg-background'
+                      }`}
                     >
                       <td className="px-4 py-3 text-center">
                         <input
@@ -498,7 +596,19 @@ export default function ExpensesPage() {
                         />
                       </td>
                       <td className="px-4 py-3">
-                        <p className="font-medium text-main">{e.description}</p>
+                        <p className="font-medium text-main inline-flex flex-wrap items-center gap-2">
+                          {e.description}
+                          {isDup && (
+                            <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-amber-200/80 dark:bg-amber-500/25 text-amber-900 dark:text-amber-200">
+                              Duplicata?
+                            </span>
+                          )}
+                          {e.source === 'import' && (
+                            <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-sky-100 dark:bg-sky-500/20 text-sky-700 dark:text-sky-300">
+                              Importado
+                            </span>
+                          )}
+                        </p>
                         {e.installments && e.installment_number && (
                           <p className="text-xs text-muted">
                             Parcela {e.installment_number}/{e.installments}

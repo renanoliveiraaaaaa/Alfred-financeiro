@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useRef, useCallback } from 'react'
-import { FileUp, Upload, X, Loader2, AlertCircle, FileText } from 'lucide-react'
+import { useState, useRef, useCallback, useEffect } from 'react'
+import Link from 'next/link'
+import { FileUp, Upload, X, Loader2, AlertCircle, FileText, Sparkles, History } from 'lucide-react'
 import ImportReviewModal, { ReviewTransaction } from '@/components/ImportReviewModal'
 import { useGreetingPronoun } from '@/lib/greeting'
 
@@ -17,7 +18,47 @@ const BANK_OPTIONS = [
   { value: 'generic', label: 'Genérico (CSV/OFX)' },
 ]
 
+const BANK_ID_LABELS: Record<string, string> = {
+  itau: 'Itaú',
+  bradesco: 'Bradesco',
+  bb: 'Banco do Brasil',
+  caixa: 'Caixa Econômica',
+  santander: 'Santander',
+  inter: 'Banco Inter',
+  c6: 'C6 Bank',
+  nubank: 'Nubank',
+}
+
 const ACCEPT = '.csv,.ofx,.qfx'
+
+/** Detecta o banco a partir dos primeiros ~4 KB do arquivo OFX (lado cliente, sem rede). */
+function sniffBankFromOfxText(text: string): string | null {
+  const head = text.substring(0, 4096)
+  const bankIdMatch = head.match(/<(?:[\w.-]+:)?BANKID>(\d+)/i)
+  if (bankIdMatch) {
+    const n = bankIdMatch[1].replace(/^0+/, '') || bankIdMatch[1]
+    if (n === '341') return 'itau'
+    if (n === '237') return 'bradesco'
+    if (n === '1') return 'bb'
+    if (n === '104') return 'caixa'
+    if (n === '33') return 'santander'
+    if (n === '260' || n === '077') return 'inter'
+    if (n === '336') return 'c6'
+  }
+  const orgMatch = head.match(/<(?:[\w.-]+:)?ORG>([^<\r\n]+)/i)
+  if (orgMatch) {
+    const org = orgMatch[1].toUpperCase()
+    if (/ITAU|ITA[UÚ]/.test(org)) return 'itau'
+    if (/BRADESCO/.test(org)) return 'bradesco'
+    if (/BANCO DO BRASIL|BB\.COM/.test(org)) return 'bb'
+    if (/CAIXA|CEF/.test(org)) return 'caixa'
+    if (/SANTANDER/.test(org)) return 'santander'
+    if (/INTER/.test(org)) return 'inter'
+    if (/C6/.test(org)) return 'c6'
+    if (/NUBANK|NU PAGAMENTOS/.test(org)) return 'nubank'
+  }
+  return null
+}
 
 export default function ImportStatementPage() {
   const pronoun = useGreetingPronoun()
@@ -25,16 +66,49 @@ export default function ImportStatementPage() {
 
   const [file, setFile] = useState<File | null>(null)
   const [bank, setBank] = useState('generic')
+  const [autoDetectedBank, setAutoDetectedBank] = useState<string | null>(null)
   const [dragging, setDragging] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const [transactions, setTransactions] = useState<ReviewTransaction[]>([])
   const [modalOpen, setModalOpen] = useState(false)
+  /** Itaú OFX102: desliga heurística PIX TRANSF → despesa se você recebe PIX com essa descrição */
+  const [skipItauPixRule, setSkipItauPixRule] = useState(false)
+
+  /** Ao selecionar arquivo OFX/QFX, lê o início do arquivo e tenta detectar o banco */
+  useEffect(() => {
+    if (!file) {
+      setAutoDetectedBank(null)
+      return
+    }
+    const ext = file.name.split('.').pop()?.toLowerCase()
+    if (ext !== 'ofx' && ext !== 'qfx') {
+      setAutoDetectedBank(null)
+      return
+    }
+
+    // Lê apenas os primeiros 4 KB para não travar
+    const blob = file.slice(0, 4096)
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const text = (e.target?.result as string) ?? ''
+      const detected = sniffBankFromOfxText(text)
+      setAutoDetectedBank(detected)
+      if (detected && bank === 'generic') {
+        setBank(detected)
+      }
+    }
+    reader.readAsText(blob, 'ISO-8859-1')
+  }, [file])
 
   const handleFileSelect = (selected: File | null) => {
     setError(null)
     setFile(selected)
+    if (!selected) {
+      setBank('generic')
+      setAutoDetectedBank(null)
+    }
   }
 
   const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
@@ -64,6 +138,9 @@ export default function ImportStatementPage() {
       const formData = new FormData()
       formData.append('file', file)
       formData.append('bank', bank)
+      if (skipItauPixRule) {
+        formData.append('skip_itau_pix_rule', '1')
+      }
 
       const res = await fetch('/api/parse-statement', {
         method: 'POST',
@@ -80,6 +157,11 @@ export default function ImportStatementPage() {
       if (!json.transactions || json.transactions.length === 0) {
         setError('Nenhuma transação encontrada no arquivo. Verifique o formato e o banco selecionado.')
         return
+      }
+
+      // Se a API detectou um banco diferente do selecionado, atualiza o seletor
+      if (json.detected_bank && json.detected_bank !== bank) {
+        setBank(json.detected_bank)
       }
 
       // Atribui IDs únicos para uso no modal
@@ -100,6 +182,8 @@ export default function ImportStatementPage() {
     }
   }
 
+  const showItauHint = bank === 'itau' || file?.name.toLowerCase().endsWith('.ofx') || file?.name.toLowerCase().endsWith('.qfx')
+
   const cls = {
     label: 'block text-xs font-medium text-muted uppercase tracking-wider mb-1.5',
     input: 'block w-full rounded-lg border border-border bg-background px-3.5 py-2.5 text-sm text-main placeholder-muted focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand transition-colors',
@@ -108,27 +192,47 @@ export default function ImportStatementPage() {
   return (
     <div className="max-w-xl mx-auto space-y-6">
       {/* Page header */}
-      <div>
-        <h1 className="text-xl font-semibold text-main flex items-center gap-2">
-          <FileUp className="h-5 w-5 text-brand" />
-          Importar Extrato
-        </h1>
-        <p className="text-sm text-muted mt-1">
-          {pronoun
-            ? `Prezado(a) ${pronoun}, importe extratos bancários para catalogar transações de períodos anteriores.`
-            : 'Importe extratos bancários para catalogar transações de períodos anteriores.'}
-        </p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="text-xl font-semibold text-main flex items-center gap-2">
+            <FileUp className="h-5 w-5 text-brand" />
+            Importar Extrato
+          </h1>
+          <p className="text-sm text-muted mt-1">
+            {pronoun
+              ? `Prezado(a) ${pronoun}, importe extratos bancários para catalogar transações de períodos anteriores.`
+              : 'Importe extratos bancários para catalogar transações de períodos anteriores.'}
+          </p>
+        </div>
+        <Link
+          href="/import-history"
+          className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-border text-sm font-medium text-muted hover:text-main hover:bg-background transition-colors shrink-0"
+        >
+          <History className="h-4 w-4" />
+          Ver histórico
+        </Link>
       </div>
 
       {/* Main card */}
       <div className="glass-card rounded-xl border border-border bg-surface p-6 space-y-5">
         {/* Bank selector */}
         <div>
-          <label className={cls.label}>Banco / Instituição</label>
+          <div className="flex items-center justify-between mb-1.5">
+            <label className={cls.label.replace('mb-1.5', '')}>Banco / Instituição</label>
+            {autoDetectedBank && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-medium text-brand rounded-full bg-brand/10 px-2 py-0.5">
+                <Sparkles className="h-2.5 w-2.5" />
+                Auto-detectado
+              </span>
+            )}
+          </div>
           <select
             className={cls.input}
             value={bank}
-            onChange={(e) => setBank(e.target.value)}
+            onChange={(e) => {
+              setBank(e.target.value)
+              setAutoDetectedBank(null)
+            }}
           >
             {BANK_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>
@@ -136,7 +240,34 @@ export default function ImportStatementPage() {
               </option>
             ))}
           </select>
+          {autoDetectedBank && (
+            <p className="mt-1.5 text-xs text-muted">
+              O arquivo OFX foi reconhecido como{' '}
+              <strong className="text-main">{BANK_ID_LABELS[autoDetectedBank] ?? autoDetectedBank}</strong>.
+              As heurísticas específicas deste banco foram aplicadas automaticamente.
+            </p>
+          )}
         </div>
+
+        {/* Ajuste Itaú OFX (opcional) */}
+        {showItauHint && (
+          <label className="flex items-start gap-3 cursor-pointer rounded-lg border border-border bg-background/50 px-3 py-2.5">
+            <input
+              type="checkbox"
+              checked={skipItauPixRule}
+              onChange={(e) => setSkipItauPixRule(e.target.checked)}
+              className="mt-0.5 rounded border-border text-brand focus:ring-brand"
+            />
+            <span className="text-xs text-muted leading-snug">
+              <span className="font-medium text-main">Não aplicar regra PIX Itaú</span>
+              {' — '}
+              Extratos Itaú (OFX 102) costumam marcar tudo como CREDIT. Por padrão, tratamos linhas{' '}
+              <code className="text-[10px] bg-border/50 px-1 rounded">PIX TRANSF</code> (exceto rendimentos/devoluções)
+              como <strong className="text-main">despesa</strong>. Marque aqui se você <strong>recebe</strong> PIX com
+              essa descrição e prefere classificar tudo como receita no modal.
+            </span>
+          </label>
+        )}
 
         {/* File drop zone */}
         <div>
@@ -227,8 +358,12 @@ export default function ImportStatementPage() {
         <p className="text-xs font-medium text-muted uppercase tracking-wider">Formatos suportados</p>
         <ul className="space-y-1 text-xs text-muted">
           <li><span className="text-main font-medium">CSV</span> — Nubank, Inter e formato genérico</li>
-          <li><span className="text-main font-medium">OFX / QFX</span> — Itaú, Bradesco, Banco do Brasil, Santander, Caixa</li>
+          <li><span className="text-main font-medium">OFX / QFX</span> — Itaú, Bradesco, Banco do Brasil, Santander, Caixa e outros (banco detectado automaticamente)</li>
         </ul>
+        <p className="text-xs text-muted pt-1">
+          O período importado é o que consta no arquivo (<code className="text-[10px] bg-border/40 px-1 rounded">DTSTART</code> /{' '}
+          <code className="text-[10px] bg-border/40 px-1 rounded">DTEND</code> no OFX). Para meses fora do intervalo, gere um novo extrato no banco.
+        </p>
         <p className="text-xs text-muted pt-1">
           Após o processamento, você poderá revisar, editar e confirmar cada transação antes de importar.
         </p>

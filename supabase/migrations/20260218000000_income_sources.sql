@@ -15,14 +15,18 @@ CREATE INDEX IF NOT EXISTS idx_income_sources_next_receipt ON public.income_sour
 
 ALTER TABLE public.income_sources ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view own income_sources" ON public.income_sources;
 CREATE POLICY "Users can view own income_sources" ON public.income_sources
   FOR SELECT USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own income_sources" ON public.income_sources;
 CREATE POLICY "Users can insert own income_sources" ON public.income_sources
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own income_sources" ON public.income_sources;
 CREATE POLICY "Users can update own income_sources" ON public.income_sources
   FOR UPDATE USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can delete own income_sources" ON public.income_sources;
 CREATE POLICY "Users can delete own income_sources" ON public.income_sources
   FOR DELETE USING (auth.uid() = user_id);

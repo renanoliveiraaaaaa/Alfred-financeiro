@@ -1,10 +1,17 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useRef } from 'react'
 import Link from 'next/link'
 import { createSupabaseClient } from '@/lib/supabaseClient'
 import { seedCategoriesIfEmpty } from '@/lib/seedCategories'
-import { formatCurrency, formatDate, getGreeting, getMonthName } from '@/lib/format'
+import { formatDate, getGreeting, getMonthYearLabel } from '@/lib/format'
+import {
+  getCalendarMonthRange,
+  getCurrentCalendarMonth,
+  isMonthAfterNow,
+  isSameMonthAsNow,
+  shiftCalendarMonth,
+} from '@/lib/monthRange'
 import { useGreetingPronoun, getGreetingWithName, getGreetingSuffix } from '@/lib/greeting'
 import MaskedValue from '@/components/MaskedValue'
 import WelcomeModal, { shouldShowWelcomeModal } from '@/components/WelcomeModal'
@@ -12,7 +19,7 @@ import AttentionPanel from '@/components/AttentionPanel'
 import BudgetsPanel from '@/components/BudgetsPanel'
 import { useUserPreferences } from '@/lib/userPreferencesContext'
 import { useToast, CONNECTION_ERROR_MSG, isConnectionError } from '@/lib/toastContext'
-import { RefreshCw, Loader2 } from 'lucide-react'
+import { RefreshCw, Loader2, ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react'
 import type { Database } from '@/types/supabase'
 
 type Revenue = Database['public']['Tables']['revenues']['Row']
@@ -74,18 +81,43 @@ export default function DashboardPage() {
   const [processingIncomeId, setProcessingIncomeId] = useState<string | null>(null)
   const [showWelcomeModal, setShowWelcomeModal] = useState(false)
 
+  const [viewMonth, setViewMonth] = useState(getCurrentCalendarMonth)
+  const [monthBusy, setMonthBusy] = useState(false)
+  const isInitialLoad = useRef(true)
+
+  const monthLabel = useMemo(
+    () => getMonthYearLabel(viewMonth.year, viewMonth.month),
+    [viewMonth.year, viewMonth.month]
+  )
+
+  const nextMonthNav = useMemo(
+    () => shiftCalendarMonth(viewMonth.year, viewMonth.month, 1),
+    [viewMonth.year, viewMonth.month]
+  )
+  const prevMonthNav = useMemo(
+    () => shiftCalendarMonth(viewMonth.year, viewMonth.month, -1),
+    [viewMonth.year, viewMonth.month]
+  )
+  const canGoNext = !isMonthAfterNow(nextMonthNav.year, nextMonthNav.month)
+  /** Não navegar antes de jan/2000 */
+  const canGoPrev = prevMonthNav.year > 2000 || (prevMonthNav.year === 2000 && prevMonthNav.month >= 1)
+
   const balance = totalRevenues - totalExpenses
   const budgetPercent = projectedExpenses > 0 ? (totalExpenses / projectedExpenses) * 100 : 0
 
   useEffect(() => {
     const load = async () => {
-      setLoading(true)
+      if (isInitialLoad.current) {
+        setLoading(true)
+      } else {
+        setMonthBusy(true)
+      }
       setError(null)
       try {
         const { data: userData } = await supabase.auth.getUser()
         setUserEmail(userData.user?.email ?? '')
 
-        if (userData.user) {
+        if (userData.user && isInitialLoad.current) {
           const { data: prof } = await supabase
             .from('profiles')
             .select('full_name')
@@ -99,19 +131,36 @@ export default function DashboardPage() {
           }
         }
 
-        const now = new Date()
-        const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
-        const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10)
-
-        const today = now.toISOString().slice(0, 10)
+        const { start: monthStart, end: monthEnd } = getCalendarMonthRange(viewMonth.year, viewMonth.month)
+        const today = new Date().toISOString().slice(0, 10)
 
         const [revRes, expRes, projRes, unpaidRes, subsRes, incomeRes] = await Promise.all([
-          supabase.from('revenues').select('*').gte('date', monthStart).lte('date', monthEnd).order('date', { ascending: false }),
-          supabase.from('expenses').select('*').gte('due_date', monthStart).lte('due_date', monthEnd).order('due_date', { ascending: false }),
+          supabase
+            .from('revenues')
+            .select('*')
+            .gte('date', monthStart)
+            .lte('date', monthEnd)
+            .order('date', { ascending: false }),
+          supabase
+            .from('expenses')
+            .select('*')
+            .gte('due_date', monthStart)
+            .lte('due_date', monthEnd)
+            .order('due_date', { ascending: false }),
           supabase.from('projections').select('projected_expenses').eq('month', monthStart).maybeSingle(),
           supabase.from('expenses').select('*').eq('paid', false).order('due_date', { ascending: true }).limit(10),
-          supabase.from('subscriptions').select('*').eq('active', true).lte('next_billing_date', today).order('next_billing_date', { ascending: true }),
-          supabase.from('income_sources').select('*').eq('active', true).lte('next_receipt_date', today).order('next_receipt_date', { ascending: true }),
+          supabase
+            .from('subscriptions')
+            .select('*')
+            .eq('active', true)
+            .lte('next_billing_date', today)
+            .order('next_billing_date', { ascending: true }),
+          supabase
+            .from('income_sources')
+            .select('*')
+            .eq('active', true)
+            .lte('next_receipt_date', today)
+            .order('next_receipt_date', { ascending: true }),
         ])
 
         if (revRes.error) throw revRes.error
@@ -130,23 +179,36 @@ export default function DashboardPage() {
         setDueIncomeSources((incomeRes.data ?? []) as IncomeSource[])
 
         const revMoves: Movement[] = revenues.map((r) => ({
-          id: r.id, type: 'revenue', description: r.description,
-          amount: Number(r.amount || 0), date: r.date, status: r.received ? 'Recebida' : 'Pendente',
+          id: r.id,
+          type: 'revenue',
+          description: r.description,
+          amount: Number(r.amount || 0),
+          date: r.date,
+          status: r.received ? 'Recebida' : 'Pendente',
         }))
         const expMoves: Movement[] = expenses.map((e) => ({
-          id: e.id, type: 'expense', description: e.description,
-          amount: Number(e.amount || 0), date: e.due_date || e.created_at?.slice(0, 10) || '', status: e.paid ? 'Quitada' : 'Em aberto',
+          id: e.id,
+          type: 'expense',
+          description: e.description,
+          amount: Number(e.amount || 0),
+          date: e.due_date || e.created_at?.slice(0, 10) || '',
+          status: e.paid ? 'Quitada' : 'Em aberto',
         }))
-        setMovements([...revMoves, ...expMoves].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 7))
+        setMovements([...revMoves, ...expMoves].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 40))
       } catch (err: any) {
         console.error(err)
         setError(err?.message || 'Falha ao carregar dados do patrimônio.')
       } finally {
-        setLoading(false)
+        if (isInitialLoad.current) {
+          setLoading(false)
+          isInitialLoad.current = false
+        } else {
+          setMonthBusy(false)
+        }
       }
     }
     load()
-  }, [supabase])
+  }, [supabase, viewMonth.year, viewMonth.month])
 
   const firstName = useMemo(() => {
     if (profileName) return profileName.split(' ')[0]
@@ -234,6 +296,19 @@ export default function DashboardPage() {
     }
   }
 
+  const goPrevMonth = () => {
+    if (!canGoPrev || monthBusy) return
+    setViewMonth((v) => shiftCalendarMonth(v.year, v.month, -1))
+  }
+  const goNextMonth = () => {
+    if (!canGoNext || monthBusy) return
+    setViewMonth((v) => shiftCalendarMonth(v.year, v.month, 1))
+  }
+  const goCurrentMonth = () => {
+    if (monthBusy) return
+    setViewMonth(getCurrentCalendarMonth())
+  }
+
   const c = {
     card: 'rounded-xl border border-border bg-surface transition-colors glass-card',
     label: 'text-xs font-medium uppercase tracking-wider text-muted',
@@ -279,7 +354,58 @@ export default function DashboardPage() {
         <h1 className={c.h1}>
           {getGreetingWithName(getGreeting(), firstName || '', gender)}!
         </h1>
-        <p className={`${c.sub} mt-0.5`}>Visão geral do patrimônio — {getMonthName()}</p>
+        <p className={`${c.sub} mt-0.5`}>Visão geral do patrimônio — período selecionado abaixo</p>
+      </div>
+
+      {/* Navegação por mês (receitas/despesas do período) */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-xl border border-border bg-surface px-4 py-3 glass-card">
+        <div className="flex items-center gap-1 sm:gap-2 min-w-0 flex-1 justify-center sm:justify-start">
+          <button
+            type="button"
+            onClick={goPrevMonth}
+            disabled={!canGoPrev || monthBusy}
+            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-border bg-background text-main hover:bg-border/40 disabled:opacity-40 disabled:pointer-events-none transition-colors touch-manipulation"
+            aria-label="Mês anterior"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+          <div className="flex min-w-0 flex-1 flex-col items-center sm:items-stretch sm:flex-row sm:gap-3 px-2 text-center sm:text-left">
+            <span className="inline-flex items-center justify-center gap-2 text-sm font-semibold text-main truncate">
+              <CalendarDays className="h-4 w-4 shrink-0 text-brand" aria-hidden />
+              {monthLabel}
+            </span>
+            <span className="text-xs text-muted hidden sm:inline sm:mt-0.5">
+              Entradas e saídas com data neste mês
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={goNextMonth}
+            disabled={!canGoNext || monthBusy}
+            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-border bg-background text-main hover:bg-border/40 disabled:opacity-40 disabled:pointer-events-none transition-colors touch-manipulation"
+            aria-label="Próximo mês"
+          >
+            <ChevronRight className="h-5 w-5" />
+          </button>
+        </div>
+        <div className="flex items-center justify-center gap-2 sm:shrink-0">
+          {!isSameMonthAsNow(viewMonth.year, viewMonth.month) && (
+            <button
+              type="button"
+              onClick={goCurrentMonth}
+              disabled={monthBusy}
+              className="inline-flex items-center justify-center rounded-lg border border-brand/40 bg-brand/10 px-3 py-2 text-xs font-medium text-brand hover:bg-brand/20 disabled:opacity-50 transition-colors touch-manipulation min-h-[44px]"
+            >
+              Ir para mês atual
+            </button>
+          )}
+          {monthBusy && (
+            <span className="inline-flex items-center gap-1.5 text-xs text-muted">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              Atualizando…
+            </span>
+          )}
+        </div>
       </div>
 
       <AttentionPanel />
@@ -348,7 +474,11 @@ export default function DashboardPage() {
         </div>
       )}
 
-      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <section
+        className={`grid gap-4 sm:grid-cols-2 lg:grid-cols-4 relative transition-opacity ${
+          monthBusy ? 'opacity-60 pointer-events-none' : ''
+        }`}
+      >
         <div className={`${c.card} p-4 glass-interactive`}>
           <p className={c.label}>Saldo do mês</p>
           <MaskedValue value={balance} className={`mt-1.5 text-2xl font-semibold ${balance >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`} />
@@ -389,10 +519,14 @@ export default function DashboardPage() {
 
       <BudgetsPanel />
 
-      <section className="grid gap-6 lg:grid-cols-5">
+      <section
+        className={`grid gap-6 lg:grid-cols-5 relative transition-opacity ${
+          monthBusy ? 'opacity-60 pointer-events-none' : ''
+        }`}
+      >
         <div className={`lg:col-span-3 ${c.card}`}>
-          <div className={`${c.borderB} px-5 py-4 flex items-center justify-between`}>
-            <h2 className={c.h2}>Últimas movimentações</h2>
+          <div className={`${c.borderB} px-5 py-4 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between`}>
+            <h2 className={c.h2}>Movimentações — {monthLabel}</h2>
             <div className="flex gap-3">
               <Link href="/revenues" className="text-xs text-brand hover:opacity-80 transition-colors">Entradas</Link>
               <Link href="/expenses" className="text-xs text-brand hover:opacity-80 transition-colors">Saídas</Link>
@@ -401,10 +535,11 @@ export default function DashboardPage() {
           <div className="px-5 py-2">
             {movements.length === 0 ? (
               <p className="py-8 text-center text-sm text-muted">
-                Tudo em ordem no momento{getGreetingSuffix(gender)}. Nenhuma movimentação registrada neste mês.
+                Nenhuma entrada ou saída com data em {monthLabel}
+                {getGreetingSuffix(gender)}. Use as setas acima para ver outros meses.
               </p>
             ) : (
-              <ul className={c.divider}>
+              <ul className={`${c.divider} max-h-[min(28rem,55vh)] overflow-y-auto overscroll-contain`}>
                 {movements.map((m) => (
                   <li key={m.id} className="flex items-center gap-3 py-3">
                     <span className={`inline-flex h-8 w-8 items-center justify-center rounded-lg text-sm ${

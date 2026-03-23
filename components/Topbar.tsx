@@ -7,8 +7,9 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useTheme } from 'next-themes'
 import { createSupabaseClient } from '@/lib/supabaseClient'
 import { usePrivacy } from '@/lib/privacyContext'
-import { LogOut, Sun, Moon, Eye, EyeOff, Loader2, DoorOpen } from 'lucide-react'
+import { LogOut, Sun, Moon, Eye, EyeOff, Loader2, DoorOpen, Plus } from 'lucide-react'
 import { useGreetingPronoun } from '@/lib/greeting'
+import QuickAddModal from '@/components/QuickAddModal'
 
 const mainNav = [
   { label: 'Patrimônio', href: '/dashboard' },
@@ -29,6 +30,7 @@ export default function Topbar() {
   const [trialEndsAt, setTrialEndsAt] = useState<string | null>(null)
   const [planStatus, setPlanStatus] = useState<string>('trial')
   const [showLogoutModal, setShowLogoutModal] = useState(false)
+  const [quickAddOpen, setQuickAddOpen] = useState(false)
   const pronoun = useGreetingPronoun()
   const [loggingOut, setLoggingOut] = useState(false)
 
@@ -118,6 +120,18 @@ export default function Topbar() {
           </nav>
         </div>
         <div className="flex items-center gap-1.5">
+          {/* Botão lançamento rápido */}
+          <button
+            onClick={() => setQuickAddOpen(true)}
+            title="Novo lançamento rápido"
+            className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium bg-brand text-white hover:opacity-90 transition-colors"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Lançar</span>
+          </button>
+
+          <div className="w-px h-6 bg-border mx-0.5" />
+
           {/* Trial badge - só exibe quando restam 7 dias ou menos */}
           {trialBadgeLabel && trialDaysLeft !== null && trialDaysLeft >= 0 && trialDaysLeft <= 7 && (
             <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-brand/15 text-brand ring-1 ring-inset ring-brand/30">
@@ -184,6 +198,8 @@ export default function Topbar() {
           </button>
         </div>
       </div>
+
+      <QuickAddModal open={quickAddOpen} onClose={() => setQuickAddOpen(false)} />
 
       {/* Logout modal */}
       {showLogoutModal && typeof document !== 'undefined' && createPortal(

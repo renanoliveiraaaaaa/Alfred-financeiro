@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useLayoutEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import {
@@ -26,6 +26,11 @@ export interface ReviewTransaction {
   type: 'revenue' | 'expense'
   suggested_category?: string
   original_text: string
+  /** ex.: credit_card_bill — vindo do parser + heurísticas */
+  detected_kind?: string
+  /** Rótulo amigável: "Pagamento de fatura de cartão", etc. */
+  import_hint?: string
+  suggested_payment_method?: string
 }
 
 interface TransactionRow extends ReviewTransaction {
@@ -34,6 +39,12 @@ interface TransactionRow extends ReviewTransaction {
   editedType: 'revenue' | 'expense'
   editedCategory: string
   editedPaymentMethod: string
+}
+
+function defaultPaymentFromImport(t: ReviewTransaction): string {
+  const s = t.suggested_payment_method
+  if (s === 'pix' || s === 'debito' || s === 'credito' || s === 'especie') return s
+  return 'debito'
 }
 
 interface Props {
@@ -46,19 +57,22 @@ interface Props {
 
 const CATEGORY_LABELS: Record<string, string> = {
   mercado: 'Mercado',
-  combustivel: 'Combustível',
-  manutencao_carro: 'Manutenção carro',
   alimentacao: 'Alimentação',
+  compras: 'Compras online',
   transporte: 'Transporte',
+  combustivel: 'Combustível',
+  veiculo: 'Veículo',
   assinaturas: 'Assinaturas',
   saude: 'Saúde',
   educacao: 'Educação',
   lazer: 'Lazer',
   moradia: 'Moradia',
+  fatura_cartao: 'Fatura de cartão',
   outros: 'Outros',
 }
 
 const PAYMENT_LABELS: Record<string, string> = {
+  pix: 'Pix',
   debito: 'Débito',
   credito: 'Crédito',
   especie: 'Espécie',
@@ -83,8 +97,22 @@ function monthKey(iso: string) {
 }
 
 function monthLabel(key: string) {
+  if (!key || !/^\d{4}-\d{2}$/.test(key)) return '—'
   const [year, month] = key.split('-')
-  return `${MONTH_NAMES[parseInt(month, 10) - 1]}/${year}`
+  const mi = parseInt(month, 10)
+  if (!year || Number.isNaN(mi) || mi < 1 || mi > 12) return '—'
+  return `${MONTH_NAMES[mi - 1]}/${year}`
+}
+
+function mapToRows(transactions: ReviewTransaction[]): TransactionRow[] {
+  return transactions.map((t) => ({
+    ...t,
+    selected: true,
+    editedDescription: t.description,
+    editedType: t.type,
+    editedCategory: t.suggested_category ?? 'outros',
+    editedPaymentMethod: defaultPaymentFromImport(t),
+  }))
 }
 
 export default function ImportReviewModal({ open, onClose, transactions, bank, fileName }: Props) {
@@ -92,16 +120,8 @@ export default function ImportReviewModal({ open, onClose, transactions, bank, f
   const { toastError } = useToast()
   const pronoun = useGreetingPronoun()
 
-  const [rows, setRows] = useState<TransactionRow[]>(() =>
-    transactions.map((t) => ({
-      ...t,
-      selected: true,
-      editedDescription: t.description,
-      editedType: t.type,
-      editedCategory: t.suggested_category ?? 'outros',
-      editedPaymentMethod: 'debito',
-    })),
-  )
+  /** useState só roda na 1ª montagem; o modal costuma montar com transactions=[] antes do parse — precisamos sincronizar quando abrir com dados */
+  const [rows, setRows] = useState<TransactionRow[]>([])
 
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -112,7 +132,16 @@ export default function ImportReviewModal({ open, onClose, transactions, bank, f
     return keys
   }, [rows])
 
-  const [activeMonth, setActiveMonth] = useState(() => months[0] ?? '')
+  const [activeMonth, setActiveMonth] = useState('')
+
+  useLayoutEffect(() => {
+    if (!open) return
+    const next = mapToRows(transactions)
+    setRows(next)
+    setSaved(false)
+    const keys = Array.from(new Set(transactions.map((t) => monthKey(t.date)))).sort()
+    setActiveMonth(keys[0] ?? '')
+  }, [open, transactions])
 
   const monthRows = useMemo(
     () => rows.filter((r) => monthKey(r.date) === activeMonth),
@@ -400,12 +429,19 @@ function TransactionRowItem({ row, onUpdate, cls }: RowProps) {
 
         <div className="w-16 text-xs text-muted shrink-0">{fmtDate(row.date)}</div>
 
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 space-y-1">
           <input
             className={cls.input}
             value={row.editedDescription}
             onChange={(e) => onUpdate(row.id, { editedDescription: e.target.value })}
           />
+          {row.import_hint && (
+            <p className="text-[10px] text-muted leading-tight">
+              <span className="inline-flex items-center rounded-md bg-brand/10 text-brand px-1.5 py-0.5 font-medium">
+                {row.import_hint}
+              </span>
+            </p>
+          )}
         </div>
 
         <div className={`w-24 text-sm font-medium shrink-0 ${row.editedType === 'expense' ? 'text-red-400' : 'text-emerald-400'}`}>
@@ -497,6 +533,13 @@ function TransactionRowItem({ row, onUpdate, cls }: RowProps) {
               value={row.editedDescription}
               onChange={(e) => onUpdate(row.id, { editedDescription: e.target.value })}
             />
+            {row.import_hint && (
+              <p className="text-[10px] text-muted">
+                <span className="inline-flex items-center rounded-md bg-brand/10 text-brand px-1.5 py-0.5 font-medium">
+                  {row.import_hint}
+                </span>
+              </p>
+            )}
 
             <div className="flex items-center gap-2 flex-wrap">
               <button

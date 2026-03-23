@@ -14,12 +14,22 @@ type CreditCard = Database['public']['Tables']['credit_cards']['Row']
 
 const DEFAULT_CATEGORIES = [
   { value: 'mercado', label: 'Mercado' },
+  { value: 'alimentacao', label: 'Alimentação' },
+  { value: 'compras', label: 'Compras online' },
+  { value: 'transporte', label: 'Transporte' },
   { value: 'combustivel', label: 'Combustível' },
-  { value: 'manutencao_carro', label: 'Manutenção do carro' },
+  { value: 'veiculo', label: 'Veículo' },
+  { value: 'assinaturas', label: 'Assinaturas' },
+  { value: 'saude', label: 'Saúde' },
+  { value: 'educacao', label: 'Educação' },
+  { value: 'lazer', label: 'Lazer' },
+  { value: 'moradia', label: 'Moradia' },
+  { value: 'fatura_cartao', label: 'Fatura de cartão' },
   { value: 'outros', label: 'Outros' },
 ]
 
 const PAYMENT_METHODS = [
+  { value: 'pix', label: 'Pix' },
   { value: 'debito', label: 'Débito' },
   { value: 'credito', label: 'Crédito' },
   { value: 'especie', label: 'Espécie / Dinheiro' },

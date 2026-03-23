@@ -15,12 +15,15 @@ CREATE TABLE IF NOT EXISTS public.profiles (
 
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view own profile" ON public.profiles;
 CREATE POLICY "Users can view own profile" ON public.profiles
   FOR SELECT USING (auth.uid() = id);
 
+DROP POLICY IF EXISTS "Users can insert own profile" ON public.profiles;
 CREATE POLICY "Users can insert own profile" ON public.profiles
   FOR INSERT WITH CHECK (auth.uid() = id);
 
+DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
 CREATE POLICY "Users can update own profile" ON public.profiles
   FOR UPDATE USING (auth.uid() = id);
 
@@ -44,15 +47,19 @@ CREATE INDEX IF NOT EXISTS idx_credit_cards_user_id ON public.credit_cards(user_
 
 ALTER TABLE public.credit_cards ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view own credit_cards" ON public.credit_cards;
 CREATE POLICY "Users can view own credit_cards" ON public.credit_cards
   FOR SELECT USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own credit_cards" ON public.credit_cards;
 CREATE POLICY "Users can insert own credit_cards" ON public.credit_cards
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own credit_cards" ON public.credit_cards;
 CREATE POLICY "Users can update own credit_cards" ON public.credit_cards
   FOR UPDATE USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can delete own credit_cards" ON public.credit_cards;
 CREATE POLICY "Users can delete own credit_cards" ON public.credit_cards
   FOR DELETE USING (auth.uid() = user_id);
 
@@ -77,15 +84,19 @@ CREATE INDEX IF NOT EXISTS idx_subscriptions_next_billing ON public.subscription
 
 ALTER TABLE public.subscriptions ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view own subscriptions" ON public.subscriptions;
 CREATE POLICY "Users can view own subscriptions" ON public.subscriptions
   FOR SELECT USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own subscriptions" ON public.subscriptions;
 CREATE POLICY "Users can insert own subscriptions" ON public.subscriptions
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own subscriptions" ON public.subscriptions;
 CREATE POLICY "Users can update own subscriptions" ON public.subscriptions
   FOR UPDATE USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can delete own subscriptions" ON public.subscriptions;
 CREATE POLICY "Users can delete own subscriptions" ON public.subscriptions
   FOR DELETE USING (auth.uid() = user_id);
 
@@ -109,15 +120,19 @@ CREATE INDEX IF NOT EXISTS idx_goals_user_id ON public.goals(user_id);
 
 ALTER TABLE public.goals ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view own goals" ON public.goals;
 CREATE POLICY "Users can view own goals" ON public.goals
   FOR SELECT USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own goals" ON public.goals;
 CREATE POLICY "Users can insert own goals" ON public.goals
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own goals" ON public.goals;
 CREATE POLICY "Users can update own goals" ON public.goals
   FOR UPDATE USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can delete own goals" ON public.goals;
 CREATE POLICY "Users can delete own goals" ON public.goals
   FOR DELETE USING (auth.uid() = user_id);
 

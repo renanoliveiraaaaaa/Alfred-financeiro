@@ -210,21 +210,24 @@ export default function QuickAddModal({ open, onClose }: Props) {
                 <label className={cls.label}>Categoria</label>
                 <select className={cls.input} value={category} onChange={(e) => setCategory(e.target.value)}>
                   <option value="mercado">Mercado</option>
-                  <option value="combustivel">Combustível</option>
-                  <option value="manutencao_carro">Manutenção carro</option>
                   <option value="alimentacao">Alimentação</option>
+                  <option value="compras">Compras online</option>
                   <option value="transporte">Transporte</option>
+                  <option value="combustivel">Combustível</option>
+                  <option value="veiculo">Veículo</option>
                   <option value="assinaturas">Assinaturas</option>
                   <option value="saude">Saúde</option>
                   <option value="educacao">Educação</option>
                   <option value="lazer">Lazer</option>
                   <option value="moradia">Moradia</option>
+                  <option value="fatura_cartao">Fatura de cartão</option>
                   <option value="outros">Outros</option>
                 </select>
               </div>
               <div>
                 <label className={cls.label}>Pagamento</label>
                 <select className={cls.input} value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
+                  <option value="pix">Pix</option>
                   <option value="debito">Débito</option>
                   <option value="credito">Crédito</option>
                   <option value="especie">Espécie</option>

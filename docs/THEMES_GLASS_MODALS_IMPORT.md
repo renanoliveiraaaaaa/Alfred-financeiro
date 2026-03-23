@@ -85,6 +85,16 @@ Em `globals.css`, sob `.theme-liquid`:
 - API: `app/api/parse-statement/route.ts`.
 - UI de revisão: `components/ImportReviewModal.tsx`.
 
+### Heurísticas de tipo de lançamento (`lib/importHeuristics.ts`)
+
+Depois do parse, **todas** as transações passam por `enrichParsedTransactions`:
+
+- Tenta classificar o texto em tipos como **pagamento de fatura de cartão**, **boleto**, **PIX** (enviado vs recebido), **TED/DOC/transferência**, **saque**, **tarifa bancária**, **investimentos** (padrões comuns em português BR).
+- Preenche **`import_hint`** (selo no modal de revisão) e **`suggested_payment_method`** para despesas (ex.: fatura paga na conta corrente → sugestão **Débito**; saque → **Espécie**).
+- **Não** associa a um cartão cadastrado no app (`credit_card_id`): o extrato quase nunca traz esse vínculo; o usuário pode editar a despesa depois se precisar.
+
+Textos genéricos ou bancos com descrições atípicas podem não casar — a revisão manual continua essencial.
+
 ### Banco de dados
 
 **Migration:** `20260319200000_import_statements.sql`
@@ -93,6 +103,28 @@ Em `globals.css`, sob `.theme-liquid`:
 - Colunas em `revenues` e `expenses`: `source` (default `'manual'`), `import_session_id` (FK opcional para `import_sessions`).
 
 RLS em `import_sessions` com políticas por `auth.uid() = user_id`.
+
+### Problema: modal de revisão vazio após “Processar extrato”
+
+O `ImportReviewModal` monta junto com a página **antes** de existir transações (`transactions=[]`). O estado interno (`rows`) era inicializado uma única vez com esse array vazio e **não** era atualizado quando o parse retornava dados — a tabela ficava vazia e o botão podia mostrar `Confirmar undefined/`.
+
+**Correção:** sincronizar `rows` e `activeMonth` com `useLayoutEffect` sempre que `open` e `transactions` mudarem após o parse.
+
+### Parser OFX
+
+Alguns extratos usam tags com **namespace** (`<OFX:STMTTRN>`), **PAYEE** em vez de NAME, ou MEMO vazio. O parser aceita prefixos opcionais, PAYEE e descrição fallback (`Ref. FITID` ou `Lançamento OFX (data)`).
+
+#### Itaú (BANKID 0341 / OFX 102 SGML)
+
+Muitos arquivos marcam **todas** as linhas como `<TRNTYPE>CREDIT` com **valor positivo**, inclusive saídas. O parser:
+
+1. Usa **sinal negativo** em `TRNAMT` e tipos `DEBIT` / etc. quando existirem.
+2. Reconhece **MEMO** típicos de entrada (`REND PAGO APLIC`, `DEV PIX`, `PIX ORIGEM CARTAO`, …) e de saída (`PAGAMENTO`, `BOLETO`, `FATURA`, …).
+3. Se o arquivo tem **BANKID Itaú** ou o usuário escolhe **Itaú**, aplica regra extra: linhas **`PIX TRANSF`** (exceto rendimentos/devoluções) são classificadas como **despesa** — porque no extrato costumam ser envios. **PIX recebidos** com o mesmo texto podem ser marcados como receita no modal de revisão, ou marque a opção **“Não aplicar regra PIX Itaú”** antes de processar.
+
+#### Período no arquivo
+
+O intervalo de datas importado segue **`DTSTART` / `DTEND`** do OFX (o que o banco colocou no download). Não é limitação do app: para mais meses, exporte outro extrato no internet banking.
 
 ---
 

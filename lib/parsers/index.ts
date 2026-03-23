@@ -2,7 +2,10 @@ import { ParsedTransaction } from './types'
 import { parseNubankCsv } from './nubank-csv'
 import { parseInterCsv } from './inter-csv'
 import { parseGenericCsv } from './generic-csv'
-import { parseOfx } from './ofx-parser'
+import { parseOfx, detectBankFromOfxContent } from './ofx-parser'
+import { enrichParsedTransactions } from '@/lib/importHeuristics'
+
+export { detectBankFromOfxContent } from './ofx-parser'
 
 export type SupportedBank =
   | 'nubank'
@@ -25,26 +28,35 @@ export type { ParsedTransaction }
  * @param content  Conteúdo textual do arquivo
  * @param bank     Banco selecionado pelo usuário
  * @param format   Extensão do arquivo (csv | ofx | qfx)
+ * @param extra    OFX: `skipItauPixTransfExpenseRule` desliga PIX TRANSF → despesa (Itaú)
  */
 export function parseStatement(
   content: string,
   bank: SupportedBank,
   format: FileFormat,
+  extra?: { skipItauPixTransfExpenseRule?: boolean },
 ): ParsedTransaction[] {
-  // OFX/QFX usa sempre o mesmo parser, independente do banco
   if (format === 'ofx' || format === 'qfx') {
-    return parseOfx(content)
+    // Auto-detecção: se o usuário não escolheu um banco específico, tenta inferir pelo conteúdo
+    const effectiveBank =
+      bank === 'generic' ? (detectBankFromOfxContent(content) ?? bank) : bank
+    return enrichParsedTransactions(
+      parseOfx(content, {
+        selectedBank: effectiveBank,
+        skipItauPixTransfExpenseRule: extra?.skipItauPixTransfExpenseRule,
+      }),
+    )
   }
 
   // CSV: parser específico por banco
   if (format === 'csv') {
     switch (bank) {
       case 'nubank':
-        return parseNubankCsv(content)
+        return enrichParsedTransactions(parseNubankCsv(content))
       case 'inter':
-        return parseInterCsv(content)
+        return enrichParsedTransactions(parseInterCsv(content))
       default:
-        return parseGenericCsv(content)
+        return enrichParsedTransactions(parseGenericCsv(content))
     }
   }
 

@@ -89,11 +89,11 @@ CREATE TABLE IF NOT EXISTS public.expenses (
   amount NUMERIC(10, 2) NOT NULL,
   description TEXT NOT NULL,
   category TEXT NOT NULL CHECK (category IN (
-    'mercado', 'combustivel', 'manutencao_carro', 'alimentacao',
-    'transporte', 'assinaturas', 'saude', 'educacao',
-    'lazer', 'moradia', 'outros'
+    'mercado', 'alimentacao', 'compras', 'transporte',
+    'combustivel', 'veiculo', 'assinaturas', 'saude',
+    'educacao', 'lazer', 'moradia', 'fatura_cartao', 'outros'
   )),
-  payment_method TEXT NOT NULL CHECK (payment_method IN ('credito', 'debito', 'especie', 'credito_parcelado')),
+  payment_method TEXT NOT NULL CHECK (payment_method IN ('credito', 'debito', 'especie', 'credito_parcelado', 'pix')),
   installments INTEGER,
   installment_number INTEGER,
   due_date DATE,
@@ -208,136 +208,177 @@ ALTER TABLE public.projections ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.import_sessions ENABLE ROW LEVEL SECURITY;
 
 -- Políticas RLS para users
+DROP POLICY IF EXISTS "Users can view own data" ON public.users;
 CREATE POLICY "Users can view own data" ON public.users
   FOR SELECT USING (auth.uid() = id);
 
+DROP POLICY IF EXISTS "Users can update own data" ON public.users;
 CREATE POLICY "Users can update own data" ON public.users
   FOR UPDATE USING (auth.uid() = id);
 
 -- Políticas RLS para profiles
+DROP POLICY IF EXISTS "Users can view own profile" ON public.profiles;
 CREATE POLICY "Users can view own profile" ON public.profiles
   FOR SELECT USING (auth.uid() = id);
 
+DROP POLICY IF EXISTS "Users can insert own profile" ON public.profiles;
 CREATE POLICY "Users can insert own profile" ON public.profiles
   FOR INSERT WITH CHECK (auth.uid() = id);
 
+DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
 CREATE POLICY "Users can update own profile" ON public.profiles
   FOR UPDATE USING (auth.uid() = id);
 
 -- Políticas RLS para revenues
+DROP POLICY IF EXISTS "Users can view own revenues" ON public.revenues;
 CREATE POLICY "Users can view own revenues" ON public.revenues
   FOR SELECT USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own revenues" ON public.revenues;
 CREATE POLICY "Users can insert own revenues" ON public.revenues
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own revenues" ON public.revenues;
 CREATE POLICY "Users can update own revenues" ON public.revenues
   FOR UPDATE USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can delete own revenues" ON public.revenues;
 CREATE POLICY "Users can delete own revenues" ON public.revenues
   FOR DELETE USING (auth.uid() = user_id);
 
 -- Políticas RLS para expenses
+DROP POLICY IF EXISTS "Users can view own expenses" ON public.expenses;
 CREATE POLICY "Users can view own expenses" ON public.expenses
   FOR SELECT USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own expenses" ON public.expenses;
 CREATE POLICY "Users can insert own expenses" ON public.expenses
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own expenses" ON public.expenses;
 CREATE POLICY "Users can update own expenses" ON public.expenses
   FOR UPDATE USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can delete own expenses" ON public.expenses;
 CREATE POLICY "Users can delete own expenses" ON public.expenses
   FOR DELETE USING (auth.uid() = user_id);
 
 -- Políticas RLS para categories
+DROP POLICY IF EXISTS "Users can view own categories" ON public.categories;
 CREATE POLICY "Users can view own categories" ON public.categories
   FOR SELECT USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own categories" ON public.categories;
 CREATE POLICY "Users can insert own categories" ON public.categories
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own categories" ON public.categories;
 CREATE POLICY "Users can update own categories" ON public.categories
   FOR UPDATE USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can delete own categories" ON public.categories;
 CREATE POLICY "Users can delete own categories" ON public.categories
   FOR DELETE USING (auth.uid() = user_id);
 
 -- Políticas RLS para credit_cards
+DROP POLICY IF EXISTS "Users can view own credit_cards" ON public.credit_cards;
 CREATE POLICY "Users can view own credit_cards" ON public.credit_cards
   FOR SELECT USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own credit_cards" ON public.credit_cards;
 CREATE POLICY "Users can insert own credit_cards" ON public.credit_cards
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own credit_cards" ON public.credit_cards;
 CREATE POLICY "Users can update own credit_cards" ON public.credit_cards
   FOR UPDATE USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can delete own credit_cards" ON public.credit_cards;
 CREATE POLICY "Users can delete own credit_cards" ON public.credit_cards
   FOR DELETE USING (auth.uid() = user_id);
 
 -- Políticas RLS para subscriptions
+DROP POLICY IF EXISTS "Users can view own subscriptions" ON public.subscriptions;
 CREATE POLICY "Users can view own subscriptions" ON public.subscriptions
   FOR SELECT USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own subscriptions" ON public.subscriptions;
 CREATE POLICY "Users can insert own subscriptions" ON public.subscriptions
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own subscriptions" ON public.subscriptions;
 CREATE POLICY "Users can update own subscriptions" ON public.subscriptions
   FOR UPDATE USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can delete own subscriptions" ON public.subscriptions;
 CREATE POLICY "Users can delete own subscriptions" ON public.subscriptions
   FOR DELETE USING (auth.uid() = user_id);
 
 -- Políticas RLS para income_sources
+DROP POLICY IF EXISTS "Users can view own income_sources" ON public.income_sources;
 CREATE POLICY "Users can view own income_sources" ON public.income_sources
   FOR SELECT USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own income_sources" ON public.income_sources;
 CREATE POLICY "Users can insert own income_sources" ON public.income_sources
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own income_sources" ON public.income_sources;
 CREATE POLICY "Users can update own income_sources" ON public.income_sources
   FOR UPDATE USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can delete own income_sources" ON public.income_sources;
 CREATE POLICY "Users can delete own income_sources" ON public.income_sources
   FOR DELETE USING (auth.uid() = user_id);
 
 -- Políticas RLS para goals
+DROP POLICY IF EXISTS "Users can view own goals" ON public.goals;
 CREATE POLICY "Users can view own goals" ON public.goals
   FOR SELECT USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own goals" ON public.goals;
 CREATE POLICY "Users can insert own goals" ON public.goals
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own goals" ON public.goals;
 CREATE POLICY "Users can update own goals" ON public.goals
   FOR UPDATE USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can delete own goals" ON public.goals;
 CREATE POLICY "Users can delete own goals" ON public.goals
   FOR DELETE USING (auth.uid() = user_id);
 
 -- Políticas RLS para projections
+DROP POLICY IF EXISTS "Users can view own projections" ON public.projections;
 CREATE POLICY "Users can view own projections" ON public.projections
   FOR SELECT USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own projections" ON public.projections;
 CREATE POLICY "Users can insert own projections" ON public.projections
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own projections" ON public.projections;
 CREATE POLICY "Users can update own projections" ON public.projections
   FOR UPDATE USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can delete own projections" ON public.projections;
 CREATE POLICY "Users can delete own projections" ON public.projections
   FOR DELETE USING (auth.uid() = user_id);
 
 -- Políticas RLS para import_sessions
+DROP POLICY IF EXISTS "Users can view own import_sessions" ON public.import_sessions;
 CREATE POLICY "Users can view own import_sessions" ON public.import_sessions
   FOR SELECT USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own import_sessions" ON public.import_sessions;
 CREATE POLICY "Users can insert own import_sessions" ON public.import_sessions
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own import_sessions" ON public.import_sessions;
 CREATE POLICY "Users can update own import_sessions" ON public.import_sessions
   FOR UPDATE USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can delete own import_sessions" ON public.import_sessions;
 CREATE POLICY "Users can delete own import_sessions" ON public.import_sessions
   FOR DELETE USING (auth.uid() = user_id);
 

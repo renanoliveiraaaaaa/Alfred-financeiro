@@ -8,6 +8,7 @@ import AnimatedPage from '@/components/AnimatedPage'
 import LiquidBackground from '@/components/LiquidBackground'
 import { createSupabaseClient } from '@/lib/supabaseClient'
 import { useUserPreferences } from '@/lib/userPreferencesContext'
+import { usePrivacy } from '@/lib/privacyContext'
 
 export default function AppLayoutClient({
   children,
@@ -18,6 +19,7 @@ export default function AppLayoutClient({
   const router = useRouter()
   const supabase = createSupabaseClient()
   const { loadPreferences } = useUserPreferences()
+  const { setPrivacyMode } = usePrivacy()
   const [checking, setChecking] = useState(true)
 
   const isExpiredPage = pathname === '/expired'
@@ -32,7 +34,7 @@ export default function AppLayoutClient({
 
       const { data: profile } = await supabase
         .from('profiles')
-        .select('plan_status, trial_ends_at')
+        .select('plan_status, trial_ends_at, hide_balance')
         .eq('id', user.id)
         .maybeSingle()
 
@@ -47,11 +49,12 @@ export default function AppLayoutClient({
         return
       }
       if (user) loadPreferences(user.id)
+      if (profile?.hide_balance) setPrivacyMode(true)
       setChecking(false)
     }
 
     checkTrial()
-  }, [supabase, router, isExpiredPage, loadPreferences])
+  }, [supabase, router, isExpiredPage, loadPreferences, setPrivacyMode])
 
   if (checking) {
     return (

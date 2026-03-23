@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { parseStatement, detectFormat, SupportedBank } from '@/lib/parsers'
+import { parseStatement, detectFormat, detectBankFromOfxContent, SupportedBank } from '@/lib/parsers'
 
 /**
  * POST /api/parse-statement
@@ -15,6 +15,8 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData()
     const file = formData.get('file') as File | null
     const bank = (formData.get('bank') as string | null) ?? 'generic'
+    const skipItauPix =
+      formData.get('skip_itau_pix_rule') === '1' || formData.get('skip_itau_pix_rule') === 'true'
 
     if (!file) {
       return NextResponse.json(
@@ -32,9 +34,24 @@ export async function POST(request: NextRequest) {
     }
 
     const content = await file.text()
-    const transactions = parseStatement(content, bank as SupportedBank, format)
 
-    return NextResponse.json({ transactions, total: transactions.length })
+    // Auto-detecção: se o banco for 'generic' e o arquivo for OFX, tenta inferir pelo conteúdo
+    const detectedBank =
+      (format === 'ofx' || format === 'qfx') && bank === 'generic'
+        ? (detectBankFromOfxContent(content) ?? null)
+        : null
+
+    const effectiveBank = (detectedBank ?? bank) as SupportedBank
+
+    const transactions = parseStatement(content, effectiveBank, format, {
+      skipItauPixTransfExpenseRule: skipItauPix,
+    })
+
+    return NextResponse.json({
+      transactions,
+      total: transactions.length,
+      detected_bank: detectedBank, // informado para a UI poder avisar o usuário
+    })
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Erro inesperado ao processar o arquivo.'
     return NextResponse.json({ error: message }, { status: 500 })

@@ -13,6 +13,7 @@ import {
   Plus, X, Loader2, RefreshCw, Pencil,
   Tv, Music, Cloud, ShoppingBag, Dumbbell, BookOpen, Gamepad2, Wifi, Shield, Sparkles,
 } from 'lucide-react'
+import CurrencyInput from '@/components/CurrencyInput'
 import type { Database } from '@/types/supabase'
 
 type Subscription = Database['public']['Tables']['subscriptions']['Row']
@@ -61,7 +62,7 @@ export default function SubscriptionsPage() {
   const [formError, setFormError] = useState<string | null>(null)
 
   const [fName, setFName] = useState('')
-  const [fAmount, setFAmount] = useState('')
+  const [fAmount, setFAmount] = useState(0)
   const [fCategory, setFCategory] = useState('streaming')
   const [fCycle, setFCycle] = useState<'mensal' | 'anual'>('mensal')
   const [fNextDate, setFNextDate] = useState('')
@@ -92,7 +93,7 @@ export default function SubscriptionsPage() {
 
   const resetForm = () => {
     setFName('')
-    setFAmount('')
+    setFAmount(0)
     setFCategory('streaming')
     setFCycle('mensal')
     setFNextDate('')
@@ -108,7 +109,7 @@ export default function SubscriptionsPage() {
   const openEdit = (s: Subscription) => {
     setEditId(s.id)
     setFName(s.name)
-    setFAmount(String(s.amount))
+    setFAmount(Number(s.amount))
     setFCategory(s.category || 'assinaturas')
     setFCycle(s.billing_cycle as 'mensal' | 'anual')
     setFNextDate(s.next_billing_date)
@@ -120,7 +121,7 @@ export default function SubscriptionsPage() {
     e.preventDefault()
     setFormError(null)
 
-    const amount = parseFloat(fAmount.replace(/\./g, '').replace(',', '.')) || 0
+    const amount = fAmount
     if (!fName.trim()) { setFormError('Informe o nome da assinatura.'); return }
     if (amount <= 0) { setFormError('Informe um valor maior que zero.'); return }
     if (!fNextDate) { setFormError('Informe a data da próxima cobrança.'); return }
@@ -270,7 +271,16 @@ export default function SubscriptionsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className={cls.label}>Valor (R$)</label>
-                  <input className={cls.input} placeholder="39,90" value={fAmount} onChange={(e) => setFAmount(e.target.value)} required />
+                  <div className="relative">
+                    <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted text-sm">R$</span>
+                    <CurrencyInput
+                      value={fAmount}
+                      onChange={setFAmount}
+                      placeholder="0,00"
+                      className={`${cls.input} pl-10`}
+                      required
+                    />
+                  </div>
                 </div>
                 <div>
                   <label className={cls.label}>Ciclo</label>

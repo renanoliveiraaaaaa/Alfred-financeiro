@@ -43,18 +43,22 @@ ALTER TABLE public.expenses
 
 ALTER TABLE public.import_sessions ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view own import_sessions" ON public.import_sessions;
 CREATE POLICY "Users can view own import_sessions"
   ON public.import_sessions FOR SELECT
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own import_sessions" ON public.import_sessions;
 CREATE POLICY "Users can insert own import_sessions"
   ON public.import_sessions FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own import_sessions" ON public.import_sessions;
 CREATE POLICY "Users can update own import_sessions"
   ON public.import_sessions FOR UPDATE
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can delete own import_sessions" ON public.import_sessions;
 CREATE POLICY "Users can delete own import_sessions"
   ON public.import_sessions FOR DELETE
   USING (auth.uid() = user_id);

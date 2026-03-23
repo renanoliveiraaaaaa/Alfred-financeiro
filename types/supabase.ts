@@ -19,7 +19,9 @@ export interface Database {
           full_name: string | null
           avatar_url: string | null
           gender: 'M' | 'F' | 'O' | null
-          app_theme: 'normal' | 'gala' | 'classic' | 'club'
+          app_theme: 'normal' | 'gala' | 'classic' | 'club' | 'liquid'
+          hide_balance: boolean
+          weekly_report: boolean
           created_at: string
         }
         Insert: {
@@ -27,7 +29,9 @@ export interface Database {
           full_name?: string | null
           avatar_url?: string | null
           gender?: 'M' | 'F' | 'O' | null
-          app_theme?: 'normal' | 'alfred'
+          app_theme?: 'normal' | 'gala' | 'classic' | 'club' | 'liquid'
+          hide_balance?: boolean
+          weekly_report?: boolean
           created_at?: string
         }
         Update: {
@@ -35,7 +39,9 @@ export interface Database {
           full_name?: string | null
           avatar_url?: string | null
           gender?: 'M' | 'F' | 'O' | null
-          app_theme?: 'normal' | 'alfred'
+          app_theme?: 'normal' | 'gala' | 'classic' | 'club' | 'liquid'
+          hide_balance?: boolean
+          weekly_report?: boolean
           created_at?: string
         }
       }
@@ -101,7 +107,7 @@ export interface Database {
           amount: number
           description: string
           category: string
-          payment_method: 'credito' | 'debito' | 'especie' | 'credito_parcelado'
+          payment_method: 'credito' | 'debito' | 'especie' | 'credito_parcelado' | 'pix'
           installments: number | null
           installment_number: number | null
           due_date: string | null
@@ -118,7 +124,7 @@ export interface Database {
           amount: number
           description: string
           category: string
-          payment_method: 'credito' | 'debito' | 'especie' | 'credito_parcelado'
+          payment_method: 'credito' | 'debito' | 'especie' | 'credito_parcelado' | 'pix'
           installments?: number | null
           installment_number?: number | null
           due_date?: string | null
@@ -135,7 +141,7 @@ export interface Database {
           amount?: number
           description?: string
           category?: string
-          payment_method?: 'credito' | 'debito' | 'especie' | 'credito_parcelado'
+          payment_method?: 'credito' | 'debito' | 'especie' | 'credito_parcelado' | 'pix'
           installments?: number | null
           installment_number?: number | null
           due_date?: string | null

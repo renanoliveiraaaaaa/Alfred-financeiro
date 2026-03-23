@@ -61,6 +61,8 @@ export default function ProfilePage() {
         setGender((profile.gender as Gender) || null)
         setAppTheme(theme)
         setLocalPreferences({ gender: (profile.gender as Gender) || null, appTheme: theme })
+        setPrefHideBalance(profile.hide_balance ?? false)
+        setPrefWeeklyReport(profile.weekly_report ?? false)
       }
     } catch (err: any) {
       setError(err?.message || 'Falha ao carregar perfil.')
@@ -122,6 +124,8 @@ export default function ProfilePage() {
           avatar_url: avatarUrl,
           gender,
           app_theme: appTheme,
+          hide_balance: prefHideBalance,
+          weekly_report: prefWeeklyReport,
           updated_at: new Date().toISOString(),
         })
       if (upsertErr) throw new Error(upsertErr.message)

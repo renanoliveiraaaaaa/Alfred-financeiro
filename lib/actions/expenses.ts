@@ -3,7 +3,7 @@
 import { createSupabaseServerClient } from '@/lib/supabaseServer'
 import { calculateInstallmentDates, addMonths } from '@/lib/installments'
 
-type PaymentMethod = 'credito' | 'debito' | 'especie' | 'credito_parcelado'
+type PaymentMethod = 'credito' | 'debito' | 'especie' | 'credito_parcelado' | 'pix'
 
 export type CreateExpenseInput = {
   amount: number

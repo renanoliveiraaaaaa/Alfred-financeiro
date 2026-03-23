@@ -31,16 +31,34 @@ const MONTH_LABELS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'S
 
 const CATEGORY_LABELS: Record<string, string> = {
   mercado: 'Mercado',
+  alimentacao: 'Alimentação',
+  compras: 'Compras online',
+  transporte: 'Transporte',
   combustivel: 'Combustível',
-  manutencao_carro: 'Manutenção carro',
+  veiculo: 'Veículo',
+  assinaturas: 'Assinaturas',
+  saude: 'Saúde',
+  educacao: 'Educação',
+  lazer: 'Lazer',
+  moradia: 'Moradia',
+  fatura_cartao: 'Fatura de cartão',
   outros: 'Outros',
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
   mercado: '#10b981',
+  alimentacao: '#f97316',
+  compras: '#ec4899',
+  transporte: '#06b6d4',
   combustivel: '#f59e0b',
-  manutencao_carro: '#3b82f6',
-  outros: '#8b5cf6',
+  veiculo: '#3b82f6',
+  assinaturas: '#8b5cf6',
+  saude: '#ef4444',
+  educacao: '#14b8a6',
+  lazer: '#a855f7',
+  moradia: '#64748b',
+  fatura_cartao: '#0ea5e9',
+  outros: '#6b7280',
 }
 
 function groupByMonth(items: { amount: number; dateField: string }[]): number[] {
