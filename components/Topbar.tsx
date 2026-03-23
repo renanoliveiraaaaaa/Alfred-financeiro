@@ -11,11 +11,27 @@ import { LogOut, Sun, Moon, Eye, EyeOff, Loader2, DoorOpen, Plus } from 'lucide-
 import { useGreetingPronoun } from '@/lib/greeting'
 import QuickAddModal from '@/components/QuickAddModal'
 
-const mainNav = [
-  { label: 'Patrimônio', href: '/dashboard' },
-  { label: 'Relatórios', href: '/reports' },
-  { label: 'Cadastros', href: '/settings' },
-]
+const PAGE_TITLES: Record<string, string> = {
+  '/dashboard': 'Visão geral',
+  '/revenues': 'Entradas',
+  '/expenses': 'Saídas',
+  '/credit-cards': 'Cartões de crédito',
+  '/subscriptions': 'Assinaturas',
+  '/income-sources': 'Fontes de renda',
+  '/goals': 'Cofres',
+  '/projections': 'Orçamento',
+  '/reports': 'Relatórios',
+  '/import-statement': 'Importar extrato',
+  '/import-history': 'Histórico de importações',
+  '/settings': 'Cadastros',
+  '/profile': 'Perfil',
+}
+
+function getPageTitle(pathname: string): string {
+  if (PAGE_TITLES[pathname]) return PAGE_TITLES[pathname]
+  const base = '/' + pathname.split('/')[1]
+  return PAGE_TITLES[base] ?? ''
+}
 
 export default function Topbar() {
   const pathname = usePathname()
@@ -31,8 +47,8 @@ export default function Topbar() {
   const [planStatus, setPlanStatus] = useState<string>('trial')
   const [showLogoutModal, setShowLogoutModal] = useState(false)
   const [quickAddOpen, setQuickAddOpen] = useState(false)
-  const pronoun = useGreetingPronoun()
   const [loggingOut, setLoggingOut] = useState(false)
+  const pronoun = useGreetingPronoun()
 
   useEffect(() => setMounted(true), [])
 
@@ -50,33 +66,34 @@ export default function Topbar() {
         .eq('id', userData.user.id)
         .maybeSingle()
 
-      if (profile?.full_name) {
-        setDisplayName(profile.full_name.split(' ')[0])
-      }
-      if (profile?.avatar_url) {
-        setAvatarUrl(profile.avatar_url)
-      }
-      if (profile?.plan_status) {
-        setPlanStatus(profile.plan_status)
-      }
-      if (profile?.trial_ends_at) {
-        setTrialEndsAt(profile.trial_ends_at)
-      }
+      if (profile?.full_name) setDisplayName(profile.full_name.split(' ')[0])
+      if (profile?.avatar_url) setAvatarUrl(profile.avatar_url)
+      if (profile?.plan_status) setPlanStatus(profile.plan_status)
+      if (profile?.trial_ends_at) setTrialEndsAt(profile.trial_ends_at)
     }
     loadProfile()
   }, [supabase])
 
   const initials = displayName ? displayName[0].toUpperCase() : '?'
   const isDark = resolvedTheme === 'dark'
+  const pageTitle = getPageTitle(pathname)
 
-  const trialDaysLeft = planStatus === 'trial' && trialEndsAt
-    ? Math.ceil((new Date(trialEndsAt).getTime() - Date.now()) / 86_400_000)
-    : null
+  const trialDaysLeft =
+    planStatus === 'trial' && trialEndsAt
+      ? Math.ceil((new Date(trialEndsAt).getTime() - Date.now()) / 86_400_000)
+      : null
+
   const trialBadgeLabel =
-    trialDaysLeft === null ? null
-    : trialDaysLeft < 1 ? 'Último dia de teste'
-    : trialDaysLeft === 1 ? '1 dia de teste grátis'
-    : `${trialDaysLeft} dias de teste grátis`
+    trialDaysLeft === null
+      ? null
+      : trialDaysLeft < 1
+        ? 'Último dia'
+        : trialDaysLeft === 1
+          ? '1 dia restante'
+          : `${trialDaysLeft} dias restantes`
+
+  const showTrialBadge =
+    trialBadgeLabel !== null && trialDaysLeft !== null && trialDaysLeft >= 0 && trialDaysLeft <= 7
 
   const handleLogout = async () => {
     setLoggingOut(true)
@@ -87,59 +104,36 @@ export default function Topbar() {
 
   return (
     <header className="sticky top-0 z-40 bg-surface/80 backdrop-blur-md border-b border-border glass-topbar">
-      <div className="h-14 flex items-center justify-between px-5 transition-colors">
-        <div className="flex items-center gap-6">
-          <Link
-            href="/dashboard"
-            className="flex items-center gap-2.5 text-lg font-semibold tracking-tight"
-          >
-            <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-brand/15 border border-brand/30 text-sm">
-              🎩
-            </span>
-            <span className="hidden sm:inline text-main">
-              Alfred <span className="text-brand font-normal">Financeiro</span>
-            </span>
-          </Link>
-          <nav className="hidden md:flex items-center gap-1 text-sm">
-            {mainNav.map((item) => {
-              const active = pathname.startsWith(item.href)
-              return (
-                <Link
-                  key={item.href + item.label}
-                  href={item.href}
-                  className={`px-3 py-1.5 rounded-md transition-colors ${
-                    active
-                      ? 'bg-brand/15 text-brand'
-                      : 'text-muted hover:text-main hover:bg-background'
-                  }`}
-                >
-                  {item.label}
-                </Link>
-              )
-            })}
-          </nav>
+      <div className="h-14 flex items-center justify-between px-5 gap-4 transition-colors">
+
+        {/* ── Left: page title ── */}
+        <div className="min-w-0 flex-1">
+          {pageTitle && (
+            <h1 className="text-sm font-semibold text-main truncate">{pageTitle}</h1>
+          )}
         </div>
-        <div className="flex items-center gap-1.5">
-          {/* Botão lançamento rápido */}
+
+        {/* ── Right: actions ── */}
+        <div className="flex items-center gap-1 shrink-0">
+
+          {/* Trial badge */}
+          {showTrialBadge && (
+            <span className="hidden sm:inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400 ring-1 ring-inset ring-amber-500/20 mr-1">
+              {trialBadgeLabel}
+            </span>
+          )}
+
+          {/* Quick add */}
           <button
             onClick={() => setQuickAddOpen(true)}
             title="Novo lançamento rápido"
-            className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium bg-brand text-white hover:opacity-90 transition-colors"
+            className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-semibold bg-brand text-white hover:bg-brand/90 active:scale-95 transition-all"
           >
             <Plus className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Lançar</span>
           </button>
 
-          <div className="w-px h-6 bg-border mx-0.5" />
-
-          {/* Trial badge - só exibe quando restam 7 dias ou menos */}
-          {trialBadgeLabel && trialDaysLeft !== null && trialDaysLeft >= 0 && trialDaysLeft <= 7 && (
-            <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-brand/15 text-brand ring-1 ring-inset ring-brand/30">
-              {trialBadgeLabel}
-            </span>
-          )}
-
-          <div className="w-px h-6 bg-border mx-0.5" />
+          <div className="w-px h-5 bg-border mx-1.5" />
 
           {/* Theme toggle */}
           {mounted && (
@@ -147,9 +141,12 @@ export default function Topbar() {
               onClick={() => {
                 document.documentElement.classList.add('theme-transition')
                 setTheme(isDark ? 'light' : 'dark')
-                setTimeout(() => document.documentElement.classList.remove('theme-transition'), 500)
+                setTimeout(
+                  () => document.documentElement.classList.remove('theme-transition'),
+                  500,
+                )
               }}
-              title="Ajustar iluminação, senhor"
+              title={isDark ? 'Modo claro' : 'Modo escuro'}
               className="inline-flex items-center justify-center h-8 w-8 rounded-lg text-muted hover:text-main hover:bg-background transition-colors"
             >
               {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
@@ -159,7 +156,7 @@ export default function Topbar() {
           {/* Privacy toggle */}
           <button
             onClick={togglePrivacyMode}
-            title="Modo discrição"
+            title={isPrivacyMode ? 'Mostrar valores' : 'Ocultar valores'}
             className={`inline-flex items-center justify-center h-8 w-8 rounded-lg transition-colors ${
               isPrivacyMode
                 ? 'bg-brand/15 text-brand'
@@ -169,73 +166,89 @@ export default function Topbar() {
             {isPrivacyMode ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
           </button>
 
-          <div className="w-px h-6 bg-border mx-1" />
+          <div className="w-px h-5 bg-border mx-1.5" />
 
-          {/* Profile */}
-          <Link href="/profile" className="flex items-center gap-2.5 group">
-            <div className="hidden sm:block text-right">
-              <p className="text-xs text-muted group-hover:text-main transition-colors">
-                À sua disposição
+          {/* Profile avatar */}
+          <Link
+            href="/profile"
+            title={`Perfil — ${displayName || pronoun}`}
+            className="flex items-center gap-2 group"
+          >
+            <div className="hidden sm:block text-right leading-none">
+              <p className="text-xs font-medium text-main group-hover:text-brand transition-colors">
+                {displayName || pronoun}
               </p>
-              <p className="text-sm font-medium text-main">{displayName || pronoun}</p>
             </div>
-            <div className="h-8 w-8 rounded-full border border-brand/30 overflow-hidden bg-background flex items-center justify-center shrink-0 glow-hover">
+            <div className="h-8 w-8 rounded-full border border-border overflow-hidden bg-background flex items-center justify-center shrink-0 group-hover:border-brand/50 transition-colors">
               {avatarUrl ? (
                 <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
               ) : (
-                <span className="text-xs font-semibold text-brand">{initials}</span>
+                <span className="text-xs font-bold text-brand">{initials}</span>
               )}
             </div>
           </Link>
 
+          {/* Logout */}
           <button
             onClick={() => setShowLogoutModal(true)}
             title="Encerrar sessão"
-            className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg text-muted hover:text-main hover:bg-background transition-colors"
+            className="inline-flex items-center justify-center h-8 w-8 rounded-lg text-muted hover:text-red-500 hover:bg-red-500/10 transition-colors"
           >
             <LogOut className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Sair</span>
           </button>
         </div>
       </div>
 
       <QuickAddModal open={quickAddOpen} onClose={() => setQuickAddOpen(false)} />
 
-      {/* Logout modal */}
-      {showLogoutModal && typeof document !== 'undefined' && createPortal(
-        <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4 animate-backdrop-enter">
-          <div className="w-full max-w-sm rounded-xl border border-border bg-surface shadow-2xl p-6 space-y-4 animate-modal-enter">
-            <div className="flex items-center gap-3">
-              <div className="h-11 w-11 rounded-full bg-brand/15 flex items-center justify-center shrink-0">
-                <DoorOpen className="h-5 w-5 text-brand" />
+      {/* ── Logout confirmation modal ── */}
+      {showLogoutModal &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4 animate-backdrop-enter">
+            <div className="w-full max-w-sm rounded-xl border border-border bg-surface shadow-2xl p-6 space-y-4 animate-modal-enter">
+              <div className="flex items-center gap-3">
+                <div className="h-11 w-11 rounded-full bg-brand/15 flex items-center justify-center shrink-0">
+                  <DoorOpen className="h-5 w-5 text-brand" />
+                </div>
+                <div>
+                  <h2 className="text-base font-semibold text-main">Deixando a Mansão?</h2>
+                  <p className="text-xs text-muted mt-0.5">Sua sessão será encerrada.</p>
+                </div>
               </div>
-              <h2 className="text-lg font-semibold text-main">Deixando a Mansão?</h2>
-            </div>
 
-            <p className="text-sm text-muted leading-relaxed">
-              Deseja realmente encerrar a sua sessão, patrão? Estarei aqui aguardando o seu retorno para cuidar das finanças.
-            </p>
+              <p className="text-sm text-muted leading-relaxed">
+                Deseja realmente sair, {displayName || 'patrão'}? Estarei aqui aguardando o seu
+                retorno para cuidar das finanças.
+              </p>
 
-            <div className="flex justify-end gap-3 pt-2">
-              <button
-                onClick={() => setShowLogoutModal(false)}
-                disabled={loggingOut}
-                className="px-4 py-2.5 rounded-lg text-sm font-medium border border-border text-muted hover:bg-background disabled:opacity-50 transition-colors"
-              >
-                Permanecer
-              </button>
-              <button
-                onClick={handleLogout}
-                disabled={loggingOut}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 transition-colors"
-              >
-                {loggingOut ? <><Loader2 className="h-4 w-4 animate-spin" /> Saindo...</> : 'Sim, Sair'}
-              </button>
+              <div className="flex justify-end gap-2 pt-1">
+                <button
+                  onClick={() => setShowLogoutModal(false)}
+                  disabled={loggingOut}
+                  className="px-4 py-2 rounded-lg text-sm font-medium border border-border text-muted hover:bg-background disabled:opacity-50 transition-colors"
+                >
+                  Permanecer
+                </button>
+                <button
+                  onClick={handleLogout}
+                  disabled={loggingOut}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 transition-colors"
+                >
+                  {loggingOut ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Saindo…
+                    </>
+                  ) : (
+                    'Sair'
+                  )}
+                </button>
+              </div>
             </div>
-          </div>
-        </div>,
-        document.body
-      )}
+          </div>,
+          document.body,
+        )}
     </header>
   )
 }

@@ -13,6 +13,11 @@ import {
   ArrowUpRight,
   CheckSquare,
   Square,
+  CheckCircle2,
+  TrendingUp,
+  Receipt,
+  FileUp,
+  AlertCircle,
 } from 'lucide-react'
 import { confirmImport } from '@/lib/actions/import-statement'
 import { useToast } from '@/lib/toastContext'
@@ -115,9 +120,15 @@ function mapToRows(transactions: ReviewTransaction[]): TransactionRow[] {
   }))
 }
 
+type SavedStats = {
+  expenses: number
+  revenues: number
+  total: number
+}
+
 export default function ImportReviewModal({ open, onClose, transactions, bank, fileName }: Props) {
   const router = useRouter()
-  const { toastError } = useToast()
+  const { toast, toastError } = useToast()
   const pronoun = useGreetingPronoun()
 
   /** useState só roda na 1ª montagem; o modal costuma montar com transactions=[] antes do parse — precisamos sincronizar quando abrir com dados */
@@ -125,6 +136,8 @@ export default function ImportReviewModal({ open, onClose, transactions, bank, f
 
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [savedStats, setSavedStats] = useState<SavedStats | null>(null)
+  const [importError, setImportError] = useState<string | null>(null)
 
   // Agrupa por mês
   const months = useMemo(() => {
@@ -139,6 +152,8 @@ export default function ImportReviewModal({ open, onClose, transactions, bank, f
     const next = mapToRows(transactions)
     setRows(next)
     setSaved(false)
+    setSavedStats(null)
+    setImportError(null)
     const keys = Array.from(new Set(transactions.map((t) => monthKey(t.date)))).sort()
     setActiveMonth(keys[0] ?? '')
   }, [open, transactions])
@@ -192,45 +207,61 @@ export default function ImportReviewModal({ open, onClose, transactions, bank, f
 
   const doConfirm = async (selected: TransactionRow[]) => {
     if (selected.length === 0) {
-      toastError('Nenhuma transação selecionada.')
+      setImportError('Nenhuma transação selecionada.')
       return
     }
 
     setSaving(true)
+    setImportError(null)
 
-    // Calcula período
-    const dates = selected.map((r) => r.date).sort()
-    const period_start = dates[0]
-    const period_end = dates[dates.length - 1]
+    try {
+      const dates = selected.map((r) => r.date).sort()
+      const period_start = dates[0]
+      const period_end = dates[dates.length - 1]
 
-    const result = await confirmImport({
-      bank,
-      file_name: fileName,
-      period_start,
-      period_end,
-      transactions: selected.map((r) => ({
-        date: r.date,
-        description: r.editedDescription,
-        amount: r.amount,
-        type: r.editedType,
-        category: r.editedType === 'expense' ? r.editedCategory : undefined,
-        payment_method: r.editedType === 'expense' ? r.editedPaymentMethod : undefined,
-      })),
-    })
+      const result = await confirmImport({
+        bank,
+        file_name: fileName,
+        period_start,
+        period_end,
+        transactions: selected.map((r) => ({
+          date: r.date,
+          description: r.editedDescription,
+          amount: r.amount,
+          type: r.editedType,
+          category: r.editedType === 'expense' ? r.editedCategory : undefined,
+          payment_method: r.editedType === 'expense' ? r.editedPaymentMethod : undefined,
+        })),
+      })
 
-    setSaving(false)
+      if (!result.success) {
+        setImportError(result.error ?? 'Erro ao importar. Tente novamente.')
+        toastError(result.error ?? 'Erro ao importar.')
+        return
+      }
 
-    if (!result.success) {
-      toastError(result.error)
-      return
+      const expCount = selected.filter((r) => r.editedType === 'expense').length
+      const revCount = selected.filter((r) => r.editedType === 'revenue').length
+      setSavedStats({ expenses: expCount, revenues: revCount, total: selected.length })
+      setSaved(true)
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erro inesperado ao importar.'
+      setImportError(msg)
+      toastError(msg)
+    } finally {
+      setSaving(false)
     }
+  }
 
-    setSaved(true)
-    setTimeout(() => {
-      onClose()
-      router.push('/expenses')
-      router.refresh()
-    }, 1500)
+  const handleNavigateTo = (path: '/expenses' | '/revenues') => {
+    const label = path === '/expenses' ? 'despesas' : 'receitas'
+    toast(
+      `Importação concluída! ${savedStats?.total ?? 0} transações adicionadas — acesse ${label} para conferir.`,
+      'success',
+    )
+    onClose()
+    router.push(path)
+    router.refresh()
   }
 
   if (!open) return null
@@ -243,153 +274,232 @@ export default function ImportReviewModal({ open, onClose, transactions, bank, f
   const modal = (
     <div
       className="fixed inset-0 z-[999] flex flex-col bg-black/60 animate-backdrop-enter overflow-hidden"
-      onClick={onClose}
+      onClick={saved ? undefined : onClose}
     >
       <div
         className="flex flex-col w-full h-full max-w-6xl mx-auto bg-surface border-x border-border shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
-          <div>
-            <h2 className="text-base font-semibold text-main">Revisão de Extrato</h2>
-            <p className="text-xs text-muted mt-0.5">
-              {pronoun
-                ? `Prezado(a) ${pronoun}, encontrei ${transactions.length} transações para revisar.`
-                : `Encontrei ${transactions.length} transações para revisar.`}
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-muted hover:text-main hover:bg-background transition-colors"
-            aria-label="Fechar"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-
-        {/* Month tabs */}
-        <div className="flex items-center gap-1 px-4 py-2 border-b border-border overflow-x-auto shrink-0">
-          <button
-            onClick={() => setActiveMonth(months[Math.max(0, monthIdx - 1)])}
-            disabled={monthIdx === 0}
-            className="p-1 rounded text-muted hover:text-main disabled:opacity-30 transition-colors"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </button>
-          {months.map((m) => (
-            <button
-              key={m}
-              onClick={() => setActiveMonth(m)}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap transition-colors ${
-                m === activeMonth
-                  ? 'bg-brand text-white'
-                  : 'text-muted hover:text-main hover:bg-background'
-              }`}
-            >
-              {monthLabel(m)}
-            </button>
-          ))}
-          <button
-            onClick={() => setActiveMonth(months[Math.min(months.length - 1, monthIdx + 1)])}
-            disabled={monthIdx === months.length - 1}
-            className="p-1 rounded text-muted hover:text-main disabled:opacity-30 transition-colors"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </button>
-        </div>
-
-        {/* Month summary */}
-        <div className="grid grid-cols-3 gap-3 px-5 py-3 border-b border-border bg-background/50 shrink-0 text-xs">
-          <div>
-            <span className="text-muted">Receitas</span>
-            <p className="font-semibold text-emerald-400">R$ {fmtAmount(totalSelectedInMonth.revenues)}</p>
-          </div>
-          <div>
-            <span className="text-muted">Despesas</span>
-            <p className="font-semibold text-red-400">R$ {fmtAmount(totalSelectedInMonth.expenses)}</p>
-          </div>
-          <div>
-            <span className="text-muted">Balanço</span>
-            <p className={`font-semibold ${totalSelectedInMonth.balance >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-              R$ {fmtAmount(Math.abs(totalSelectedInMonth.balance))}
-            </p>
-          </div>
-        </div>
-
-        {/* Transactions list */}
-        <div className="flex-1 overflow-y-auto">
-          {/* Desktop table header */}
-          <div className="hidden md:flex items-center gap-2 px-4 py-2 border-b border-border bg-background/30 text-xs font-medium text-muted uppercase tracking-wider shrink-0">
-            <div className="w-8 flex justify-center">
-              <button onClick={toggleSelectAll} className="text-muted hover:text-main transition-colors">
-                {allSelectedInMonth ? (
-                  <CheckSquare className="h-4 w-4 text-brand" />
-                ) : someSelectedInMonth ? (
-                  <CheckSquare className="h-4 w-4 text-muted" />
-                ) : (
-                  <Square className="h-4 w-4" />
-                )}
-              </button>
-            </div>
-            <div className="w-16">Data</div>
-            <div className="flex-1">Descrição</div>
-            <div className="w-24">Valor</div>
-            <div className="w-24">Tipo</div>
-            <div className="w-32">Categoria</div>
-            <div className="w-28">Pagamento</div>
-          </div>
-
-          <div className="divide-y divide-border">
-            {monthRows.map((row) => (
-              <TransactionRowItem
-                key={row.id}
-                row={row}
-                onUpdate={updateRow}
-                cls={cls}
-              />
-            ))}
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="shrink-0 border-t border-border px-5 py-3 bg-surface">
-          {saved ? (
-            <div className="flex items-center gap-2 justify-center text-sm text-emerald-400">
-              <Check className="h-4 w-4" />
-              Transações importadas com sucesso, {pronoun}!
-            </div>
-          ) : (
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-              <p className="text-xs text-muted">
-                <span className="text-main font-medium">{grandTotal.count}</span> transações selecionadas
-                {' · '}
-                Total:{' '}
-                <span className={grandTotal.total >= 0 ? 'text-emerald-400' : 'text-red-400'}>
-                  R$ {fmtAmount(Math.abs(grandTotal.total))}
-                </span>
-              </p>
-              <div className="flex gap-2 w-full sm:w-auto">
-                <button
-                  onClick={handleConfirmMonth}
-                  disabled={saving || totalSelectedInMonth.count === 0}
-                  className="flex-1 sm:flex-none min-h-[40px] inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium border border-border text-muted hover:bg-background disabled:opacity-40 transition-colors"
-                >
-                  {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-                  Confirmar {monthLabel(activeMonth)}
-                </button>
-                <button
-                  onClick={handleConfirmAll}
-                  disabled={saving || grandTotal.count === 0}
-                  className="flex-1 sm:flex-none min-h-[40px] inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium bg-brand text-white hover:opacity-90 disabled:opacity-40 transition-colors"
-                >
-                  {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
-                  Confirmar todos
-                </button>
+        {/* ── Success screen ── */}
+        {saved && savedStats ? (
+          <div className="flex flex-col items-center justify-center flex-1 px-6 py-12 text-center gap-6">
+            {/* Animated check */}
+            <div className="relative flex items-center justify-center">
+              <div className="absolute h-24 w-24 rounded-full bg-emerald-500/10 animate-ping opacity-40" />
+              <div className="relative h-20 w-20 rounded-full bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center">
+                <CheckCircle2 className="h-10 w-10 text-emerald-500" strokeWidth={1.5} />
               </div>
             </div>
-          )}
-        </div>
+
+            <div className="space-y-1.5">
+              <h2 className="text-2xl font-semibold text-main">
+                Importação concluída!
+              </h2>
+              <p className="text-sm text-muted">
+                {pronoun ? `Pronto, ${pronoun}. ` : ''}
+                {savedStats.total} transações foram salvas com sucesso.
+              </p>
+            </div>
+
+            {/* Stats */}
+            <div className="flex items-center gap-4">
+              {savedStats.expenses > 0 && (
+                <div className="flex flex-col items-center gap-1.5 px-5 py-3 rounded-xl border border-border bg-background/60">
+                  <Receipt className="h-5 w-5 text-red-400" />
+                  <span className="text-xl font-bold text-main">{savedStats.expenses}</span>
+                  <span className="text-xs text-muted">
+                    {savedStats.expenses === 1 ? 'despesa' : 'despesas'}
+                  </span>
+                </div>
+              )}
+              {savedStats.revenues > 0 && (
+                <div className="flex flex-col items-center gap-1.5 px-5 py-3 rounded-xl border border-border bg-background/60">
+                  <TrendingUp className="h-5 w-5 text-emerald-400" />
+                  <span className="text-xl font-bold text-main">{savedStats.revenues}</span>
+                  <span className="text-xs text-muted">
+                    {savedStats.revenues === 1 ? 'entrada' : 'entradas'}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Navigation buttons */}
+            <div className="flex flex-col sm:flex-row items-center gap-3 w-full max-w-sm">
+              {savedStats.expenses > 0 && (
+                <button
+                  onClick={() => handleNavigateTo('/expenses')}
+                  className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium bg-brand text-white hover:opacity-90 transition-colors"
+                >
+                  <Receipt className="h-4 w-4" />
+                  Ver despesas
+                </button>
+              )}
+              {savedStats.revenues > 0 && (
+                <button
+                  onClick={() => handleNavigateTo('/revenues')}
+                  className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium border border-border text-main hover:bg-background transition-colors"
+                >
+                  <TrendingUp className="h-4 w-4" />
+                  Ver entradas
+                </button>
+              )}
+            </div>
+
+            <button
+              onClick={onClose}
+              className="inline-flex items-center gap-1.5 text-xs text-muted hover:text-main transition-colors mt-2"
+            >
+              <FileUp className="h-3.5 w-3.5" />
+              Importar outro extrato
+            </button>
+          </div>
+        ) : (
+          <>
+            {/* ── Header ── */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
+              <div>
+                <h2 className="text-base font-semibold text-main">Revisão de Extrato</h2>
+                <p className="text-xs text-muted mt-0.5">
+                  {pronoun
+                    ? `Prezado(a) ${pronoun}, encontrei ${transactions.length} transações para revisar.`
+                    : `Encontrei ${transactions.length} transações para revisar.`}
+                </p>
+              </div>
+              <button
+                onClick={onClose}
+                className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-muted hover:text-main hover:bg-background transition-colors"
+                aria-label="Fechar"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* ── Month tabs ── */}
+            <div className="flex items-center gap-1 px-4 py-2 border-b border-border overflow-x-auto shrink-0">
+              <button
+                onClick={() => setActiveMonth(months[Math.max(0, monthIdx - 1)])}
+                disabled={monthIdx === 0}
+                className="p-1 rounded text-muted hover:text-main disabled:opacity-30 transition-colors"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              {months.map((m) => (
+                <button
+                  key={m}
+                  onClick={() => setActiveMonth(m)}
+                  className={`px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap transition-colors ${
+                    m === activeMonth
+                      ? 'bg-brand text-white'
+                      : 'text-muted hover:text-main hover:bg-background'
+                  }`}
+                >
+                  {monthLabel(m)}
+                </button>
+              ))}
+              <button
+                onClick={() => setActiveMonth(months[Math.min(months.length - 1, monthIdx + 1)])}
+                disabled={monthIdx === months.length - 1}
+                className="p-1 rounded text-muted hover:text-main disabled:opacity-30 transition-colors"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* ── Month summary ── */}
+            <div className="grid grid-cols-3 gap-3 px-5 py-3 border-b border-border bg-background/50 shrink-0 text-xs">
+              <div>
+                <span className="text-muted">Receitas</span>
+                <p className="font-semibold text-emerald-400">R$ {fmtAmount(totalSelectedInMonth.revenues)}</p>
+              </div>
+              <div>
+                <span className="text-muted">Despesas</span>
+                <p className="font-semibold text-red-400">R$ {fmtAmount(totalSelectedInMonth.expenses)}</p>
+              </div>
+              <div>
+                <span className="text-muted">Balanço</span>
+                <p className={`font-semibold ${totalSelectedInMonth.balance >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                  R$ {fmtAmount(Math.abs(totalSelectedInMonth.balance))}
+                </p>
+              </div>
+            </div>
+
+            {/* ── Transactions list ── */}
+            <div className="flex-1 overflow-y-auto">
+              <div className="hidden md:flex items-center gap-2 px-4 py-2 border-b border-border bg-background/30 text-xs font-medium text-muted uppercase tracking-wider shrink-0">
+                <div className="w-8 flex justify-center">
+                  <button onClick={toggleSelectAll} className="text-muted hover:text-main transition-colors">
+                    {allSelectedInMonth ? (
+                      <CheckSquare className="h-4 w-4 text-brand" />
+                    ) : someSelectedInMonth ? (
+                      <CheckSquare className="h-4 w-4 text-muted" />
+                    ) : (
+                      <Square className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
+                <div className="w-16">Data</div>
+                <div className="flex-1">Descrição</div>
+                <div className="w-24">Valor</div>
+                <div className="w-24">Tipo</div>
+                <div className="w-32">Categoria</div>
+                <div className="w-28">Pagamento</div>
+              </div>
+
+              <div className="divide-y divide-border">
+                {monthRows.map((row) => (
+                  <TransactionRowItem
+                    key={row.id}
+                    row={row}
+                    onUpdate={updateRow}
+                    cls={cls}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* ── Footer ── */}
+            <div className="shrink-0 border-t border-border px-5 py-3 bg-surface space-y-2.5">
+              {/* Erro inline */}
+              {importError && (
+                <div className="flex items-start gap-2 rounded-lg border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 px-3 py-2.5 text-xs text-red-700 dark:text-red-300">
+                  <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                  <span className="flex-1">{importError}</span>
+                  <button onClick={() => setImportError(null)} className="shrink-0 hover:opacity-70">
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <p className="text-xs text-muted">
+                  <span className="text-main font-medium">{grandTotal.count}</span> transações selecionadas
+                  {' · '}
+                  Total:{' '}
+                  <span className={grandTotal.total >= 0 ? 'text-emerald-400' : 'text-red-400'}>
+                    R$ {fmtAmount(Math.abs(grandTotal.total))}
+                  </span>
+                </p>
+                <div className="flex gap-2 w-full sm:w-auto">
+                  <button
+                    onClick={handleConfirmMonth}
+                    disabled={saving || totalSelectedInMonth.count === 0}
+                    className="flex-1 sm:flex-none min-h-[40px] inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium border border-border text-muted hover:bg-background disabled:opacity-40 transition-colors"
+                  >
+                    {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+                    Confirmar {monthLabel(activeMonth)}
+                  </button>
+                  <button
+                    onClick={handleConfirmAll}
+                    disabled={saving || grandTotal.count === 0}
+                    className="flex-1 sm:flex-none min-h-[40px] inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium bg-brand text-white hover:opacity-90 disabled:opacity-40 transition-colors"
+                  >
+                    {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                    Confirmar todos
+                  </button>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </div>
   )

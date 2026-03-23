@@ -2,6 +2,28 @@
 
 import { createSupabaseServerClient } from '@/lib/supabaseServer'
 
+// Valores válidos após a migration consolidada (20260318200000_consolidate_all_pending.sql).
+// Qualquer valor fora dessas listas cai no fallback para nunca violar o CHECK constraint.
+const SAFE_CATEGORIES = new Set([
+  'mercado', 'alimentacao', 'compras', 'transporte', 'combustivel',
+  'veiculo', 'assinaturas', 'saude', 'educacao',
+  'lazer', 'moradia', 'fatura_cartao', 'outros',
+])
+
+const SAFE_PAYMENT_METHODS = new Set([
+  'credito', 'debito', 'especie', 'credito_parcelado', 'pix',
+])
+
+function safeCategory(value: string | undefined): string {
+  if (value && SAFE_CATEGORIES.has(value)) return value
+  return 'outros'
+}
+
+function safePaymentMethod(value: string | undefined): string {
+  if (value && SAFE_PAYMENT_METHODS.has(value)) return value
+  return 'debito'
+}
+
 export interface ImportTransaction {
   date: string
   description: string
@@ -89,15 +111,12 @@ export async function confirmImport(input: ConfirmImportInput): Promise<ActionRe
         import_session_id: sessionId,
       })
     } else {
-      const category = tx.category || 'outros'
-      const paymentMethod = tx.payment_method || 'debito'
-
       expenses.push({
         user_id: user.id,
         amount: tx.amount,
         description: tx.description.trim(),
-        category,
-        payment_method: paymentMethod,
+        category: safeCategory(tx.category),
+        payment_method: safePaymentMethod(tx.payment_method),
         due_date: tx.date,
         paid: true,
         source: 'import',
@@ -106,16 +125,21 @@ export async function confirmImport(input: ConfirmImportInput): Promise<ActionRe
     }
   }
 
+  // Helper de rollback: apaga tudo que já foi inserido e marca a sessão como falha
+  const rollback = async (reason: string): Promise<ActionResult> => {
+    await Promise.all([
+      supabase.from('revenues').delete().eq('import_session_id', sessionId),
+      supabase.from('expenses').delete().eq('import_session_id', sessionId),
+      supabase.from('import_sessions').update({ status: 'failed' }).eq('id', sessionId),
+    ])
+    return { success: false, error: reason }
+  }
+
   // Batch insert receitas
   if (revenues.length > 0) {
     const { error: revError } = await supabase.from('revenues').insert(revenues)
     if (revError) {
-      // Reverte: atualiza sessão como falha
-      await supabase
-        .from('import_sessions')
-        .update({ status: 'failed' })
-        .eq('id', sessionId)
-      return { success: false, error: `Erro ao importar receitas: ${revError.message}` }
+      return rollback(`Erro ao importar receitas: ${revError.message}`)
     }
     imported += revenues.length
   }
@@ -124,12 +148,8 @@ export async function confirmImport(input: ConfirmImportInput): Promise<ActionRe
   if (expenses.length > 0) {
     const { error: expError } = await supabase.from('expenses').insert(expenses)
     if (expError) {
-      // Reverte parcialmente: marca sessão como falha
-      await supabase
-        .from('import_sessions')
-        .update({ status: 'failed' })
-        .eq('id', sessionId)
-      return { success: false, error: `Erro ao importar despesas: ${expError.message}` }
+      // Receitas já inseridas são desfeitas antes de retornar o erro
+      return rollback(`Erro ao importar despesas: ${expError.message}`)
     }
     imported += expenses.length
   }

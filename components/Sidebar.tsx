@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useState, useEffect } from 'react'
 import {
   LayoutDashboard,
   Receipt,
@@ -16,6 +17,7 @@ import {
   Wallet,
   FileUp,
   History,
+  ChevronDown,
 } from 'lucide-react'
 
 type NavItem = {
@@ -25,110 +27,198 @@ type NavItem = {
   sub?: boolean
 }
 
-type NavGroup = {
-  label: string
-  items: NavItem[]
-}
+// Itens sempre visíveis (sem agrupamento com label)
+const flatItems: NavItem[] = [
+  { href: '/dashboard', label: 'Visão geral', Icon: LayoutDashboard },
+  { href: '/revenues', label: 'Entradas', Icon: TrendingUp },
+  { href: '/expenses', label: 'Saídas', Icon: Receipt },
+  { href: '/credit-cards', label: 'Cartões', Icon: CreditCard },
+  { href: '/subscriptions', label: 'Assinaturas', Icon: RefreshCw },
+  { href: '/income-sources', label: 'Fontes de renda', Icon: Wallet },
+  { href: '/goals', label: 'Cofres', Icon: PiggyBank },
+  { href: '/settings', label: 'Cadastros', Icon: Settings },
+  { href: '/profile', label: 'Perfil', Icon: UserCircle },
+]
 
-const groups: NavGroup[] = [
+// Grupos que viram botões expansíveis
+const accordions = [
   {
-    label: '',
-    items: [
-      { href: '/dashboard', label: 'Visão geral', Icon: LayoutDashboard },
-    ],
-  },
-  {
-    label: 'Movimentações',
-    items: [
-      { href: '/revenues', label: 'Entradas', Icon: TrendingUp },
-      { href: '/expenses', label: 'Saídas', Icon: Receipt },
-    ],
-  },
-  {
-    label: 'Patrimônio',
-    items: [
-      { href: '/credit-cards', label: 'Cartões', Icon: CreditCard },
-      { href: '/subscriptions', label: 'Assinaturas', Icon: RefreshCw },
-      { href: '/income-sources', label: 'Fontes de renda', Icon: Wallet },
-      { href: '/goals', label: 'Cofres', Icon: PiggyBank },
-    ],
-  },
-  {
+    key: 'planejamento',
     label: 'Planejamento',
+    Icon: Target,
     items: [
       { href: '/projections', label: 'Orçamento', Icon: Target },
       { href: '/reports', label: 'Relatórios', Icon: BarChart3 },
     ],
   },
   {
+    key: 'extratos',
     label: 'Extratos',
+    Icon: FileUp,
     items: [
       { href: '/import-statement', label: 'Importar extrato', Icon: FileUp },
-      { href: '/import-history', label: 'Histórico', Icon: History, sub: true },
-    ],
-  },
-  {
-    label: 'Sistema',
-    items: [
-      { href: '/settings', label: 'Cadastros', Icon: Settings },
-      { href: '/profile', label: 'Perfil', Icon: UserCircle },
+      { href: '/import-history', label: 'Histórico', Icon: History },
     ],
   },
 ]
 
+function isActive(href: string, pathname: string) {
+  return pathname === href || pathname.startsWith(href + '/')
+}
+
 export default function Sidebar() {
   const pathname = usePathname()
 
+  // Abre o accordion cujo item está ativo
+  const getInitialOpen = () => {
+    const open: Record<string, boolean> = {}
+    accordions.forEach((acc) => {
+      open[acc.key] = acc.items.some((item) => isActive(item.href, pathname))
+    })
+    return open
+  }
+
+  const [openAccordions, setOpenAccordions] = useState<Record<string, boolean>>(getInitialOpen)
+
+  useEffect(() => {
+    setOpenAccordions((prev) => {
+      const next = { ...prev }
+      accordions.forEach((acc) => {
+        if (acc.items.some((item) => isActive(item.href, pathname))) {
+          next[acc.key] = true
+        }
+      })
+      return next
+    })
+  }, [pathname])
+
+  const toggle = (key: string) =>
+    setOpenAccordions((prev) => ({ ...prev, [key]: !prev[key] }))
+
   return (
-    <aside className="fixed inset-y-0 left-0 z-50 h-screen w-60 bg-surface border-r border-border flex flex-col py-4 shrink-0 max-md:w-16 max-md:items-center max-md:py-3 transition-colors glass-sidebar overflow-y-auto">
-      <nav className="flex-1 px-3 max-md:px-1.5 space-y-4">
-        {groups.map((group, gi) => (
-          <div key={gi}>
-            {/* Label do grupo — só aparece em telas maiores */}
-            {group.label && (
-              <p className="max-md:hidden px-3 mb-1 text-[10px] font-semibold uppercase tracking-widest text-muted/60 select-none">
-                {group.label}
-              </p>
-            )}
+    <aside className="fixed inset-y-0 left-0 z-50 h-screen w-60 bg-surface border-r border-border flex flex-col shrink-0 max-md:w-16 max-md:items-center transition-colors glass-sidebar overflow-y-auto">
 
-            {/* Separador no mobile entre grupos (exceto o primeiro) */}
-            {gi > 0 && (
-              <div className="md:hidden mx-auto w-8 border-t border-border mb-2" />
-            )}
-
-            <div className="space-y-0.5">
-              {group.items.map((item) => {
-                const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    title={item.label}
-                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 max-md:justify-center max-md:px-2 ${
-                      item.sub ? 'ml-3 max-md:ml-0' : ''
-                    } ${
-                      isActive
-                        ? 'bg-brand/15 text-brand border border-brand/20'
-                        : 'text-muted hover:text-main hover:bg-background border border-transparent'
-                    }`}
-                  >
-                    <item.Icon className={`shrink-0 ${item.sub ? 'h-[16px] w-[16px]' : 'h-[18px] w-[18px]'}`} />
-                    <span className={`max-md:sr-only ${item.sub ? 'text-xs' : ''}`}>
-                      {item.label}
-                    </span>
-                  </Link>
-                )
-              })}
-            </div>
-          </div>
-        ))}
-      </nav>
-
-      <div className="px-4 pt-4 border-t border-border max-md:hidden shrink-0">
-        <p className="text-[10px] uppercase tracking-widest text-muted text-center">
-          Alfred Financeiro
-        </p>
+      {/* ── Brand header ── */}
+      <div className="flex items-center gap-2.5 px-4 h-14 border-b border-border shrink-0">
+        <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-brand/15 border border-brand/20 text-sm shrink-0">
+          🎩
+        </span>
+        <span className="max-md:hidden text-sm font-semibold text-main leading-none">
+          Alfred <span className="text-brand font-normal">Financeiro</span>
+        </span>
       </div>
+
+      {/* ── Navigation ── */}
+      <nav className="flex-1 px-2 py-3 max-md:px-1 overflow-y-auto">
+        <div className="space-y-0.5">
+
+          {/* Itens fixos */}
+          {flatItems.map((item) => {
+            const active = isActive(item.href, pathname)
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                title={item.label}
+                className={`relative flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm font-medium transition-all duration-150 max-md:justify-center ${
+                  active
+                    ? 'bg-brand/10 text-brand'
+                    : 'text-muted hover:text-main hover:bg-background/80'
+                }`}
+              >
+                {active && (
+                  <span className="absolute left-0 top-1/2 -translate-y-1/2 h-4 w-0.5 rounded-r-full bg-brand" />
+                )}
+                <item.Icon className="h-4 w-4 shrink-0" />
+                <span className={`max-md:sr-only leading-none ${active ? 'font-semibold' : ''}`}>
+                  {item.label}
+                </span>
+              </Link>
+            )
+          })}
+
+          {/* Divisor antes dos accordions */}
+          <div className="my-2 mx-1 border-t border-border" />
+
+          {/* Accordions: Planejamento e Extratos */}
+          {accordions.map((acc) => {
+            const isOpen = openAccordions[acc.key]
+            const hasActive = acc.items.some((item) => isActive(item.href, pathname))
+
+            return (
+              <div key={acc.key}>
+                {/* Botão do accordion */}
+                <button
+                  onClick={() => toggle(acc.key)}
+                  title={acc.label}
+                  className={`max-md:hidden w-full flex items-center justify-between gap-2.5 px-2.5 py-2 rounded-lg text-sm font-medium transition-all duration-150 ${
+                    hasActive
+                      ? 'text-brand'
+                      : 'text-muted hover:text-main hover:bg-background/80'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <acc.Icon className="h-4 w-4 shrink-0" />
+                    <span className="leading-none">{acc.label}</span>
+                  </div>
+                  <ChevronDown
+                    className={`h-3.5 w-3.5 shrink-0 transition-transform duration-200 ${
+                      isOpen ? 'rotate-0' : '-rotate-90'
+                    }`}
+                  />
+                </button>
+
+                {/* Ícone no mobile (sem label) */}
+                <button
+                  onClick={() => toggle(acc.key)}
+                  title={acc.label}
+                  className={`md:hidden w-full flex items-center justify-center py-2 rounded-lg transition-colors ${
+                    hasActive ? 'text-brand' : 'text-muted hover:text-main hover:bg-background/80'
+                  }`}
+                >
+                  <acc.Icon className="h-4 w-4" />
+                </button>
+
+                {/* Subitens com animação CSS grid */}
+                <div
+                  className={`grid transition-all duration-200 ease-in-out ${
+                    isOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
+                  }`}
+                >
+                  <div className="overflow-hidden">
+                    <div className="space-y-0.5 pl-4 pt-0.5 pb-0.5 max-md:pl-0">
+                      {acc.items.map((item) => {
+                        const active = isActive(item.href, pathname)
+                        return (
+                          <Link
+                            key={item.href}
+                            href={item.href}
+                            title={item.label}
+                            className={`relative flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-sm transition-all duration-150 max-md:justify-center ${
+                              active
+                                ? 'bg-brand/10 text-brand font-semibold'
+                                : 'text-muted hover:text-main hover:bg-background/80 font-medium'
+                            }`}
+                          >
+                            {active && (
+                              <span className="absolute left-0 top-1/2 -translate-y-1/2 h-4 w-0.5 rounded-r-full bg-brand" />
+                            )}
+                            <item.Icon className="h-3.5 w-3.5 shrink-0" />
+                            <span className="max-md:sr-only leading-none text-[13px]">
+                              {item.label}
+                            </span>
+                          </Link>
+                        )
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+
+        </div>
+      </nav>
     </aside>
   )
 }
