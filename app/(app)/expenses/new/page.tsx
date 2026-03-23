@@ -1,13 +1,14 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import CurrencyInput from '@/components/CurrencyInput'
 import { createExpense } from '@/lib/actions/expenses'
 import { createSupabaseClient } from '@/lib/supabaseClient'
 import { useToast, CONNECTION_ERROR_MSG, isConnectionError } from '@/lib/toastContext'
-import { Loader2 } from 'lucide-react'
+import { calculateInstallmentDates, addMonths } from '@/lib/installments'
+import { Loader2, Calendar, Info } from 'lucide-react'
 import type { Database } from '@/types/supabase'
 
 type CreditCard = Database['public']['Tables']['credit_cards']['Row']
@@ -95,8 +96,16 @@ const KEYWORD_MAP: Record<string, string> = {
   pedágio: 'transporte',
 }
 
+const MONTH_NAMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
+
+function fmtMonthYear(iso: string) {
+  const [y, m] = iso.split('-')
+  return `${MONTH_NAMES[parseInt(m) - 1]}/${y}`
+}
+
 export default function NewExpensePage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const supabase = createSupabaseClient()
   const { toastError } = useToast()
 
@@ -128,7 +137,7 @@ export default function NewExpensePage() {
   const [installments, setInstallments] = useState(2)
   const [dueDate, setDueDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [paid, setPaid] = useState(false)
-  const [creditCardId, setCreditCardId] = useState<string>('')
+  const [creditCardId, setCreditCardId] = useState<string>(() => searchParams.get('card_id') ?? '')
   const [file, setFile] = useState<File | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -139,6 +148,26 @@ export default function NewExpensePage() {
 
   const isParcelado = paymentMethod === 'credito_parcelado'
   const isCredito = paymentMethod === 'credito' || paymentMethod === 'credito_parcelado'
+
+  // Preview das datas de vencimento das parcelas
+  const installmentPreview = useMemo(() => {
+    if (!isParcelado || amount <= 0 || !dueDate || installments < 2) return null
+
+    const selectedCard = creditCards.find((c) => c.id === creditCardId)
+    const dates = selectedCard
+      ? calculateInstallmentDates(dueDate, selectedCard.closing_day, selectedCard.due_day, installments)
+      : Array.from({ length: installments }, (_, i) => addMonths(dueDate, i))
+
+    const perInstallment = Math.floor((amount / installments) * 100) / 100
+    const remainder = Math.round((amount - perInstallment * installments) * 100) / 100
+
+    return dates.map((date, i) => ({
+      n: i + 1,
+      date,
+      amount: i === 0 ? perInstallment + remainder : perInstallment,
+      monthLabel: fmtMonthYear(date),
+    }))
+  }, [isParcelado, amount, dueDate, installments, creditCardId, creditCards])
 
   const handleCategoryChange = (value: string) => {
     setCategory(value)
@@ -404,9 +433,46 @@ export default function NewExpensePage() {
                 className="block w-32 rounded-lg border border-gray-300 dark:border-manor-700 bg-gray-50 dark:bg-manor-950 py-2 px-3 text-sm text-gray-900 dark:text-white focus:border-gold-500 focus:ring-1 focus:ring-gold-500"
               />
             </div>
-            <p className="text-xs text-amber-700 dark:text-amber-300">
-              Serão geradas {installments} entradas automáticas com vencimentos mensais a partir da data informada.
-            </p>
+          </div>
+        )}
+
+        {/* Preview das datas das parcelas */}
+        {installmentPreview && (
+          <div className="rounded-lg border border-border bg-background/60 overflow-hidden">
+            <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border bg-background/40">
+              <Calendar className="h-3.5 w-3.5 text-brand shrink-0" />
+              <p className="text-xs font-semibold text-main uppercase tracking-wider">Projeção das parcelas</p>
+              {creditCardId && creditCards.find((c) => c.id === creditCardId) && (
+                <span className="ml-auto inline-flex items-center gap-1 text-[10px] text-muted">
+                  <Info className="h-3 w-3" />
+                  Calculado pelo ciclo do cartão
+                </span>
+              )}
+            </div>
+            <div className="divide-y divide-border">
+              {installmentPreview.map((p) => (
+                <div key={p.n} className="flex items-center justify-between px-4 py-2.5 text-sm">
+                  <div className="flex items-center gap-3">
+                    <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-brand/15 text-[10px] font-bold text-brand shrink-0">
+                      {p.n}
+                    </span>
+                    <div>
+                      <p className="text-xs font-medium text-main">Fatura de {p.monthLabel}</p>
+                      <p className="text-[10px] text-muted">Vence em {p.date.split('-').reverse().join('/')}</p>
+                    </div>
+                  </div>
+                  <span className="text-sm font-semibold text-main tabular-nums">
+                    {p.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <div className="flex items-center justify-between px-4 py-2 bg-background/40 border-t border-border">
+              <span className="text-xs text-muted">Total</span>
+              <span className="text-sm font-bold text-main tabular-nums">
+                {amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              </span>
+            </div>
           </div>
         )}
 

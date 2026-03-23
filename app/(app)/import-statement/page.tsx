@@ -2,9 +2,10 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react'
 import Link from 'next/link'
-import { FileUp, Upload, X, Loader2, AlertCircle, FileText, Sparkles, History } from 'lucide-react'
+import { FileUp, Upload, X, Loader2, AlertCircle, FileText, Sparkles, History, Zap } from 'lucide-react'
 import ImportReviewModal, { ReviewTransaction } from '@/components/ImportReviewModal'
 import { useGreetingPronoun } from '@/lib/greeting'
+import { parseBankStatementPdf } from '@/lib/actions/parse-bank-statement-pdf'
 
 const BANK_OPTIONS = [
   { value: 'nubank', label: 'Nubank' },
@@ -29,7 +30,10 @@ const BANK_ID_LABELS: Record<string, string> = {
   nubank: 'Nubank',
 }
 
-const ACCEPT = '.csv,.ofx,.qfx'
+const ACCEPT_OFX = '.csv,.ofx,.qfx'
+const ACCEPT_PDF = '.pdf'
+
+type ImportMode = 'ofx' | 'pdf'
 
 /** Detecta o banco a partir dos primeiros ~4 KB do arquivo OFX (lado cliente, sem rede). */
 function sniffBankFromOfxText(text: string): string | null {
@@ -63,18 +67,30 @@ function sniffBankFromOfxText(text: string): string | null {
 export default function ImportStatementPage() {
   const pronoun = useGreetingPronoun()
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const pdfInputRef = useRef<HTMLInputElement>(null)
 
+  const [mode, setMode] = useState<ImportMode>('ofx')
+
+  // ── Estado OFX ──
   const [file, setFile] = useState<File | null>(null)
   const [bank, setBank] = useState('generic')
   const [autoDetectedBank, setAutoDetectedBank] = useState<string | null>(null)
   const [dragging, setDragging] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [skipItauPixRule, setSkipItauPixRule] = useState(false)
 
+  // ── Estado PDF ──
+  const [pdfFile, setPdfFile] = useState<File | null>(null)
+  const [pdfDragging, setPdfDragging] = useState(false)
+  const [pdfLoading, setPdfLoading] = useState(false)
+  const [pdfError, setPdfError] = useState<string | null>(null)
+
+  // ── Modal compartilhado ──
   const [transactions, setTransactions] = useState<ReviewTransaction[]>([])
   const [modalOpen, setModalOpen] = useState(false)
-  /** Itaú OFX102: desliga heurística PIX TRANSF → despesa se você recebe PIX com essa descrição */
-  const [skipItauPixRule, setSkipItauPixRule] = useState(false)
+  const [modalBank, setModalBank] = useState('generic')
+  const [modalFileName, setModalFileName] = useState('')
 
   /** Ao selecionar arquivo OFX/QFX, lê o início do arquivo e tenta detectar o banco */
   useEffect(() => {
@@ -125,6 +141,18 @@ export default function ImportStatementPage() {
 
   const handleDragLeave = () => setDragging(false)
 
+  const openModal = (txs: Omit<ReviewTransaction, 'id'>[], bankName: string, fileName: string) => {
+    const withIds: ReviewTransaction[] = txs.map((t, idx) => ({
+      ...t,
+      id: `${idx}-${t.date}-${t.amount}`,
+    }))
+    setTransactions(withIds)
+    setModalBank(bankName)
+    setModalFileName(fileName)
+    setModalOpen(true)
+  }
+
+  // ── Processar OFX/CSV ──
   const handleProcess = async () => {
     if (!file) {
       setError('Selecione um arquivo para continuar.')
@@ -159,26 +187,46 @@ export default function ImportStatementPage() {
         return
       }
 
-      // Se a API detectou um banco diferente do selecionado, atualiza o seletor
       if (json.detected_bank && json.detected_bank !== bank) {
         setBank(json.detected_bank)
       }
 
-      // Atribui IDs únicos para uso no modal
-      const withIds: ReviewTransaction[] = json.transactions.map(
-        (t: Omit<ReviewTransaction, 'id'>, idx: number) => ({
-          ...t,
-          id: `${idx}-${t.date}-${t.amount}`,
-        }),
-      )
-
-      setTransactions(withIds)
-      setModalOpen(true)
+      openModal(json.transactions, bank, file.name)
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro inesperado.'
       setError(msg)
     } finally {
       setLoading(false)
+    }
+  }
+
+  // ── Processar PDF com Gemini ──
+  const handlePdfProcess = async () => {
+    if (!pdfFile) {
+      setPdfError('Selecione um arquivo PDF para continuar.')
+      return
+    }
+
+    setPdfLoading(true)
+    setPdfError(null)
+
+    try {
+      const buffer = await pdfFile.arrayBuffer()
+      const base64 = Buffer.from(buffer).toString('base64')
+
+      const result = await parseBankStatementPdf(base64, pdfFile.type)
+
+      if (!result.success) {
+        setPdfError(result.error)
+        return
+      }
+
+      openModal(result.transactions, result.bank, pdfFile.name)
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erro inesperado.'
+      setPdfError(msg)
+    } finally {
+      setPdfLoading(false)
     }
   }
 
@@ -213,6 +261,136 @@ export default function ImportStatementPage() {
         </Link>
       </div>
 
+      {/* Tabs */}
+      <div className="flex gap-1 p-1 rounded-xl bg-background border border-border">
+        <button
+          onClick={() => setMode('ofx')}
+          className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all ${
+            mode === 'ofx'
+              ? 'bg-surface shadow-sm text-main border border-border'
+              : 'text-muted hover:text-main'
+          }`}
+        >
+          <FileText className="h-4 w-4" />
+          CSV / OFX
+        </button>
+        <button
+          onClick={() => setMode('pdf')}
+          className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all ${
+            mode === 'pdf'
+              ? 'bg-surface shadow-sm text-main border border-border'
+              : 'text-muted hover:text-main'
+          }`}
+        >
+          <Zap className="h-4 w-4 text-amber-500" />
+          PDF com IA
+        </button>
+      </div>
+
+      {/* ── MODO PDF ── */}
+      {mode === 'pdf' && (
+        <>
+          <div className="glass-card rounded-xl border border-border bg-surface p-6 space-y-5">
+            <div className="flex items-start gap-3 rounded-lg bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 px-4 py-3">
+              <Zap className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+              <p className="text-xs text-amber-700 dark:text-amber-300">
+                O Gemini AI lê o PDF do seu extrato e extrai todas as transações automaticamente. Funciona com qualquer banco.
+              </p>
+            </div>
+
+            {/* Drop zone PDF */}
+            <div>
+              <label className={cls.label}>Arquivo PDF do extrato</label>
+              <div
+                onDrop={(e) => {
+                  e.preventDefault()
+                  setPdfDragging(false)
+                  const f = e.dataTransfer.files[0]
+                  if (f?.type === 'application/pdf') { setPdfFile(f); setPdfError(null) }
+                  else setPdfError('Apenas arquivos PDF são suportados.')
+                }}
+                onDragOver={(e) => { e.preventDefault(); setPdfDragging(true) }}
+                onDragLeave={() => setPdfDragging(false)}
+                onClick={() => pdfInputRef.current?.click()}
+                className={`relative flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed p-8 cursor-pointer transition-colors ${
+                  pdfDragging
+                    ? 'border-brand bg-brand/5'
+                    : 'border-border hover:border-brand/50 hover:bg-background/50'
+                }`}
+              >
+                <input
+                  ref={pdfInputRef}
+                  type="file"
+                  accept={ACCEPT_PDF}
+                  className="sr-only"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0]
+                    if (f) { setPdfFile(f); setPdfError(null) }
+                  }}
+                />
+                {pdfFile ? (
+                  <>
+                    <FileText className="h-8 w-8 text-brand" />
+                    <div className="text-center">
+                      <p className="text-sm font-medium text-main">{pdfFile.name}</p>
+                      <p className="text-xs text-muted mt-0.5">{(pdfFile.size / 1024).toFixed(1)} KB · PDF</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setPdfFile(null); if (pdfInputRef.current) pdfInputRef.current.value = '' }}
+                      className="absolute top-2 right-2 p-1.5 rounded-lg text-muted hover:text-main hover:bg-background transition-colors"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-8 w-8 text-muted" />
+                    <div className="text-center">
+                      <p className="text-sm font-medium text-main">Arraste o PDF ou clique para selecionar</p>
+                      <p className="text-xs text-muted mt-0.5">Extrato de qualquer banco em PDF</p>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {pdfError && (
+              <div className="flex items-start gap-2 rounded-lg border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 px-3 py-2.5 text-xs text-red-700 dark:text-red-300">
+                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                {pdfError}
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={handlePdfProcess}
+              disabled={pdfLoading || !pdfFile}
+              className="w-full min-h-[44px] inline-flex items-center justify-center gap-2 rounded-lg bg-brand text-white text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-colors"
+            >
+              {pdfLoading ? (
+                <><Loader2 className="h-4 w-4 animate-spin" /> Gemini analisando PDF...</>
+              ) : (
+                <><Zap className="h-4 w-4" /> Analisar PDF com IA</>
+              )}
+            </button>
+          </div>
+
+          <div className="glass-card rounded-xl border border-border bg-surface p-4 space-y-2">
+            <p className="text-xs font-medium text-muted uppercase tracking-wider">Como funciona</p>
+            <ul className="space-y-1 text-xs text-muted">
+              <li>1. Faça o upload do PDF do extrato (exportado pelo app do banco)</li>
+              <li>2. O Gemini AI lê e extrai todas as transações</li>
+              <li>3. Você revisa, edita tipos (receita/despesa) e confirma</li>
+              <li className="pt-1 text-[10px]">Requer <code className="bg-border/40 px-1 rounded">GEMINI_API_KEY</code> configurada no .env.local</li>
+            </ul>
+          </div>
+        </>
+      )}
+
+      {/* ── MODO OFX/CSV ── */}
+      {mode === 'ofx' && (
+      <>
       {/* Main card */}
       <div className="glass-card rounded-xl border border-border bg-surface p-6 space-y-5">
         {/* Bank selector */}
@@ -286,7 +464,7 @@ export default function ImportStatementPage() {
             <input
               ref={fileInputRef}
               type="file"
-              accept={ACCEPT}
+              accept={ACCEPT_OFX}
               className="sr-only"
               onChange={(e) => handleFileSelect(e.target.files?.[0] ?? null)}
             />
@@ -369,13 +547,31 @@ export default function ImportStatementPage() {
         </p>
       </div>
 
-      {/* Review modal */}
+      {/* Info card */}
+      <div className="glass-card rounded-xl border border-border bg-surface p-4 space-y-2">
+        <p className="text-xs font-medium text-muted uppercase tracking-wider">Formatos suportados</p>
+        <ul className="space-y-1 text-xs text-muted">
+          <li><span className="text-main font-medium">CSV</span> — Nubank, Inter e formato genérico</li>
+          <li><span className="text-main font-medium">OFX / QFX</span> — Itaú, Bradesco, Banco do Brasil, Santander, Caixa e outros (banco detectado automaticamente)</li>
+        </ul>
+        <p className="text-xs text-muted pt-1">
+          O período importado é o que consta no arquivo (<code className="text-[10px] bg-border/40 px-1 rounded">DTSTART</code> /{' '}
+          <code className="text-[10px] bg-border/40 px-1 rounded">DTEND</code> no OFX). Para meses fora do intervalo, gere um novo extrato no banco.
+        </p>
+        <p className="text-xs text-muted pt-1">
+          Após o processamento, você poderá revisar, editar e confirmar cada transação antes de importar.
+        </p>
+      </div>
+      </>
+      )}
+
+      {/* Review modal — compartilhado entre os dois modos */}
       <ImportReviewModal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         transactions={transactions}
-        bank={bank}
-        fileName={file?.name ?? 'extrato'}
+        bank={modalBank}
+        fileName={modalFileName}
       />
     </div>
   )
