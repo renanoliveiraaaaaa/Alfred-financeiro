@@ -211,13 +211,10 @@ export async function confirmCardStatement(
     const remaining = n - current + 1 // parcelas restantes incluindo a atual
 
     if (isParcelado && remaining > 1 && input.closing_day && input.due_day) {
-      // Calcula datas das parcelas restantes a partir da data da compra
-      const futureDates = calculateInstallmentDates(
-        t.date,
-        input.closing_day,
-        input.due_day,
-        remaining,
-      )
+      // Calcula todas as N datas desde a compra original e faz slice a partir
+      // da parcela atual (current-1 em 0-indexed) para não criar parcelas passadas
+      const allDates = calculateInstallmentDates(t.date, input.closing_day, input.due_day, n)
+      const futureDates = allDates.slice(current - 1)
 
       for (let i = 0; i < remaining; i++) {
         const installNum = current + i
