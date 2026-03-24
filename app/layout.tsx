@@ -1,11 +1,23 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import Providers from "@/components/Providers";
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover", // necessário para env(safe-area-inset-*) no iPhone
+  themeColor: "#0f0f0f",
+};
 
 export const metadata: Metadata = {
   title: "Alfred Financeiro",
   description: "Seu mordomo financeiro pessoal — elegância e controle ao seu dispor.",
   manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent", // faz a status bar do iPhone ser transparente
+    title: "Alfred",
+  },
   icons: {
     icon: "/apple-icon.png",
     apple: [

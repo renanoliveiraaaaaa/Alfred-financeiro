@@ -357,3 +357,18 @@ main {
   box-shadow: 0 0 20px color-mix(in srgb, var(--brand) 15%, transparent);
   transform: scale(1.02);
 }
+
+/* ── PWA / iOS Safe Area ── */
+/* Garante que a bottom nav não sobreponha o home indicator no iPhone */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* Viewport height correto no iOS Safari (evita o salto da barra de URL) */
+@supports (height: 100dvh) {
+  .app-layout {
+    height: 100dvh;
+  }
+}

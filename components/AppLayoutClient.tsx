@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import Topbar from '@/components/Topbar'
 import Sidebar from '@/components/Sidebar'
+import BottomNav from '@/components/BottomNav'
 import AnimatedPage from '@/components/AnimatedPage'
 import LiquidBackground from '@/components/LiquidBackground'
 import { createSupabaseClient } from '@/lib/supabaseClient'
@@ -72,12 +73,13 @@ export default function AppLayoutClient({
     <div className="app-layout relative z-0 h-screen flex overflow-hidden transition-colors bg-background glass-background">
         <LiquidBackground />
         <Sidebar />
-      <div className="relative z-10 flex flex-1 flex-col min-w-0 ml-60 max-md:ml-16">
+      <div className="relative z-10 flex flex-1 flex-col min-w-0 md:ml-60">
         <Topbar />
-        <main className="flex-1 min-h-0 overflow-y-auto p-6">
+        <main className="flex-1 min-h-0 overflow-y-auto p-4 md:p-6 pb-24 md:pb-6">
           <AnimatedPage>{children}</AnimatedPage>
         </main>
       </div>
+      <BottomNav />
     </div>
   )
 }

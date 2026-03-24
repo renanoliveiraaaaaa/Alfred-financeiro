@@ -96,7 +96,7 @@ export default function Sidebar() {
     setOpenAccordions((prev) => ({ ...prev, [key]: !prev[key] }))
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-50 h-screen w-60 bg-surface border-r border-border flex flex-col shrink-0 max-md:w-16 max-md:items-center transition-colors glass-sidebar overflow-y-auto">
+    <aside className="max-md:hidden fixed inset-y-0 left-0 z-50 h-screen w-60 bg-surface border-r border-border flex flex-col shrink-0 transition-colors glass-sidebar overflow-y-auto">
 
       {/* ── Brand header ── */}
       <div className="flex items-center gap-2.5 px-4 h-14 border-b border-border shrink-0">
@@ -109,7 +109,7 @@ export default function Sidebar() {
       </div>
 
       {/* ── Navigation ── */}
-      <nav className="flex-1 px-2 py-3 max-md:px-1 overflow-y-auto">
+      <nav className="flex-1 px-2 py-3 overflow-y-auto">
         <div className="space-y-0.5">
 
           {/* Itens fixos */}
@@ -120,7 +120,7 @@ export default function Sidebar() {
                 key={item.href}
                 href={item.href}
                 title={item.label}
-                className={`relative flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm font-medium transition-all duration-150 max-md:justify-center ${
+                className={`relative flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm font-medium transition-all duration-150 ${
                   active
                     ? 'bg-brand/10 text-brand'
                     : 'text-muted hover:text-main hover:bg-background/80'
@@ -130,7 +130,7 @@ export default function Sidebar() {
                   <span className="absolute left-0 top-1/2 -translate-y-1/2 h-4 w-0.5 rounded-r-full bg-brand" />
                 )}
                 <item.Icon className="h-4 w-4 shrink-0" />
-                <span className={`max-md:sr-only leading-none ${active ? 'font-semibold' : ''}`}>
+                <span className={`leading-none ${active ? 'font-semibold' : ''}`}>
                   {item.label}
                 </span>
               </Link>
@@ -151,7 +151,7 @@ export default function Sidebar() {
                 <button
                   onClick={() => toggle(acc.key)}
                   title={acc.label}
-                  className={`max-md:hidden w-full flex items-center justify-between gap-2.5 px-2.5 py-2 rounded-lg text-sm font-medium transition-all duration-150 ${
+                  className={`w-full flex items-center justify-between gap-2.5 px-2.5 py-2 rounded-lg text-sm font-medium transition-all duration-150 ${
                     hasActive
                       ? 'text-brand'
                       : 'text-muted hover:text-main hover:bg-background/80'
@@ -168,17 +168,6 @@ export default function Sidebar() {
                   />
                 </button>
 
-                {/* Ícone no mobile (sem label) */}
-                <button
-                  onClick={() => toggle(acc.key)}
-                  title={acc.label}
-                  className={`md:hidden w-full flex items-center justify-center py-2 rounded-lg transition-colors ${
-                    hasActive ? 'text-brand' : 'text-muted hover:text-main hover:bg-background/80'
-                  }`}
-                >
-                  <acc.Icon className="h-4 w-4" />
-                </button>
-
                 {/* Subitens com animação CSS grid */}
                 <div
                   className={`grid transition-all duration-200 ease-in-out ${
@@ -186,7 +175,7 @@ export default function Sidebar() {
                   }`}
                 >
                   <div className="overflow-hidden">
-                    <div className="space-y-0.5 pl-4 pt-0.5 pb-0.5 max-md:pl-0">
+                    <div className="space-y-0.5 pl-4 pt-0.5 pb-0.5">
                       {acc.items.map((item) => {
                         const active = isActive(item.href, pathname)
                         return (
@@ -194,7 +183,7 @@ export default function Sidebar() {
                             key={item.href}
                             href={item.href}
                             title={item.label}
-                            className={`relative flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-sm transition-all duration-150 max-md:justify-center ${
+                            className={`relative flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-sm transition-all duration-150 ${
                               active
                                 ? 'bg-brand/10 text-brand font-semibold'
                                 : 'text-muted hover:text-main hover:bg-background/80 font-medium'
@@ -204,7 +193,7 @@ export default function Sidebar() {
                               <span className="absolute left-0 top-1/2 -translate-y-1/2 h-4 w-0.5 rounded-r-full bg-brand" />
                             )}
                             <item.Icon className="h-3.5 w-3.5 shrink-0" />
-                            <span className="max-md:sr-only leading-none text-[13px]">
+                            <span className="leading-none text-[13px]">
                               {item.label}
                             </span>
                           </Link>
