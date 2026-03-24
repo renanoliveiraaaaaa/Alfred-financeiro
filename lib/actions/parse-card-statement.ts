@@ -3,6 +3,8 @@
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { createSupabaseServerClient } from '@/lib/supabaseServer'
 import { calculateInstallmentDates, addMonths } from '@/lib/installments'
+import { extractPdfPlainText } from '@/lib/parsers/extractPdfText'
+import { parseCardInvoiceFromPdfText } from '@/lib/parsers/cardInvoicePdfHeuristics'
 
 // ── Tipos exportados ──────────────────────────────────────────────────────────
 
@@ -28,7 +30,7 @@ export type ParsedCardStatement = {
 }
 
 export type ParseStatementResult =
-  | { success: true; data: ParsedCardStatement }
+  | { success: true; data: ParsedCardStatement; parse_source: 'local' | 'gemini' }
   | { success: false; error: string }
 
 export type ConfirmStatementInput = {
@@ -83,19 +85,41 @@ IMPORTANTE:
 
 // ── Server action: parsear fatura ─────────────────────────────────────────────
 
+const MIN_TEXT_LEN = 120
+
 export async function parseCardStatement(
   pdfBase64: string,
   mimeType: string = 'application/pdf',
 ): Promise<ParseStatementResult> {
-  const apiKey = process.env.GEMINI_API_KEY
-  if (!apiKey) {
-    return { success: false, error: 'GEMINI_API_KEY não configurada. Adicione ao .env.local.' }
-  }
-
-  // Verifica autenticação
   const supabase = createSupabaseServerClient()
   const { data: { user }, error: authErr } = await supabase.auth.getUser()
   if (authErr || !user) return { success: false, error: 'Usuário não autenticado.' }
+
+  const buffer = Buffer.from(pdfBase64, 'base64')
+  let plainText = ''
+  try {
+    plainText = await extractPdfPlainText(buffer)
+  } catch {
+    plainText = ''
+  }
+
+  if (plainText.length >= MIN_TEXT_LEN) {
+    const local = parseCardInvoiceFromPdfText(plainText)
+    if (local && local.transactions.length > 0) {
+      return { success: true, data: local, parse_source: 'local' }
+    }
+  }
+
+  const apiKey = process.env.GEMINI_API_KEY
+  if (!apiKey) {
+    return {
+      success: false,
+      error:
+        plainText.length < MIN_TEXT_LEN
+          ? 'Este PDF parece ser só imagem ou está protegido. Configure GEMINI_API_KEY para usar IA ou informe os lançamentos manualmente.'
+          : 'Não foi possível ler o layout desta fatura automaticamente. Configure GEMINI_API_KEY para análise por IA ou cadastre as compras manualmente.',
+    }
+  }
 
   try {
     const genAI = new GoogleGenerativeAI(apiKey)
@@ -103,17 +127,10 @@ export async function parseCardStatement(
 
     const result = await model.generateContent([
       EXTRACTION_PROMPT,
-      {
-        inlineData: {
-          mimeType,
-          data: pdfBase64,
-        },
-      },
+      { inlineData: { mimeType, data: pdfBase64 } },
     ])
 
     const text = result.response.text().trim()
-
-    // Remove markdown code fences se presentes
     const jsonStr = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim()
 
     let parsed: ParsedCardStatement
@@ -123,12 +140,10 @@ export async function parseCardStatement(
       return { success: false, error: `Gemini retornou formato inválido. Tente novamente.\n\nResposta: ${text.slice(0, 200)}` }
     }
 
-    // Validação básica
     if (!parsed.transactions || !Array.isArray(parsed.transactions)) {
       return { success: false, error: 'Não foi possível extrair transações da fatura.' }
     }
 
-    // Normaliza datas e valores
     parsed.transactions = parsed.transactions
       .filter((t) => t.description && t.amount !== undefined)
       .map((t) => ({
@@ -137,7 +152,7 @@ export async function parseCardStatement(
         date: t.date || parsed.invoice_month + '-01',
       }))
 
-    return { success: true, data: parsed }
+    return { success: true, data: parsed, parse_source: 'gemini' }
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Erro desconhecido'
     return { success: false, error: `Erro ao chamar Gemini: ${msg}` }

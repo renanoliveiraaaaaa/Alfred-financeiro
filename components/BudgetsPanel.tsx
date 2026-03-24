@@ -43,7 +43,6 @@ export default function BudgetsPanel() {
       supabase
         .from('categories')
         .select('*')
-        .gt('monthly_budget', 0)
         .order('name', { ascending: true }),
       supabase
         .from('expenses')
@@ -74,7 +73,13 @@ export default function BudgetsPanel() {
       spentByCategory[cat] = (spentByCategory[cat] || 0) + Number(e.amount || 0)
     })
 
-    const result: BudgetItem[] = categories
+    // Filtro de orçamento no cliente: evita 400 do PostgREST se a coluna
+    // monthly_budget ainda não existir no projeto Supabase (migração não aplicada).
+    const withBudget = categories.filter(
+      (c) => c.monthly_budget != null && Number(c.monthly_budget) > 0
+    )
+
+    const result: BudgetItem[] = withBudget
       .map((cat) => {
         const budget = Number(cat.monthly_budget) || 0
         const spent = spentByCategory[cat.name] || 0

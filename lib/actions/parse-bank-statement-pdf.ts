@@ -3,8 +3,12 @@
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { createSupabaseServerClient } from '@/lib/supabaseServer'
 import type { ImportTransaction } from './import-statement'
-
-// ── Tipos ──────────────────────────────────────────────────────────────────────
+import { extractPdfPlainText } from '@/lib/parsers/extractPdfText'
+import {
+  guessBankFromPdfText,
+  parseBankTransactionsFromPdfText,
+  MIN_LOCAL_BANK_TX,
+} from '@/lib/parsers/bankPdfHeuristics'
 
 export type ParseBankPdfResult =
   | {
@@ -13,10 +17,10 @@ export type ParseBankPdfResult =
       period_start: string
       period_end: string
       transactions: ImportTransaction[]
+      /** local = texto + regras (rápido); gemini = API */
+      parse_source: 'local' | 'gemini'
     }
   | { success: false; error: string }
-
-// ── Prompt ─────────────────────────────────────────────────────────────────────
 
 const EXTRACTION_PROMPT = `
 Você é um extrator de dados financeiros especializado em extratos bancários brasileiros.
@@ -53,21 +57,90 @@ REGRAS IMPORTANTES:
 - Retorne SOMENTE o JSON, sem explicações adicionais
 `
 
-// ── Server action ──────────────────────────────────────────────────────────────
+const SAFE_CATEGORIES = new Set([
+  'mercado', 'alimentacao', 'compras', 'transporte', 'combustivel',
+  'veiculo', 'assinaturas', 'saude', 'educacao', 'lazer',
+  'moradia', 'fatura_cartao', 'outros',
+])
+const SAFE_PAYMENT_METHODS = new Set([
+  'credito', 'debito', 'especie', 'credito_parcelado', 'pix', 'ted', 'doc',
+])
+
+function normalizeTransactions(raw: ImportTransaction[]): ImportTransaction[] {
+  const today = new Date().toISOString().slice(0, 10)
+  return raw
+    .filter((t) => t.description && t.amount !== undefined && (t.type === 'revenue' || t.type === 'expense'))
+    .map((t) => ({
+      date: t.date || today,
+      description: String(t.description).trim(),
+      amount: Math.abs(Number(t.amount) || 0),
+      type: t.type as 'revenue' | 'expense',
+      category: SAFE_CATEGORIES.has(String(t.category)) ? String(t.category) : 'outros',
+      payment_method: SAFE_PAYMENT_METHODS.has(String(t.payment_method))
+        ? String(t.payment_method)
+        : 'debito',
+    }))
+    .filter((t) => t.amount > 0)
+}
+
+async function parseWithGemini(
+  pdfBase64: string,
+  mimeType: string,
+  apiKey: string,
+): Promise<ParseBankPdfResult> {
+  const genAI = new GoogleGenerativeAI(apiKey)
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
+
+  const result = await model.generateContent([
+    EXTRACTION_PROMPT,
+    { inlineData: { mimeType, data: pdfBase64 } },
+  ])
+
+  const text = result.response.text().trim()
+  const jsonStr = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim()
+
+  let parsed: {
+    bank: string
+    period_start: string
+    period_end: string
+    transactions: ImportTransaction[]
+  }
+
+  try {
+    parsed = JSON.parse(jsonStr)
+  } catch {
+    return {
+      success: false,
+      error: `Gemini retornou formato inválido. Tente novamente.\n\nResposta: ${text.slice(0, 300)}`,
+    }
+  }
+
+  if (!parsed.transactions || !Array.isArray(parsed.transactions)) {
+    return { success: false, error: 'Não foi possível extrair transações do extrato.' }
+  }
+
+  const transactions = normalizeTransactions(parsed.transactions)
+  if (transactions.length === 0) {
+    return { success: false, error: 'Nenhuma transação válida encontrada no extrato.' }
+  }
+
+  const dates = transactions.map((t) => t.date).sort()
+  return {
+    success: true,
+    bank: parsed.bank || 'Desconhecido',
+    period_start: parsed.period_start || dates[0],
+    period_end: parsed.period_end || dates[dates.length - 1],
+    transactions,
+    parse_source: 'gemini',
+  }
+}
+
+const MIN_TEXT_LEN = 120
 
 export async function parseBankStatementPdf(
   pdfBase64: string,
   mimeType: string = 'application/pdf',
 ): Promise<ParseBankPdfResult> {
-  const apiKey = process.env.GEMINI_API_KEY
-  if (!apiKey) {
-    return {
-      success: false,
-      error: 'GEMINI_API_KEY não configurada. Adicione ao .env.local.',
-    }
-  }
-
-  // Verifica autenticação
   const supabase = createSupabaseServerClient()
   const {
     data: { user },
@@ -75,88 +148,45 @@ export async function parseBankStatementPdf(
   } = await supabase.auth.getUser()
   if (authErr || !user) return { success: false, error: 'Usuário não autenticado.' }
 
+  const buffer = Buffer.from(pdfBase64, 'base64')
+  let plainText = ''
   try {
-    const genAI = new GoogleGenerativeAI(apiKey)
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
+    plainText = await extractPdfPlainText(buffer)
+  } catch {
+    plainText = ''
+  }
 
-    const result = await model.generateContent([
-      EXTRACTION_PROMPT,
-      {
-        inlineData: {
-          mimeType,
-          data: pdfBase64,
-        },
-      },
-    ])
-
-    const text = result.response.text().trim()
-    const jsonStr = text
-      .replace(/^```(?:json)?\s*/i, '')
-      .replace(/\s*```$/i, '')
-      .trim()
-
-    let parsed: {
-      bank: string
-      period_start: string
-      period_end: string
-      transactions: ImportTransaction[]
-    }
-
-    try {
-      parsed = JSON.parse(jsonStr)
-    } catch {
-      return {
-        success: false,
-        error: `Gemini retornou formato inválido. Tente novamente.\n\nResposta: ${text.slice(0, 300)}`,
+  if (plainText.length >= MIN_TEXT_LEN) {
+    const localRaw = parseBankTransactionsFromPdfText(plainText)
+    if (localRaw.length >= MIN_LOCAL_BANK_TX) {
+      const transactions = normalizeTransactions(localRaw)
+      if (transactions.length >= MIN_LOCAL_BANK_TX) {
+        const dates = transactions.map((t) => t.date).sort()
+        return {
+          success: true,
+          bank: guessBankFromPdfText(plainText),
+          period_start: dates[0],
+          period_end: dates[dates.length - 1],
+          transactions,
+          parse_source: 'local',
+        }
       }
     }
+  }
 
-    if (!parsed.transactions || !Array.isArray(parsed.transactions)) {
-      return { success: false, error: 'Não foi possível extrair transações do extrato.' }
-    }
-
-    // Normaliza e valida cada transação
-    const SAFE_CATEGORIES = new Set([
-      'mercado', 'alimentacao', 'compras', 'transporte', 'combustivel',
-      'veiculo', 'assinaturas', 'saude', 'educacao', 'lazer',
-      'moradia', 'fatura_cartao', 'outros',
-    ])
-    const SAFE_PAYMENT_METHODS = new Set([
-      'credito', 'debito', 'especie', 'credito_parcelado', 'pix', 'ted', 'doc',
-    ])
-
-    const today = new Date().toISOString().slice(0, 10)
-
-    const transactions: ImportTransaction[] = parsed.transactions
-      .filter((t) => t.description && t.amount !== undefined && (t.type === 'revenue' || t.type === 'expense'))
-      .map((t) => ({
-        date: t.date || today,
-        description: String(t.description).trim(),
-        amount: Math.abs(Number(t.amount) || 0),
-        type: t.type as 'revenue' | 'expense',
-        category: SAFE_CATEGORIES.has(String(t.category)) ? String(t.category) : 'outros',
-        payment_method: SAFE_PAYMENT_METHODS.has(String(t.payment_method))
-          ? String(t.payment_method)
-          : 'debito',
-      }))
-      .filter((t) => t.amount > 0)
-
-    if (transactions.length === 0) {
-      return { success: false, error: 'Nenhuma transação válida encontrada no extrato.' }
-    }
-
-    // Calcula período a partir das datas das transações se não vier do Gemini
-    const dates = transactions.map((t) => t.date).sort()
-    const period_start = parsed.period_start || dates[0]
-    const period_end = parsed.period_end || dates[dates.length - 1]
-
+  const apiKey = process.env.GEMINI_API_KEY
+  if (!apiKey) {
     return {
-      success: true,
-      bank: parsed.bank || 'Desconhecido',
-      period_start,
-      period_end,
-      transactions,
+      success: false,
+      error:
+        plainText.length < MIN_TEXT_LEN
+          ? 'Este PDF parece ser só imagem (sem texto) ou está protegido. Exporte OFX/CSV no banco ou configure GEMINI_API_KEY para usar IA.'
+          : 'Não foi possível interpretar o layout deste PDF automaticamente. Use arquivo OFX/CSV ou configure GEMINI_API_KEY para análise por IA.',
     }
+  }
+
+  try {
+    return await parseWithGemini(pdfBase64, mimeType, apiKey)
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Erro desconhecido'
     return { success: false, error: `Erro ao chamar Gemini: ${msg}` }

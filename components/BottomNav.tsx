@@ -64,7 +64,7 @@ export default function BottomNav() {
     <>
       {/* ── Bottom Nav Bar ── */}
       <nav
-        className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-surface/95 backdrop-blur-lg border-t border-border"
+        className="lg:hidden fixed bottom-0 left-0 right-0 z-[55] bg-surface/95 backdrop-blur-lg border-t border-border"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
         <div className="flex items-stretch h-16">

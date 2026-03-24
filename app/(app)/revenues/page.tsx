@@ -281,7 +281,7 @@ export default function RevenuesPage() {
       )}
 
       {/* Mobile: Lista de Cards */}
-      <div className="md:hidden space-y-3">
+      <div className="lg:hidden space-y-3">
         {loading ? (
           Array.from({ length: 5 }).map((_, i) => (
             <div key={i} className="rounded-xl border border-border bg-surface p-4 animate-pulse glass-card">
@@ -371,7 +371,7 @@ export default function RevenuesPage() {
       </div>
 
       {/* Desktop: Tabela */}
-      <div className="hidden md:block rounded-xl border border-border bg-surface overflow-hidden transition-colors glass-card">
+      <div className="hidden lg:block rounded-xl border border-border bg-surface overflow-hidden transition-colors glass-card">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-border text-sm">
             <thead className="bg-border">
@@ -390,7 +390,7 @@ export default function RevenuesPage() {
                 <th className="px-4 py-3 text-left font-medium text-muted">Descrição</th>
                 <th className="px-4 py-3 text-right font-medium text-muted">Valor</th>
                 <th className="px-4 py-3 text-left font-medium text-muted hidden sm:table-cell">Data efetiva</th>
-                <th className="px-4 py-3 text-left font-medium text-muted hidden md:table-cell">Data esperada</th>
+                <th className="px-4 py-3 text-left font-medium text-muted hidden lg:table-cell">Data esperada</th>
                 <th className="px-4 py-3 text-center font-medium text-muted">Status</th>
                 <th className="px-4 py-3 text-center font-medium text-muted">Ações</th>
               </tr>
@@ -403,7 +403,7 @@ export default function RevenuesPage() {
                     <td className="px-4 py-3"><div className="h-4 w-36 animate-pulse rounded bg-border" /></td>
                     <td className="px-4 py-3 text-right"><div className="ml-auto h-4 w-20 animate-pulse rounded bg-border" /></td>
                     <td className="px-4 py-3 hidden sm:table-cell"><div className="h-4 w-24 animate-pulse rounded bg-border" /></td>
-                    <td className="px-4 py-3 hidden md:table-cell"><div className="h-4 w-24 animate-pulse rounded bg-border" /></td>
+                    <td className="px-4 py-3 hidden lg:table-cell"><div className="h-4 w-24 animate-pulse rounded bg-border" /></td>
                     <td className="px-4 py-3 text-center"><div className="mx-auto h-5 w-20 animate-pulse rounded-full bg-border" /></td>
                     <td className="px-4 py-3 text-center"><div className="mx-auto h-4 w-8 animate-pulse rounded bg-border" /></td>
                   </tr>
@@ -461,7 +461,7 @@ export default function RevenuesPage() {
                         <MaskedValue value={Number(r.amount || 0)} className="text-main" />
                       </td>
                       <td className="px-4 py-3 text-muted hidden sm:table-cell">{formatDate(r.date)}</td>
-                      <td className="px-4 py-3 text-muted hidden md:table-cell">{formatDate(r.expected_date)}</td>
+                      <td className="px-4 py-3 text-muted hidden lg:table-cell">{formatDate(r.expected_date)}</td>
 
                       {/* Status toggle */}
                       <td className="px-4 py-3 text-center">

@@ -408,7 +408,7 @@ export default function ExpensesPage() {
       )}
 
       {/* Mobile: Lista de Cards */}
-      <div className="md:hidden space-y-3">
+      <div className="lg:hidden space-y-3">
         {loading ? (
           Array.from({ length: 5 }).map((_, i) => (
             <div key={i} className="rounded-xl border border-border bg-surface p-4 animate-pulse glass-card">
@@ -518,7 +518,7 @@ export default function ExpensesPage() {
       </div>
 
       {/* Desktop: Tabela */}
-      <div className="hidden md:block rounded-xl border border-border bg-surface overflow-hidden transition-colors glass-card">
+      <div className="hidden lg:block rounded-xl border border-border bg-surface overflow-hidden transition-colors glass-card">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-border text-sm">
             <thead className="bg-border">
@@ -536,7 +536,7 @@ export default function ExpensesPage() {
                 <th className="px-4 py-3 text-left font-medium text-muted">Descrição</th>
                 <th className="px-4 py-3 text-right font-medium text-muted">Valor</th>
                 <th className="px-4 py-3 text-left font-medium text-muted hidden sm:table-cell">Categoria</th>
-                <th className="px-4 py-3 text-left font-medium text-muted hidden md:table-cell">Pagamento</th>
+                <th className="px-4 py-3 text-left font-medium text-muted hidden lg:table-cell">Pagamento</th>
                 <th className="px-4 py-3 text-left font-medium text-muted hidden lg:table-cell">Vencimento</th>
                 <th className="px-4 py-3 text-center font-medium text-muted">Status</th>
                 <th className="px-4 py-3 text-center font-medium text-muted">Ações</th>
@@ -550,7 +550,7 @@ export default function ExpensesPage() {
                     <td className="px-4 py-3"><div className="h-4 w-36 animate-pulse rounded bg-border" /></td>
                     <td className="px-4 py-3 text-right"><div className="ml-auto h-4 w-20 animate-pulse rounded bg-border" /></td>
                     <td className="px-4 py-3 hidden sm:table-cell"><div className="h-4 w-20 animate-pulse rounded bg-border" /></td>
-                    <td className="px-4 py-3 hidden md:table-cell"><div className="h-4 w-16 animate-pulse rounded bg-border" /></td>
+                    <td className="px-4 py-3 hidden lg:table-cell"><div className="h-4 w-16 animate-pulse rounded bg-border" /></td>
                     <td className="px-4 py-3 hidden lg:table-cell"><div className="h-4 w-24 animate-pulse rounded bg-border" /></td>
                     <td className="px-4 py-3 text-center"><div className="mx-auto h-5 w-16 animate-pulse rounded-full bg-border" /></td>
                     <td className="px-4 py-3 text-center"><div className="mx-auto h-4 w-16 animate-pulse rounded bg-border" /></td>
@@ -621,7 +621,7 @@ export default function ExpensesPage() {
                       <td className="px-4 py-3 text-muted hidden sm:table-cell">
                         {CATEGORY_LABELS[e.category] ?? e.category}
                       </td>
-                      <td className="px-4 py-3 text-muted hidden md:table-cell">
+                      <td className="px-4 py-3 text-muted hidden lg:table-cell">
                         {PAYMENT_LABELS[e.payment_method] ?? e.payment_method}
                       </td>
                       <td className="px-4 py-3 text-muted hidden lg:table-cell">

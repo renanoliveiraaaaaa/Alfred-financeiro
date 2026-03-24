@@ -96,14 +96,14 @@ export default function Sidebar() {
     setOpenAccordions((prev) => ({ ...prev, [key]: !prev[key] }))
 
   return (
-    <aside className="max-md:hidden fixed inset-y-0 left-0 z-50 h-screen w-60 bg-surface border-r border-border flex flex-col shrink-0 transition-colors glass-sidebar overflow-y-auto">
+    <aside className="max-lg:hidden fixed inset-y-0 left-0 z-50 h-screen w-60 bg-surface border-r border-border flex flex-col shrink-0 transition-colors glass-sidebar overflow-y-auto">
 
       {/* ── Brand header ── */}
       <div className="flex items-center gap-2.5 px-4 h-14 border-b border-border shrink-0">
         <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-brand/15 border border-brand/20 text-sm shrink-0">
           🎩
         </span>
-        <span className="max-md:hidden text-sm font-semibold text-main leading-none">
+        <span className="max-lg:hidden text-sm font-semibold text-main leading-none">
           Alfred <span className="text-brand font-normal">Financeiro</span>
         </span>
       </div>

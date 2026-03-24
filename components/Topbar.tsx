@@ -133,7 +133,7 @@ export default function Topbar() {
             <span className="hidden sm:inline">Lançar</span>
           </button>
 
-          <div className="max-md:hidden w-px h-5 bg-border mx-1.5" />
+          <div className="max-lg:hidden w-px h-5 bg-border mx-1.5" />
 
           {/* Theme toggle — oculto no mobile (está no BottomNav "Mais") */}
           {mounted && (
@@ -147,7 +147,7 @@ export default function Topbar() {
                 )
               }}
               title={isDark ? 'Modo claro' : 'Modo escuro'}
-              className="max-md:hidden inline-flex items-center justify-center h-8 w-8 rounded-lg text-muted hover:text-main hover:bg-background transition-colors"
+              className="max-lg:hidden inline-flex items-center justify-center h-8 w-8 rounded-lg text-muted hover:text-main hover:bg-background transition-colors"
             >
               {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </button>
@@ -157,7 +157,7 @@ export default function Topbar() {
           <button
             onClick={togglePrivacyMode}
             title={isPrivacyMode ? 'Mostrar valores' : 'Ocultar valores'}
-            className={`max-md:hidden inline-flex items-center justify-center h-8 w-8 rounded-lg transition-colors ${
+            className={`max-lg:hidden inline-flex items-center justify-center h-8 w-8 rounded-lg transition-colors ${
               isPrivacyMode
                 ? 'bg-brand/15 text-brand'
                 : 'text-muted hover:text-main hover:bg-background'
@@ -166,13 +166,13 @@ export default function Topbar() {
             {isPrivacyMode ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
           </button>
 
-          <div className="max-md:hidden w-px h-5 bg-border mx-1.5" />
+          <div className="max-lg:hidden w-px h-5 bg-border mx-1.5" />
 
           {/* Profile avatar — oculto no mobile */}
           <Link
             href="/profile"
             title={`Perfil — ${displayName || pronoun}`}
-            className="max-md:hidden flex items-center gap-2 group"
+            className="max-lg:hidden flex items-center gap-2 group"
           >
             <div className="hidden sm:block text-right leading-none">
               <p className="text-xs font-medium text-main group-hover:text-brand transition-colors">
@@ -192,7 +192,7 @@ export default function Topbar() {
           <button
             onClick={() => setShowLogoutModal(true)}
             title="Encerrar sessão"
-            className="max-md:hidden inline-flex items-center justify-center h-8 w-8 rounded-lg text-muted hover:text-red-500 hover:bg-red-500/10 transition-colors"
+            className="max-lg:hidden inline-flex items-center justify-center h-8 w-8 rounded-lg text-muted hover:text-red-500 hover:bg-red-500/10 transition-colors"
           >
             <LogOut className="h-3.5 w-3.5" />
           </button>
