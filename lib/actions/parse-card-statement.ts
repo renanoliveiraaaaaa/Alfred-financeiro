@@ -199,6 +199,10 @@ export async function confirmCardStatement(
     }
   }
 
+  if (!cardId) {
+    return { success: false, error: 'Não foi possível obter o cartão para importação.' }
+  }
+
   // 2. Importar transações selecionadas
   const selected = input.transactions.filter((t) => t.selected && t.amount > 0)
   const rows: object[] = []

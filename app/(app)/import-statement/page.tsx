@@ -6,6 +6,20 @@ import { FileUp, Upload, X, Loader2, AlertCircle, FileText, Sparkles, History, Z
 import ImportReviewModal, { ReviewTransaction } from '@/components/ImportReviewModal'
 import { useGreetingPronoun } from '@/lib/greeting'
 import { parseBankStatementPdf } from '@/lib/actions/parse-bank-statement-pdf'
+import type { ImportTransaction } from '@/lib/actions/import-statement'
+
+/** Converte transações do PDF (Gemini) para o formato do modal de revisão. */
+function pdfImportToReviewRows(txs: ImportTransaction[]): Omit<ReviewTransaction, 'id'>[] {
+  return txs.map((t) => ({
+    date: t.date,
+    description: t.description,
+    amount: t.amount,
+    type: t.type,
+    suggested_category: t.category,
+    original_text: t.description,
+    suggested_payment_method: t.payment_method,
+  }))
+}
 
 const BANK_OPTIONS = [
   { value: 'nubank', label: 'Nubank' },
@@ -221,7 +235,7 @@ export default function ImportStatementPage() {
         return
       }
 
-      openModal(result.transactions, result.bank, pdfFile.name)
+      openModal(pdfImportToReviewRows(result.transactions), result.bank, pdfFile.name)
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro inesperado.'
       setPdfError(msg)

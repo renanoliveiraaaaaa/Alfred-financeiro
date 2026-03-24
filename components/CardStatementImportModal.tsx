@@ -513,14 +513,14 @@ export default function CardStatementImportModal({ open, onClose, existingCards,
         </div>
 
         {/* Footer */}
-        {(step === 'upload' || step === 'review' || step === 'confirming') && (
+        {(step === 'upload' || step === 'parsing' || step === 'review' || step === 'confirming') && (
           <div className="px-6 py-4 border-t border-border shrink-0 flex items-center justify-between gap-3">
             {step === 'review' && (
               <p className="text-xs text-muted">
                 Total selecionado: <span className="font-semibold text-main">{fmtCurrency(selectedTotal)}</span>
               </p>
             )}
-            {step === 'upload' && <div />}
+            {(step === 'upload' || step === 'parsing') && <div />}
 
             <div className="flex items-center gap-2 ml-auto">
               {step === 'review' && (
@@ -531,7 +531,7 @@ export default function CardStatementImportModal({ open, onClose, existingCards,
                   Voltar
                 </button>
               )}
-              {step === 'upload' && (
+              {(step === 'upload' || step === 'parsing') && (
                 <button
                   disabled={!file || step === 'parsing'}
                   onClick={handleParse}
