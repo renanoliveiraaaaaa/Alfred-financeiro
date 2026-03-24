@@ -14,6 +14,8 @@ export default function Home() {
   const [gender, setGender] = useState<'M' | 'F' | 'O'>('O')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  /** Cadastro OK mas e-mail ainda não confirmado (Supabase não devolve sessão). */
+  const [signupEmailPending, setSignupEmailPending] = useState(false)
   const [lastUser, setLastUserState] = useState<LastUser | null>(null)
   const [showEmailForm, setShowEmailForm] = useState(true)
   const router = useRouter()
@@ -39,6 +41,8 @@ export default function Home() {
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!isLogin && signupEmailPending) return
+
     setLoading(true)
     setError(null)
 
@@ -78,7 +82,8 @@ export default function Home() {
           router.push('/dashboard')
           router.refresh()
         } else if (data.user) {
-          setError('Sua conta foi criada com distinção. Verifique seu e-mail para confirmar o cadastro.')
+          setSignupEmailPending(true)
+          setPassword('')
         }
       }
     } catch (err: any) {
@@ -99,6 +104,27 @@ export default function Home() {
     setEmail('')
     setShowEmailForm(true)
     setError(null)
+    setSignupEmailPending(false)
+  }
+
+  const goToLoginAfterSignup = () => {
+    setIsLogin(true)
+    setSignupEmailPending(false)
+    setError(null)
+    setPassword('')
+  }
+
+  const switchToRegister = () => {
+    setIsLogin(false)
+    setError(null)
+    setSignupEmailPending(false)
+    setShowEmailForm(true)
+  }
+
+  const switchToLogin = () => {
+    setIsLogin(true)
+    setError(null)
+    setSignupEmailPending(false)
   }
 
   const displayName = lastUser?.fullName
@@ -120,9 +146,11 @@ export default function Home() {
           <p className="mt-2 text-sm text-muted">
             {lastUser && !showEmailForm
               ? `Olá, ${displayName}. Que bom te ver de novo!`
-              : isLogin
-                ? 'Bem-vindo de volta à Mansão.'
-                : 'Permita-me preparar sua conta.'}
+              : !isLogin && signupEmailPending
+                ? 'Quase lá — confirme seu e-mail para entrar.'
+                : isLogin
+                  ? 'Bem-vindo de volta à Mansão.'
+                  : 'Permita-me preparar sua conta.'}
           </p>
         </div>
 
@@ -130,6 +158,24 @@ export default function Home() {
           {error && (
             <div className="rounded-lg border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-300 animate-fade-in">
               {error}
+            </div>
+          )}
+
+          {!isLogin && signupEmailPending && (
+            <div className="rounded-lg border border-emerald-200 dark:border-emerald-500/35 bg-emerald-50 dark:bg-emerald-500/10 px-4 py-4 text-sm text-emerald-900 dark:text-emerald-100 animate-fade-in space-y-3">
+              <p className="font-medium">Conta criada com sucesso</p>
+              <p className="text-emerald-800/90 dark:text-emerald-200/90 leading-relaxed">
+                Enviamos um link de confirmação para{' '}
+                <span className="font-medium text-main">{email}</span>.
+                Abra o e-mail e clique no link para ativar a conta; em seguida você poderá entrar com e-mail e senha.
+              </p>
+              <button
+                type="button"
+                onClick={goToLoginAfterSignup}
+                className="w-full mt-1 py-2.5 px-4 rounded-lg text-sm font-medium bg-brand text-white hover:opacity-90 transition-colors"
+              >
+                Ir para o login
+              </button>
             </div>
           )}
 
@@ -159,7 +205,7 @@ export default function Home() {
                 </button>
               </div>
             </div>
-          ) : (
+          ) : !signupEmailPending ? (
             <div className="animate-stagger-up" style={{ animationDelay: '80ms' }}>
               <label htmlFor="email" className="block text-xs font-medium text-muted uppercase tracking-wider mb-1.5">
                 E-mail
@@ -176,8 +222,9 @@ export default function Home() {
                 onChange={(e) => setEmail(e.target.value)}
               />
             </div>
-          )}
+          ) : null}
 
+          {!signupEmailPending && (
           <div className="animate-stagger-up" style={{ animationDelay: '160ms' }}>
             <label htmlFor="password" className="block text-xs font-medium text-muted uppercase tracking-wider mb-1.5">
               {lastUser && !showEmailForm ? 'Digite sua senha' : 'Senha'}
@@ -194,7 +241,8 @@ export default function Home() {
               onChange={(e) => setPassword(e.target.value)}
             />
           </div>
-          {!isLogin && (
+          )}
+          {!isLogin && !signupEmailPending && (
             <div className="animate-stagger-up" style={{ animationDelay: '200ms' }}>
               <label htmlFor="gender" className="block text-xs font-medium text-muted uppercase tracking-wider mb-1.5">
                 Gênero <span className="text-red-400">*</span>
@@ -214,6 +262,7 @@ export default function Home() {
             </div>
           )}
 
+          {!signupEmailPending && (
           <div className="animate-stagger-up" style={{ animationDelay: '240ms' }}>
             <button
               type="submit"
@@ -223,19 +272,21 @@ export default function Home() {
               {loading ? 'Um momento...' : isLogin ? 'Continuar' : 'Criar conta'}
             </button>
           </div>
-
-          <div className="text-center animate-stagger-up" style={{ animationDelay: '320ms' }}>
-            <button
-              type="button"
-              onClick={() => { setIsLogin(!isLogin); setError(null); setShowEmailForm(true) }}
-              className="text-sm text-brand hover:opacity-80 transition-colors"
-            >
-              {isLogin
-                ? 'Ainda não possui conta? Registrar-se'
-                : 'Já possui conta? Entrar'}
-            </button>
-          </div>
+          )}
         </form>
+
+        {/* Fora do <form>: evita submit/validação HTML5 interferindo no clique */}
+        <div className="text-center mt-6 animate-stagger-up" style={{ animationDelay: '320ms' }}>
+          <button
+            type="button"
+            onClick={isLogin ? switchToRegister : switchToLogin}
+            className="text-sm text-brand hover:opacity-80 transition-colors underline-offset-2 hover:underline"
+          >
+            {isLogin
+              ? 'Ainda não possui conta? Registrar-se'
+              : 'Já possui conta? Entrar'}
+          </button>
+        </div>
       </div>
     </div>
   )

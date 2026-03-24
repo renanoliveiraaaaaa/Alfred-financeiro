@@ -86,6 +86,8 @@ IMPORTANTE:
 // ── Server action: parsear fatura ─────────────────────────────────────────────
 
 const MIN_TEXT_LEN = 120
+/** Primeiras páginas bastam para a maioria das faturas; evita parse pesado do PDF inteiro. */
+const LOCAL_CARD_MAX_PAGES = 32
 
 export async function parseCardStatement(
   pdfBase64: string,
@@ -98,7 +100,7 @@ export async function parseCardStatement(
   const buffer = Buffer.from(pdfBase64, 'base64')
   let plainText = ''
   try {
-    plainText = await extractPdfPlainText(buffer)
+    plainText = await extractPdfPlainText(buffer, { maxPages: LOCAL_CARD_MAX_PAGES })
   } catch {
     plainText = ''
   }
@@ -111,51 +113,65 @@ export async function parseCardStatement(
   }
 
   const apiKey = process.env.GEMINI_API_KEY
-  if (!apiKey) {
-    return {
-      success: false,
-      error:
-        plainText.length < MIN_TEXT_LEN
-          ? 'Este PDF parece ser só imagem ou está protegido. Configure GEMINI_API_KEY para usar IA ou informe os lançamentos manualmente.'
-          : 'Não foi possível ler o layout desta fatura automaticamente. Configure GEMINI_API_KEY para análise por IA ou cadastre as compras manualmente.',
+  if (apiKey) {
+    try {
+      const genAI = new GoogleGenerativeAI(apiKey)
+      const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
+
+      const result = await model.generateContent([
+        EXTRACTION_PROMPT,
+        { inlineData: { mimeType, data: pdfBase64 } },
+      ])
+
+      const text = result.response.text().trim()
+      const jsonStr = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim()
+
+      let parsed: ParsedCardStatement
+      try {
+        parsed = JSON.parse(jsonStr) as ParsedCardStatement
+      } catch {
+        return { success: false, error: `Gemini retornou formato inválido. Tente novamente.\n\nResposta: ${text.slice(0, 200)}` }
+      }
+
+      if (!parsed.transactions || !Array.isArray(parsed.transactions)) {
+        return { success: false, error: 'Não foi possível extrair transações da fatura.' }
+      }
+
+      parsed.transactions = parsed.transactions
+        .filter((t) => t.description && t.amount !== undefined)
+        .map((t) => ({
+          ...t,
+          amount: Math.abs(Number(t.amount) || 0),
+          date: t.date || parsed.invoice_month + '-01',
+        }))
+
+      return { success: true, data: parsed, parse_source: 'gemini' }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erro desconhecido'
+      return { success: false, error: `Erro ao chamar Gemini: ${msg}` }
     }
   }
 
+  // Sem IA: tenta texto completo (lançamentos podem estar depois da página LOCAL_CARD_MAX_PAGES)
+  let fullText = plainText
   try {
-    const genAI = new GoogleGenerativeAI(apiKey)
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
-
-    const result = await model.generateContent([
-      EXTRACTION_PROMPT,
-      { inlineData: { mimeType, data: pdfBase64 } },
-    ])
-
-    const text = result.response.text().trim()
-    const jsonStr = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim()
-
-    let parsed: ParsedCardStatement
-    try {
-      parsed = JSON.parse(jsonStr) as ParsedCardStatement
-    } catch {
-      return { success: false, error: `Gemini retornou formato inválido. Tente novamente.\n\nResposta: ${text.slice(0, 200)}` }
+    fullText = await extractPdfPlainText(buffer)
+  } catch {
+    fullText = plainText
+  }
+  if (fullText.length >= MIN_TEXT_LEN) {
+    const localFull = parseCardInvoiceFromPdfText(fullText)
+    if (localFull && localFull.transactions.length > 0) {
+      return { success: true, data: localFull, parse_source: 'local' }
     }
+  }
 
-    if (!parsed.transactions || !Array.isArray(parsed.transactions)) {
-      return { success: false, error: 'Não foi possível extrair transações da fatura.' }
-    }
-
-    parsed.transactions = parsed.transactions
-      .filter((t) => t.description && t.amount !== undefined)
-      .map((t) => ({
-        ...t,
-        amount: Math.abs(Number(t.amount) || 0),
-        date: t.date || parsed.invoice_month + '-01',
-      }))
-
-    return { success: true, data: parsed, parse_source: 'gemini' }
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : 'Erro desconhecido'
-    return { success: false, error: `Erro ao chamar Gemini: ${msg}` }
+  return {
+    success: false,
+    error:
+      fullText.length < MIN_TEXT_LEN
+        ? 'Este PDF parece ser só imagem ou está protegido. Configure GEMINI_API_KEY para usar IA ou informe os lançamentos manualmente.'
+        : 'Não foi possível ler o layout desta fatura automaticamente. Configure GEMINI_API_KEY para análise por IA ou cadastre as compras manualmente.',
   }
 }
 

@@ -136,6 +136,8 @@ async function parseWithGemini(
 }
 
 const MIN_TEXT_LEN = 120
+/** Extratos longos: tentativa local só nas primeiras páginas; Gemini usa o PDF inteiro sem re-parse. */
+const LOCAL_BANK_MAX_PAGES = 48
 
 export async function parseBankStatementPdf(
   pdfBase64: string,
@@ -151,7 +153,7 @@ export async function parseBankStatementPdf(
   const buffer = Buffer.from(pdfBase64, 'base64')
   let plainText = ''
   try {
-    plainText = await extractPdfPlainText(buffer)
+    plainText = await extractPdfPlainText(buffer, { maxPages: LOCAL_BANK_MAX_PAGES })
   } catch {
     plainText = ''
   }
@@ -175,20 +177,44 @@ export async function parseBankStatementPdf(
   }
 
   const apiKey = process.env.GEMINI_API_KEY
-  if (!apiKey) {
-    return {
-      success: false,
-      error:
-        plainText.length < MIN_TEXT_LEN
-          ? 'Este PDF parece ser só imagem (sem texto) ou está protegido. Exporte OFX/CSV no banco ou configure GEMINI_API_KEY para usar IA.'
-          : 'Não foi possível interpretar o layout deste PDF automaticamente. Use arquivo OFX/CSV ou configure GEMINI_API_KEY para análise por IA.',
+  if (apiKey) {
+    try {
+      return await parseWithGemini(pdfBase64, mimeType, apiKey)
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erro desconhecido'
+      return { success: false, error: `Erro ao chamar Gemini: ${msg}` }
     }
   }
 
+  let fullText = plainText
   try {
-    return await parseWithGemini(pdfBase64, mimeType, apiKey)
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : 'Erro desconhecido'
-    return { success: false, error: `Erro ao chamar Gemini: ${msg}` }
+    fullText = await extractPdfPlainText(buffer)
+  } catch {
+    fullText = plainText
+  }
+  if (fullText.length >= MIN_TEXT_LEN) {
+    const localRaw = parseBankTransactionsFromPdfText(fullText)
+    if (localRaw.length >= MIN_LOCAL_BANK_TX) {
+      const transactions = normalizeTransactions(localRaw)
+      if (transactions.length >= MIN_LOCAL_BANK_TX) {
+        const dates = transactions.map((t) => t.date).sort()
+        return {
+          success: true,
+          bank: guessBankFromPdfText(fullText),
+          period_start: dates[0],
+          period_end: dates[dates.length - 1],
+          transactions,
+          parse_source: 'local',
+        }
+      }
+    }
+  }
+
+  return {
+    success: false,
+    error:
+      fullText.length < MIN_TEXT_LEN
+        ? 'Este PDF parece ser só imagem (sem texto) ou está protegido. Exporte OFX/CSV no banco ou configure GEMINI_API_KEY para usar IA.'
+        : 'Não foi possível interpretar o layout deste PDF automaticamente. Use arquivo OFX/CSV ou configure GEMINI_API_KEY para análise por IA.',
   }
 }
