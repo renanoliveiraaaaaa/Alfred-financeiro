@@ -143,6 +143,22 @@ export async function parseBankStatementPdf(
   pdfBase64: string,
   mimeType: string = 'application/pdf',
 ): Promise<ParseBankPdfResult> {
+  try {
+    return await parseBankStatementPdfImpl(pdfBase64, mimeType)
+  } catch (err: unknown) {
+    console.error('[parseBankStatementPdf]', err)
+    return {
+      success: false,
+      error:
+        'Não foi possível processar este PDF no servidor. Confirme GEMINI_API_KEY na Vercel ou use OFX/CSV.',
+    }
+  }
+}
+
+async function parseBankStatementPdfImpl(
+  pdfBase64: string,
+  mimeType: string,
+): Promise<ParseBankPdfResult> {
   const supabase = createSupabaseServerClient()
   const {
     data: { user },
@@ -150,7 +166,12 @@ export async function parseBankStatementPdf(
   } = await supabase.auth.getUser()
   if (authErr || !user) return { success: false, error: 'Usuário não autenticado.' }
 
-  const buffer = Buffer.from(pdfBase64, 'base64')
+  let buffer: Buffer
+  try {
+    buffer = Buffer.from(pdfBase64, 'base64')
+  } catch {
+    return { success: false, error: 'Ficheiro inválido. Envie um PDF.' }
+  }
   let plainText = ''
   try {
     plainText = await extractPdfPlainText(buffer, { maxPages: LOCAL_BANK_MAX_PAGES })

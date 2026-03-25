@@ -89,24 +89,49 @@ const MIN_TEXT_LEN = 120
 /** Primeiras páginas bastam para a maioria das faturas; evita parse pesado do PDF inteiro. */
 const LOCAL_CARD_MAX_PAGES = 32
 
+function safeParseCardLocal(text: string): ParsedCardStatement | null {
+  try {
+    return parseCardInvoiceFromPdfText(text)
+  } catch {
+    return null
+  }
+}
+
 export async function parseCardStatement(
   pdfBase64: string,
   mimeType: string = 'application/pdf',
+): Promise<ParseStatementResult> {
+  try {
+    return await parseCardStatementImpl(pdfBase64, mimeType)
+  } catch (err: unknown) {
+    console.error('[parseCardStatement]', err)
+    return {
+      success: false,
+      error:
+        'Não foi possível processar este PDF no servidor. Confirme GEMINI_API_KEY na Vercel, tente outro ficheiro ou cadastre as compras manualmente.',
+    }
+  }
+}
+
+async function parseCardStatementImpl(
+  pdfBase64: string,
+  mimeType: string,
 ): Promise<ParseStatementResult> {
   const supabase = createSupabaseServerClient()
   const { data: { user }, error: authErr } = await supabase.auth.getUser()
   if (authErr || !user) return { success: false, error: 'Usuário não autenticado.' }
 
-  const buffer = Buffer.from(pdfBase64, 'base64')
-  let plainText = ''
+  let buffer: Buffer
   try {
-    plainText = await extractPdfPlainText(buffer, { maxPages: LOCAL_CARD_MAX_PAGES })
+    buffer = Buffer.from(pdfBase64, 'base64')
   } catch {
-    plainText = ''
+    return { success: false, error: 'Ficheiro inválido. Envie um PDF.' }
   }
 
+  let plainText = await extractPdfPlainText(buffer, { maxPages: LOCAL_CARD_MAX_PAGES })
+
   if (plainText.length >= MIN_TEXT_LEN) {
-    const local = parseCardInvoiceFromPdfText(plainText)
+    const local = safeParseCardLocal(plainText)
     if (local && local.transactions.length > 0) {
       return { success: true, data: local, parse_source: 'local' }
     }
@@ -137,12 +162,17 @@ export async function parseCardStatement(
         return { success: false, error: 'Não foi possível extrair transações da fatura.' }
       }
 
+      const fallbackDate =
+        parsed.invoice_month && /^\d{4}-\d{2}$/.test(parsed.invoice_month)
+          ? `${parsed.invoice_month}-01`
+          : new Date().toISOString().slice(0, 10)
+
       parsed.transactions = parsed.transactions
         .filter((t) => t.description && t.amount !== undefined)
         .map((t) => ({
           ...t,
           amount: Math.abs(Number(t.amount) || 0),
-          date: t.date || parsed.invoice_month + '-01',
+          date: t.date || fallbackDate,
         }))
 
       return { success: true, data: parsed, parse_source: 'gemini' }
@@ -152,15 +182,10 @@ export async function parseCardStatement(
     }
   }
 
-  // Sem IA: tenta texto completo (lançamentos podem estar depois da página LOCAL_CARD_MAX_PAGES)
   let fullText = plainText
-  try {
-    fullText = await extractPdfPlainText(buffer)
-  } catch {
-    fullText = plainText
-  }
+  fullText = await extractPdfPlainText(buffer)
   if (fullText.length >= MIN_TEXT_LEN) {
-    const localFull = parseCardInvoiceFromPdfText(fullText)
+    const localFull = safeParseCardLocal(fullText)
     if (localFull && localFull.transactions.length > 0) {
       return { success: true, data: localFull, parse_source: 'local' }
     }
