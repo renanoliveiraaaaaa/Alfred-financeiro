@@ -40,7 +40,21 @@ export type ConfirmStatementInput = {
   credit_limit: number | null
   closing_day: number | null
   due_day: number | null
+  /** YYYY-MM da fatura do PDF — obrigatório para alinhar vencimentos ao mês da fatura */
+  invoice_month: string | null
   transactions: (ParsedTransaction & { selected: boolean })[]
+}
+
+/** Vencimento típico: dia `dueDay` dentro do mês de competência da fatura (YYYY-MM). */
+function statementDueDateISO(invoiceMonth: string, dueDay: number): string | null {
+  const m = invoiceMonth.match(/^(\d{4})-(\d{2})$/)
+  if (!m) return null
+  const y = parseInt(m[1], 10)
+  const mo = parseInt(m[2], 10)
+  if (mo < 1 || mo > 12) return null
+  const last = new Date(y, mo, 0).getDate()
+  const d = Math.min(Math.max(1, dueDay), last)
+  return `${y}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`
 }
 
 export type ConfirmStatementResult =
@@ -271,17 +285,41 @@ export async function confirmCardStatement(
   const rows: object[] = []
   let projected = 0
 
+  const closingEff =
+    input.closing_day != null && input.closing_day >= 1 && input.closing_day <= 31
+      ? input.closing_day
+      : 1
+  const dueEff =
+    input.due_day != null && input.due_day >= 1 && input.due_day <= 31 ? input.due_day : 10
+
+  const statementDue =
+    input.invoice_month && dueEff
+      ? statementDueDateISO(input.invoice_month, dueEff)
+      : null
+
   for (const t of selected) {
-    const isParcelado = t.installment_total && t.installment_total > 1
+    const isParcelado = t.installment_total != null && t.installment_total > 1
     const n = isParcelado ? t.installment_total! : 1
     const current = isParcelado ? t.installment_current ?? 1 : 1
     const remaining = n - current + 1 // parcelas restantes incluindo a atual
 
-    if (isParcelado && remaining > 1 && input.closing_day && input.due_day) {
-      // Calcula todas as N datas desde a compra original e faz slice a partir
-      // da parcela atual (current-1 em 0-indexed) para não criar parcelas passadas
-      const allDates = calculateInstallmentDates(t.date, input.closing_day, input.due_day, n)
-      const futureDates = allDates.slice(current - 1)
+    const dueThisInvoice = statementDue ?? t.date
+
+    if (isParcelado && remaining > 1) {
+      let futureDates = calculateInstallmentDates(t.date, closingEff, dueEff, n).slice(current - 1)
+      /*
+       * Se a data da compra no PDF não bate com o ciclo real, a 1ª parcela projetada cai
+       * fora do mês da fatura e o total “some” do mês no dashboard. Ancoramos no vencimento
+       * do mês da fatura (invoice_month + due_day) e seguimos mês a mês.
+       */
+      if (
+        statementDue &&
+        input.invoice_month &&
+        futureDates.length > 0 &&
+        !futureDates[0].startsWith(input.invoice_month)
+      ) {
+        futureDates = Array.from({ length: remaining }, (_, i) => addMonths(statementDue, i))
+      }
 
       for (let i = 0; i < remaining; i++) {
         const installNum = current + i
@@ -294,13 +332,13 @@ export async function confirmCardStatement(
           payment_method: 'credito_parcelado',
           installments: n,
           installment_number: installNum,
-          due_date: futureDates[i] ?? addMonths(t.date, i),
-          paid: i === 0 ? false : false, // não marcamos como pago automaticamente
+          due_date: futureDates[i] ?? addMonths(dueThisInvoice, i),
+          paid: false,
         })
         if (i > 0) projected++
       }
     } else {
-      // À vista ou parcela única
+      // À vista, última parcela, ou parcela única — competência = mês da fatura no vencimento
       rows.push({
         user_id: user.id,
         credit_card_id: cardId,
@@ -310,7 +348,7 @@ export async function confirmCardStatement(
         payment_method: isParcelado ? 'credito_parcelado' : 'credito',
         installments: isParcelado ? n : null,
         installment_number: isParcelado ? current : null,
-        due_date: t.date,
+        due_date: dueThisInvoice,
         paid: false,
       })
     }

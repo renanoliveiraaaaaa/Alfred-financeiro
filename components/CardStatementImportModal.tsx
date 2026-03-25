@@ -181,6 +181,7 @@ export default function CardStatementImportModal({ open, onClose, existingCards,
       credit_limit: creditLimit ? Number(creditLimit) : null,
       closing_day: closingDay ? Number(closingDay) : null,
       due_day: dueDay ? Number(dueDay) : null,
+      invoice_month: parsed?.invoice_month ?? null,
       transactions,
     }
 
@@ -307,7 +308,17 @@ export default function CardStatementImportModal({ open, onClose, existingCards,
                   <label className="block text-xs font-medium text-muted mb-1">Cartão</label>
                   <select
                     value={selectedCardId}
-                    onChange={(e) => setSelectedCardId(e.target.value)}
+                    onChange={(e) => {
+                      const v = e.target.value
+                      setSelectedCardId(v)
+                      if (v !== '__new__') {
+                        const c = existingCards.find((x) => x.id === v)
+                        if (c) {
+                          if (c.closing_day != null) setClosingDay(String(c.closing_day))
+                          if (c.due_day != null) setDueDay(String(c.due_day))
+                        }
+                      }
+                    }}
                     className="w-full rounded-lg border border-border bg-background text-sm text-main px-3 py-2 focus:outline-none focus:ring-1 focus:ring-brand"
                   >
                     <option value="__new__">+ Criar novo cartão</option>
