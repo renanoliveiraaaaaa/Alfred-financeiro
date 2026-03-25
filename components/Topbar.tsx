@@ -104,13 +104,26 @@ export default function Topbar() {
 
   return (
     <header className="sticky top-0 z-40 bg-surface/80 backdrop-blur-md border-b border-border glass-topbar">
-      <div className="h-14 flex items-center justify-between px-5 gap-4 transition-colors">
+      <div className="min-h-14 flex items-center justify-between px-4 sm:px-5 gap-3 py-1.5 transition-colors">
 
-        {/* ── Left: page title ── */}
+        {/* ── Left: marca + secção (sempre visível, estilo app nativo) ── */}
         <div className="min-w-0 flex-1">
-          {pageTitle && (
-            <h1 className="text-sm font-semibold text-main truncate">{pageTitle}</h1>
-          )}
+          <Link
+            href="/dashboard"
+            className="inline-flex flex-col gap-0.5 min-w-0 group"
+            title="Ir para a visão geral"
+          >
+            <span className="text-base font-bold tracking-tight text-main leading-none group-hover:text-brand transition-colors">
+              Alfred
+            </span>
+            {pageTitle ? (
+              <span className="text-[11px] sm:text-xs font-medium text-muted truncate max-w-[65vw] sm:max-w-none">
+                {pageTitle}
+              </span>
+            ) : (
+              <span className="text-[11px] sm:text-xs font-medium text-muted">Financeiro</span>
+            )}
+          </Link>
         </div>
 
         {/* ── Right: actions ── */}
