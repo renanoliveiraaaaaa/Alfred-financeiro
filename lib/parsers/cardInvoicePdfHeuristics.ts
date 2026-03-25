@@ -41,10 +41,13 @@ export function parseCardInvoiceFromPdfText(text: string): ParsedCardStatement |
 
   const reLine =
     /^(\d{2})\/(\d{2})\/(\d{2,4})\s+(.+?)\s+(-?[\d]{1,3}(?:\.\d{3})*,\d{2}|-?\d+,\d{2})\s*$/
+  // Alguns PDFs (ex.: lojas/bancos) colocam "R$" antes do valor
+  const reLineWithCurrency =
+    /^(\d{2})\/(\d{2})\/(\d{2,4})\s+(.+?)\s+R\$\s*(-?[\d]{1,3}(?:\.\d{3})*,\d{2}|-?\d+,\d{2})\s*$/i
 
   for (const line of lines) {
     if (line.length < 15 || SKIP.test(line)) continue
-    const m = line.match(reLine)
+    const m = line.match(reLine) ?? line.match(reLineWithCurrency)
     if (!m) continue
 
     const dateStr = parseDateBr(m[1], m[2], m[3])

@@ -76,11 +76,12 @@ Analise o PDF desta fatura e retorne APENAS um objeto JSON válido (sem markdown
 }
 
 IMPORTANTE:
-- Inclua TODAS as transações da fatura, inclusive estornos (amount negativo para estornos)
-- Para compras parceladas como "LOJA ABC 02/06", installment_current=2, installment_total=6
-- Para compras à vista, installment_current=null, installment_total=null
-- Ignore taxas/encargos/juros (não são compras)
-- O campo amount deve ser o valor de UMA parcela (não o total parcelado)
+- Liste TODAS as linhas de compras do demonstrativo: parceladas E à vista (pagamento único). Compras à vista são obrigatórias — costumam ser a maior parte do total da fatura; NÃO as omita.
+- Para compras parceladas (ex.: "LOJA ABC 02/06" ou "02/06" no fim), installment_current=2, installment_total=6; amount = valor DE UMA PARCELA só.
+- Para compras à vista (sem indicação de parcelas), installment_current=null, installment_total=null; amount = valor integral daquela linha.
+- Inclua estornos como transações com amount negativo.
+- Ignore APENAS linhas que sejam claramente IOF, juros rotativos, multa, anuidade ou "total da fatura" agregado — não confundir com compras à vista.
+- invoice_total no JSON deve ser o total da fatura impresso no PDF; a soma dos amounts positivos (parcelas + à vista, sem estornos) deve ficar próxima desse total — se faltar muito, reveja se esqueceu compras à vista ou linhas sem "parcela" no texto.
 - Retorne SOMENTE o JSON, sem explicações
 `
 

@@ -14,6 +14,7 @@ import { useGreetingPronoun } from '@/lib/greeting'
 import {
   ArrowLeft,
   CheckCircle2,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   CreditCard,
@@ -46,6 +47,34 @@ const MONTH_NAMES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
 function monthLabel(key: string): string {
   const [y, m] = key.split('-')
   return `${MONTH_NAMES[parseInt(m) - 1].slice(0, 3)} ${y}`
+}
+
+/** Mês de calendário atual YYYY-MM */
+function currentCalendarMonthKey(): string {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+}
+
+/**
+ * Mês inicial: hoje se existir lançamentos; senão o mais próximo no tempo.
+ * (Antes usava-se só o primeiro da lista ordenada, o que podia cair no extremo errado.)
+ */
+function pickDefaultMonthKey(keys: string[]): string {
+  if (keys.length === 0) return ''
+  const nowKey = currentCalendarMonthKey()
+  if (keys.includes(nowKey)) return nowKey
+  const anchor = new Date(`${nowKey}-15T12:00:00`).getTime()
+  let best = keys[0]
+  let bestDist = Infinity
+  for (const k of keys) {
+    const t = new Date(`${k}-15T12:00:00`).getTime()
+    const dist = Math.abs(t - anchor)
+    if (dist < bestDist) {
+      bestDist = dist
+      best = k
+    }
+  }
+  return best
 }
 
 /** Dias até a próxima ocorrência de um dia do mês */
@@ -123,8 +152,16 @@ export default function CreditCardDetailPage() {
   }, [expenses])
 
   const [selectedMonth, setSelectedMonth] = useState('')
+
   useEffect(() => {
-    if (monthGroups.length > 0 && !selectedMonth) setSelectedMonth(monthGroups[0].key)
+    if (monthGroups.length === 0) {
+      setSelectedMonth('')
+      return
+    }
+    const keys = monthGroups.map((g) => g.key)
+    if (!selectedMonth || !keys.includes(selectedMonth)) {
+      setSelectedMonth(pickDefaultMonthKey(keys))
+    }
   }, [monthGroups, selectedMonth])
 
   const currentGroup = monthGroups.find((g) => g.key === selectedMonth) ?? null
@@ -280,38 +317,62 @@ export default function CreditCardDetailPage() {
         </div>
       ) : (
         <>
-          {/* Abas de mês */}
-          <div className="flex items-center gap-1 overflow-x-auto pb-1 -mb-1">
-            <button
-              onClick={() => currentIdx < monthGroups.length - 1 && setSelectedMonth(monthGroups[currentIdx + 1].key)}
-              disabled={currentIdx >= monthGroups.length - 1}
-              className="h-8 w-8 rounded-lg flex items-center justify-center text-muted hover:bg-background disabled:opacity-30 transition-colors shrink-0"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            {monthGroups.map((g) => (
-              <button
-                key={g.key}
-                onClick={() => setSelectedMonth(g.key)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors shrink-0 ${
-                  g.key === selectedMonth
-                    ? 'bg-brand text-white'
-                    : 'text-muted hover:text-main hover:bg-background'
-                }`}
-              >
-                {g.label}
-                {!g.allPaid && (
-                  <span className="ml-1.5 inline-block h-1.5 w-1.5 rounded-full bg-current opacity-60 align-middle" />
+          {/* Navegação por fatura (mês): seletor + setas — evita fila longa de botões */}
+          <div className={`${cls.surface} px-3 py-3 sm:px-4`}>
+            <p className="text-[10px] font-medium text-muted uppercase tracking-wider mb-2">
+              Fatura por competência
+            </p>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center justify-center gap-2 w-full sm:w-auto sm:max-w-md">
+                <button
+                  type="button"
+                  title="Mês anterior (mais antigo)"
+                  onClick={() =>
+                    currentIdx < monthGroups.length - 1 &&
+                    setSelectedMonth(monthGroups[currentIdx + 1].key)
+                  }
+                  disabled={currentIdx >= monthGroups.length - 1}
+                  className="h-10 w-10 rounded-xl border border-border bg-background flex items-center justify-center text-muted hover:text-main hover:border-brand/40 disabled:opacity-30 transition-colors shrink-0"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
+
+                <div className="relative flex-1 min-w-0 max-w-[min(100%,280px)]">
+                  <select
+                    value={selectedMonth}
+                    onChange={(e) => setSelectedMonth(e.target.value)}
+                    className="w-full appearance-none rounded-xl border border-border bg-background py-2.5 pl-3 pr-10 text-sm font-semibold text-main text-center sm:text-left focus:outline-none focus:ring-2 focus:ring-brand/40 focus:border-brand transition-colors cursor-pointer"
+                    aria-label="Selecionar mês da fatura"
+                  >
+                    {monthGroups.map((g) => (
+                      <option key={g.key} value={g.key}>
+                        {g.label}
+                        {!g.allPaid ? ' · aberto' : ' · quitada'}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted pointer-events-none" />
+                </div>
+
+                <button
+                  type="button"
+                  title="Próximo mês (mais recente)"
+                  onClick={() =>
+                    currentIdx > 0 && setSelectedMonth(monthGroups[currentIdx - 1].key)
+                  }
+                  disabled={currentIdx <= 0}
+                  className="h-10 w-10 rounded-xl border border-border bg-background flex items-center justify-center text-muted hover:text-main hover:border-brand/40 disabled:opacity-30 transition-colors shrink-0"
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </button>
+              </div>
+              <p className="text-xs text-muted text-center sm:text-right tabular-nums">
+                {currentIdx + 1} / {monthGroups.length}
+                {selectedMonth === currentCalendarMonthKey() && (
+                  <span className="ml-2 text-brand font-medium">· mês atual</span>
                 )}
-              </button>
-            ))}
-            <button
-              onClick={() => currentIdx > 0 && setSelectedMonth(monthGroups[currentIdx - 1].key)}
-              disabled={currentIdx <= 0}
-              className="h-8 w-8 rounded-lg flex items-center justify-center text-muted hover:bg-background disabled:opacity-30 transition-colors shrink-0"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
+              </p>
+            </div>
           </div>
 
           {/* Resumo da fatura */}
