@@ -5,6 +5,7 @@ import { createSupabaseServerClient } from '@/lib/supabaseServer'
 import { calculateInstallmentDates, addMonths } from '@/lib/installments'
 import { extractPdfPlainText } from '@/lib/parsers/extractPdfText'
 import { parseCardInvoiceFromPdfText } from '@/lib/parsers/cardInvoicePdfHeuristics'
+import { getGeminiApiKey } from '@/lib/geminiEnv'
 
 // ── Tipos exportados ──────────────────────────────────────────────────────────
 
@@ -137,7 +138,7 @@ async function parseCardStatementImpl(
     }
   }
 
-  const apiKey = process.env.GEMINI_API_KEY
+  const apiKey = getGeminiApiKey()
   if (apiKey) {
     try {
       const genAI = new GoogleGenerativeAI(apiKey)
@@ -191,12 +192,17 @@ async function parseCardStatementImpl(
     }
   }
 
+  const noKeyHint =
+    'Este PDF não tem texto selecionável (muito comum em faturas escaneadas). ' +
+    'Para ler com IA: em aistudio.google.com crie uma API key; na Vercel (Settings → Environment Variables) adicione GEMINI_API_KEY ou GOOGLE_GENERATIVE_AI_API_KEY para Production e faça Redeploy. ' +
+    'Em desenvolvimento use .env.local. Alternativa: cadastre os lançamentos manualmente.'
+
+  const layoutHint =
+    'Há texto no PDF mas o layout não foi reconhecido. Com GEMINI_API_KEY na Vercel (+ Redeploy) a IA costuma resolver; ou cadastre manualmente.'
+
   return {
     success: false,
-    error:
-      fullText.length < MIN_TEXT_LEN
-        ? 'Este PDF parece ser só imagem ou está protegido. Configure GEMINI_API_KEY para usar IA ou informe os lançamentos manualmente.'
-        : 'Não foi possível ler o layout desta fatura automaticamente. Configure GEMINI_API_KEY para análise por IA ou cadastre as compras manualmente.',
+    error: fullText.length < MIN_TEXT_LEN ? noKeyHint : layoutHint,
   }
 }
 

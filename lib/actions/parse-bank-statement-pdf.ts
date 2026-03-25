@@ -4,6 +4,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai'
 import { createSupabaseServerClient } from '@/lib/supabaseServer'
 import type { ImportTransaction } from './import-statement'
 import { extractPdfPlainText } from '@/lib/parsers/extractPdfText'
+import { getGeminiApiKey } from '@/lib/geminiEnv'
 import {
   guessBankFromPdfText,
   parseBankTransactionsFromPdfText,
@@ -197,7 +198,7 @@ async function parseBankStatementPdfImpl(
     }
   }
 
-  const apiKey = process.env.GEMINI_API_KEY
+  const apiKey = getGeminiApiKey()
   if (apiKey) {
     try {
       return await parseWithGemini(pdfBase64, mimeType, apiKey)
@@ -231,11 +232,14 @@ async function parseBankStatementPdfImpl(
     }
   }
 
+  const noTextHint =
+    'PDF sem texto selecionável (comum em extratos escaneados). Configure GEMINI_API_KEY ou GOOGLE_GENERATIVE_AI_API_KEY na Vercel (Production) + Redeploy, ou exporte OFX/CSV no banco.'
+
+  const layoutHint =
+    'Layout não reconhecido. Com chave Gemini na Vercel (+ Redeploy) a IA ajuda; ou use OFX/CSV.'
+
   return {
     success: false,
-    error:
-      fullText.length < MIN_TEXT_LEN
-        ? 'Este PDF parece ser só imagem (sem texto) ou está protegido. Exporte OFX/CSV no banco ou configure GEMINI_API_KEY para usar IA.'
-        : 'Não foi possível interpretar o layout deste PDF automaticamente. Use arquivo OFX/CSV ou configure GEMINI_API_KEY para análise por IA.',
+    error: fullText.length < MIN_TEXT_LEN ? noTextHint : layoutHint,
   }
 }
