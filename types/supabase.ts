@@ -22,6 +22,11 @@ export interface Database {
           app_theme: 'normal' | 'gala' | 'classic' | 'club' | 'liquid'
           hide_balance: boolean
           weekly_report: boolean
+          role: 'user' | 'admin'
+          plan_status?: 'trial' | 'active' | 'expired'
+          trial_ends_at?: string | null
+          subscription_status: 'trial' | 'active' | 'past_due' | 'canceled'
+          subscription_plan: 'free' | 'premium' | 'business'
           created_at: string
         }
         Insert: {
@@ -32,6 +37,11 @@ export interface Database {
           app_theme?: 'normal' | 'gala' | 'classic' | 'club' | 'liquid'
           hide_balance?: boolean
           weekly_report?: boolean
+          role?: 'user' | 'admin'
+          plan_status?: 'trial' | 'active' | 'expired'
+          trial_ends_at?: string | null
+          subscription_status?: 'trial' | 'active' | 'past_due' | 'canceled'
+          subscription_plan?: 'free' | 'premium' | 'business'
           created_at?: string
         }
         Update: {
@@ -42,6 +52,57 @@ export interface Database {
           app_theme?: 'normal' | 'gala' | 'classic' | 'club' | 'liquid'
           hide_balance?: boolean
           weekly_report?: boolean
+          role?: 'user' | 'admin'
+          plan_status?: 'trial' | 'active' | 'expired'
+          trial_ends_at?: string | null
+          subscription_status?: 'trial' | 'active' | 'past_due' | 'canceled'
+          subscription_plan?: 'free' | 'premium' | 'business'
+          created_at?: string
+        }
+      }
+      organizations: {
+        Row: {
+          id: string
+          owner_id: string
+          name: string
+          slug: string
+          type: 'personal' | 'business'
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          owner_id: string
+          name: string
+          slug: string
+          type: 'personal' | 'business'
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          owner_id?: string
+          name?: string
+          slug?: string
+          type?: 'personal' | 'business'
+          created_at?: string
+        }
+      }
+      organization_members: {
+        Row: {
+          organization_id: string
+          profile_id: string
+          role: 'owner' | 'admin' | 'member'
+          created_at: string
+        }
+        Insert: {
+          organization_id: string
+          profile_id: string
+          role: 'owner' | 'admin' | 'member'
+          created_at?: string
+        }
+        Update: {
+          organization_id?: string
+          profile_id?: string
+          role?: 'owner' | 'admin' | 'member'
           created_at?: string
         }
       }
@@ -66,6 +127,7 @@ export interface Database {
         Row: {
           id: string
           user_id: string
+          organization_id: string
           amount: number
           description: string
           date: string
@@ -78,6 +140,7 @@ export interface Database {
         Insert: {
           id?: string
           user_id: string
+          organization_id: string
           amount: number
           description: string
           date: string
@@ -90,6 +153,7 @@ export interface Database {
         Update: {
           id?: string
           user_id?: string
+          organization_id?: string
           amount?: number
           description?: string
           date?: string
@@ -104,6 +168,7 @@ export interface Database {
         Row: {
           id: string
           user_id: string
+          organization_id: string
           amount: number
           description: string
           category: string
@@ -121,6 +186,7 @@ export interface Database {
         Insert: {
           id?: string
           user_id: string
+          organization_id: string
           amount: number
           description: string
           category: string
@@ -138,6 +204,7 @@ export interface Database {
         Update: {
           id?: string
           user_id?: string
+          organization_id?: string
           amount?: number
           description?: string
           category?: string

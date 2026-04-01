@@ -1,5 +1,6 @@
 'use server'
 
+import { resolveActiveOrganizationId } from '@/lib/activeOrganizationServer'
 import { createSupabaseServerClient } from '@/lib/supabaseServer'
 import { calculateInstallmentDates, addMonths } from '@/lib/installments'
 
@@ -34,6 +35,10 @@ export async function createExpense(input: CreateExpenseInput): Promise<ActionRe
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) return { success: false, error: 'Usuário não autenticado.' }
 
+  const orgRes = await resolveActiveOrganizationId()
+  if (!orgRes.ok) return { success: false, error: orgRes.error }
+  const organizationId = orgRes.organizationId
+
   if (isParcelado) {
     const n = input.installments
     const perInstallment = Math.round((input.amount / n) * 100) / 100
@@ -64,6 +69,7 @@ export async function createExpense(input: CreateExpenseInput): Promise<ActionRe
 
     const rows = Array.from({ length: n }, (_, i) => ({
       user_id: user.id,
+      organization_id: organizationId,
       amount: i === 0 ? perInstallment + remainder : perInstallment,
       description: `${input.description.trim()} (${i + 1}/${n})`,
       category: input.category,
@@ -81,6 +87,7 @@ export async function createExpense(input: CreateExpenseInput): Promise<ActionRe
   } else {
     const { error: insertError } = await supabase.from('expenses').insert({
       user_id: user.id,
+      organization_id: organizationId,
       amount: input.amount,
       description: input.description.trim(),
       category: input.category,

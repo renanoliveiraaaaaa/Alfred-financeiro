@@ -58,7 +58,7 @@ export default function Home() {
           // Buscar perfil para avatar e nome
           const { data: profile } = await supabase
             .from('profiles')
-            .select('full_name, avatar_url')
+            .select('full_name, avatar_url, role')
             .eq('id', data.user.id)
             .maybeSingle()
 
@@ -68,7 +68,8 @@ export default function Home() {
             avatarUrl: profile?.avatar_url ?? null,
           })
 
-          router.push('/dashboard')
+          const isAdmin = profile?.role === 'admin'
+          router.push(isAdmin ? '/admin/dashboard' : '/dashboard')
           router.refresh()
         }
       } else {

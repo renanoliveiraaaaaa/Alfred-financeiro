@@ -1,6 +1,8 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { resolveActiveOrganizationIdForClient } from '@/lib/activeOrganizationClient'
+import { useActiveOrganizationRevision } from '@/lib/useActiveOrganizationRevision'
 import { createSupabaseClient } from '@/lib/supabaseClient'
 import { formatDate } from '@/lib/format'
 import MaskedValue from '@/components/MaskedValue'
@@ -21,6 +23,7 @@ function diffDays(dateStr: string): number {
 
 export default function AttentionPanel() {
   const supabase = createSupabaseClient()
+  const orgRevision = useActiveOrganizationRevision()
   const { toast, toastError } = useToast()
   const pronoun = useGreetingPronoun()
   const [expenses, setExpenses] = useState<Expense[]>([])
@@ -29,14 +32,28 @@ export default function AttentionPanel() {
 
   const fetchUrgent = useCallback(async () => {
     const now = new Date()
-    const today = now.toISOString().slice(0, 10)
     const maxDate = new Date(now)
     maxDate.setDate(maxDate.getDate() + 3)
     const maxDateStr = maxDate.toISOString().slice(0, 10)
 
+    const { data: userData } = await supabase.auth.getUser()
+    if (!userData.user) {
+      setExpenses([])
+      setLoading(false)
+      return
+    }
+
+    const orgId = await resolveActiveOrganizationIdForClient(supabase, userData.user.id)
+    if (!orgId) {
+      setExpenses([])
+      setLoading(false)
+      return
+    }
+
     const { data, error } = await supabase
       .from('expenses')
       .select('*')
+      .eq('organization_id', orgId)
       .eq('paid', false)
       .lte('due_date', maxDateStr)
       .order('due_date', { ascending: true })
@@ -48,7 +65,7 @@ export default function AttentionPanel() {
       setExpenses((data ?? []) as Expense[])
     }
     setLoading(false)
-  }, [supabase, toastError])
+  }, [supabase, toastError, orgRevision])
 
   useEffect(() => {
     fetchUrgent()

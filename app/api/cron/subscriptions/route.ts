@@ -56,8 +56,24 @@ export async function GET(request: Request) {
 
   for (const sub of subs) {
     try {
+      const { data: personalOrg, error: orgErr } = await supabase
+        .from('organizations')
+        .select('id')
+        .eq('owner_id', sub.user_id)
+        .eq('type', 'personal')
+        .maybeSingle()
+
+      if (orgErr || !personalOrg?.id) {
+        console.error(
+          `[cron/subscriptions] No personal organization for user ${sub.user_id} (sub ${sub.id}):`,
+          orgErr?.message ?? 'missing org',
+        )
+        continue
+      }
+
       const { error: insertErr } = await supabase.from('expenses').insert({
         user_id: sub.user_id,
+        organization_id: personalOrg.id,
         amount: Number(sub.amount),
         description: `${sub.name} (assinatura)`,
         category: sub.category || 'assinaturas',

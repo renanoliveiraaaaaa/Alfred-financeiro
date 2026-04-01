@@ -4,7 +4,10 @@ import { GoogleGenerativeAI } from '@google/generative-ai'
 import { createSupabaseServerClient } from '@/lib/supabaseServer'
 import type { ImportTransaction } from './import-statement'
 import { extractPdfPlainText } from '@/lib/parsers/extractPdfText'
-import { getGeminiApiKey } from '@/lib/geminiEnv'
+import { formatGeminiCallError, getGeminiApiKey, getGeminiModelId } from '@/lib/geminiEnv'
+import { parseGeminiJsonResponse } from '@/lib/parseGeminiJson'
+import { extractPlainTextFromEgidePdf } from '@/lib/egideClient'
+import { isEgideConfigured } from '@/lib/egideEnv'
 import {
   guessBankFromPdfText,
   parseBankTransactionsFromPdfText,
@@ -19,7 +22,7 @@ export type ParseBankPdfResult =
       period_end: string
       transactions: ImportTransaction[]
       /** local = texto + regras (rápido); gemini = API */
-      parse_source: 'local' | 'gemini'
+      parse_source: 'local' | 'gemini' | 'egide'
     }
   | { success: false; error: string }
 
@@ -90,7 +93,14 @@ async function parseWithGemini(
   apiKey: string,
 ): Promise<ParseBankPdfResult> {
   const genAI = new GoogleGenerativeAI(apiKey)
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
+  const model = genAI.getGenerativeModel({
+    model: getGeminiModelId(),
+    generationConfig: {
+      temperature: 0.1,
+      maxOutputTokens: 32768,
+      responseMimeType: 'application/json',
+    },
+  })
 
   const result = await model.generateContent([
     EXTRACTION_PROMPT,
@@ -98,23 +108,21 @@ async function parseWithGemini(
   ])
 
   const text = result.response.text().trim()
-  const jsonStr = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim()
-
-  let parsed: {
+  type ParsedBank = {
     bank: string
     period_start: string
     period_end: string
     transactions: ImportTransaction[]
   }
-
-  try {
-    parsed = JSON.parse(jsonStr)
-  } catch {
+  const jsonResult = parseGeminiJsonResponse<ParsedBank>(text)
+  if (!jsonResult.ok) {
     return {
       success: false,
-      error: `Gemini retornou formato inválido. Tente novamente.\n\nResposta: ${text.slice(0, 300)}`,
+      error:
+        `${jsonResult.hint}${jsonResult.truncated ? '' : `\n\nTrecho: ${text.slice(0, 280)}`}`,
     }
   }
+  const parsed = jsonResult.data
 
   if (!parsed.transactions || !Array.isArray(parsed.transactions)) {
     return { success: false, error: 'Não foi possível extrair transações do extrato.' }
@@ -198,13 +206,33 @@ async function parseBankStatementPdfImpl(
     }
   }
 
+  if (isEgideConfigured()) {
+    const egideText = await extractPlainTextFromEgidePdf(buffer)
+    if (egideText && egideText.length >= MIN_TEXT_LEN) {
+      const localRaw = parseBankTransactionsFromPdfText(egideText)
+      if (localRaw.length >= MIN_LOCAL_BANK_TX) {
+        const transactions = normalizeTransactions(localRaw)
+        if (transactions.length >= MIN_LOCAL_BANK_TX) {
+          const dates = transactions.map((t) => t.date).sort()
+          return {
+            success: true,
+            bank: guessBankFromPdfText(egideText),
+            period_start: dates[0],
+            period_end: dates[dates.length - 1],
+            transactions,
+            parse_source: 'egide',
+          }
+        }
+      }
+    }
+  }
+
   const apiKey = getGeminiApiKey()
   if (apiKey) {
     try {
       return await parseWithGemini(pdfBase64, mimeType, apiKey)
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Erro desconhecido'
-      return { success: false, error: `Erro ao chamar Gemini: ${msg}` }
+      return { success: false, error: formatGeminiCallError(err) }
     }
   }
 

@@ -1,5 +1,6 @@
 'use server'
 
+import { resolveActiveOrganizationId } from '@/lib/activeOrganizationServer'
 import { createSupabaseServerClient } from '@/lib/supabaseServer'
 
 // Valores válidos após a migration consolidada (20260318200000_consolidate_all_pending.sql).
@@ -56,6 +57,12 @@ export async function confirmImport(input: ConfirmImportInput): Promise<ActionRe
     return { success: false, error: 'Usuário não autenticado.' }
   }
 
+  const orgRes = await resolveActiveOrganizationId()
+  if (!orgRes.ok) {
+    return { success: false, error: orgRes.error }
+  }
+  const organizationId = orgRes.organizationId
+
   if (!input.transactions || input.transactions.length === 0) {
     return { success: false, error: 'Nenhuma transação para importar.' }
   }
@@ -102,6 +109,7 @@ export async function confirmImport(input: ConfirmImportInput): Promise<ActionRe
     if (tx.type === 'revenue') {
       revenues.push({
         user_id: user.id,
+        organization_id: organizationId,
         amount: tx.amount,
         description: tx.description.trim(),
         date: tx.date,
@@ -113,6 +121,7 @@ export async function confirmImport(input: ConfirmImportInput): Promise<ActionRe
     } else {
       expenses.push({
         user_id: user.id,
+        organization_id: organizationId,
         amount: tx.amount,
         description: tx.description.trim(),
         category: safeCategory(tx.category),

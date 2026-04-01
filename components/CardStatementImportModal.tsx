@@ -15,6 +15,7 @@ import {
   type ParsedTransaction,
   type ConfirmStatementInput,
 } from '@/lib/actions/parse-card-statement'
+import { extractPdfTextInBrowser } from '@/lib/parsers/extractPdfTextBrowser'
 import { useToast } from '@/lib/toastContext'
 import type { Database } from '@/types/supabase'
 
@@ -23,6 +24,7 @@ type Card = Database['public']['Tables']['credit_cards']['Row']
 type TransactionRow = ParsedTransaction & { selected: boolean; id: string }
 
 type Step = 'upload' | 'parsing' | 'review' | 'confirming' | 'done'
+type ParsePhase = 'extract' | 'server'
 
 type Props = {
   open: boolean
@@ -56,6 +58,7 @@ export default function CardStatementImportModal({ open, onClose, existingCards,
   const router = useRouter()
 
   const [step, setStep] = useState<Step>('upload')
+  const [parsePhase, setParsePhase] = useState<ParsePhase>('extract')
   const [file, setFile] = useState<File | null>(null)
   const [dragOver, setDragOver] = useState(false)
   const [parseError, setParseError] = useState<string | null>(null)
@@ -78,6 +81,7 @@ export default function CardStatementImportModal({ open, onClose, existingCards,
 
   const reset = () => {
     setStep('upload')
+    setParsePhase('extract')
     setFile(null)
     setParseError(null)
     setConfirmError(null)
@@ -117,13 +121,21 @@ export default function CardStatementImportModal({ open, onClose, existingCards,
   const handleParse = async () => {
     if (!file) return
     setStep('parsing')
+    setParsePhase('extract')
     setParseError(null)
 
     try {
       const buffer = await file.arrayBuffer()
-      const base64 = Buffer.from(buffer).toString('base64')
+      let clientText = ''
+      try {
+        clientText = await extractPdfTextInBrowser(buffer)
+      } catch {
+        clientText = ''
+      }
 
-      const result = await parseCardStatement(base64, file.type)
+      setParsePhase('server')
+      const base64 = Buffer.from(buffer).toString('base64')
+      const result = await parseCardStatement(base64, file.type, { clientText })
 
       if (!result.success) {
         setParseError(result.error)
@@ -220,7 +232,8 @@ export default function CardStatementImportModal({ open, onClose, existingCards,
               <h2 className="text-sm font-semibold text-main">Importar fatura em PDF</h2>
               <p className="text-xs text-muted">
                 {step === 'upload' && 'Selecione o PDF da fatura do cartão'}
-                {step === 'parsing' && 'Analisando com Gemini AI...'}
+                {step === 'parsing' && parsePhase === 'extract' && 'A extrair texto do PDF no seu dispositivo…'}
+                {step === 'parsing' && parsePhase === 'server' && 'A processar no servidor…'}
                 {step === 'review' && `${transactions.length} transações encontradas — revise e confirme`}
                 {step === 'confirming' && 'Salvando...'}
                 {step === 'done' && 'Importação concluída!'}
@@ -287,8 +300,16 @@ export default function CardStatementImportModal({ open, onClose, existingCards,
                 <div className="flex items-center gap-3 rounded-xl bg-brand/5 border border-brand/20 px-5 py-4">
                   <Loader2 className="h-5 w-5 text-brand animate-spin shrink-0" />
                   <div>
-                    <p className="text-sm font-semibold text-main">Gemini está lendo sua fatura…</p>
-                    <p className="text-xs text-muted mt-0.5">Isso leva alguns segundos</p>
+                    <p className="text-sm font-semibold text-main">
+                      {parsePhase === 'extract'
+                        ? 'A extrair texto do PDF…'
+                        : 'A validar e analisar no servidor…'}
+                    </p>
+                    <p className="text-xs text-muted mt-0.5">
+                      {parsePhase === 'extract'
+                        ? 'pdf.js no browser — depois enviamos só o necessário ao servidor'
+                        : 'Heurística local ou IA, conforme o PDF'}
+                    </p>
                   </div>
                 </div>
               )}

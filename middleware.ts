@@ -1,87 +1,100 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
+/** Copia cookies definidos na resposta `from` (ex.: refresh Supabase) para redirecionamentos. */
+function redirectWithSession(request: NextRequest, toPath: string, from: NextResponse) {
+  const redirect = NextResponse.redirect(new URL(toPath, request.url))
+  from.cookies.getAll().forEach((c) => {
+    redirect.cookies.set(c.name, c.value, c)
+  })
+  return redirect
+}
+
 export async function middleware(request: NextRequest) {
-  let response = NextResponse.next({
-    request: {
-      headers: request.headers,
-    },
+  const pathname = request.nextUrl.pathname
+
+  // Defesa extra: assets e API não devem passar por Supabase (matcher já exclui na maioria dos casos)
+  if (
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/api') ||
+    pathname === '/manifest.json' ||
+    pathname === '/favicon.ico'
+  ) {
+    return NextResponse.next()
+  }
+
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  if (!url || !anonKey) {
+    console.error(
+      '[middleware] Defina NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY no .env.local',
+    )
+    return NextResponse.next()
+  }
+
+  // No Middleware do Next.js 14, request.cookies é só leitura: chamar .set na request lança e gera 500.
+  // Só podemos gravar cookies na resposta.
+  const response = NextResponse.next({
+    request,
   })
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return request.cookies.get(name)?.value
-        },
-        set(name: string, value: string, options: any) {
-          request.cookies.set({
-            name,
-            value,
-            ...options,
-          })
-          response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
-          })
-          response.cookies.set({
-            name,
-            value,
-            ...options,
-          })
-        },
-        remove(name: string, options: any) {
-          request.cookies.set({
-            name,
-            value: '',
-            ...options,
-          })
-          response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
-          })
-          response.cookies.set({
-            name,
-            value: '',
-            ...options,
-          })
-        },
+  const supabase = createServerClient(url, anonKey, {
+    cookies: {
+      get(name: string) {
+        return request.cookies.get(name)?.value
       },
-    }
-  )
+      set(name: string, value: string, options: any) {
+        response.cookies.set(name, value, options)
+      },
+      remove(name: string, options: any) {
+        response.cookies.set(name, '', { ...options, maxAge: 0 })
+      },
+    },
+  })
 
   const {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // Proteger rotas que começam com /dashboard, /expenses, /revenues, /reports, /settings
-  if (
-    request.nextUrl.pathname.startsWith('/dashboard') ||
-    request.nextUrl.pathname.startsWith('/expenses') ||
-    request.nextUrl.pathname.startsWith('/revenues') ||
-    request.nextUrl.pathname.startsWith('/projections') ||
-    request.nextUrl.pathname.startsWith('/reports') ||
-    request.nextUrl.pathname.startsWith('/credit-cards') ||
-    request.nextUrl.pathname.startsWith('/goals') ||
-    request.nextUrl.pathname.startsWith('/income-sources') ||
-    request.nextUrl.pathname.startsWith('/subscriptions') ||
-    request.nextUrl.pathname.startsWith('/settings') ||
-    request.nextUrl.pathname.startsWith('/profile') ||
-    request.nextUrl.pathname.startsWith('/expired') ||
-    request.nextUrl.pathname.startsWith('/import-history')
-  ) {
+  // Área administrativa: exige sessão (papel admin é validado no layout server-side)
+  if (pathname.startsWith('/admin')) {
     if (!user) {
-      return NextResponse.redirect(new URL('/', request.url))
+      // Mesma entrada de login que o resto da app (página inicial em `/`)
+      return redirectWithSession(request, '/', response)
     }
   }
 
-  // Se já está logado e tenta acessar a página inicial, redireciona para dashboard
-  if (request.nextUrl.pathname === '/' && user) {
-    return NextResponse.redirect(new URL('/dashboard', request.url))
+  // Proteger rotas que começam com /dashboard, /expenses, /revenues, /reports, /settings
+  if (
+    pathname.startsWith('/dashboard') ||
+    pathname.startsWith('/expenses') ||
+    pathname.startsWith('/revenues') ||
+    pathname.startsWith('/projections') ||
+    pathname.startsWith('/reports') ||
+    pathname.startsWith('/credit-cards') ||
+    pathname.startsWith('/goals') ||
+    pathname.startsWith('/income-sources') ||
+    pathname.startsWith('/subscriptions') ||
+    pathname.startsWith('/settings') ||
+    pathname.startsWith('/profile') ||
+    pathname.startsWith('/expired') ||
+    pathname.startsWith('/import-statement') ||
+    pathname.startsWith('/import-history')
+  ) {
+    if (!user) {
+      return redirectWithSession(request, '/', response)
+    }
+  }
+
+  // Logado na raiz: admins vão ao painel; demais ao dashboard do cliente
+  if (pathname === '/' && user) {
+    const { data: homeProfile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle()
+    const dest = homeProfile?.role === 'admin' ? '/admin/dashboard' : '/dashboard'
+    return redirectWithSession(request, dest, response)
   }
 
   return response
@@ -90,25 +103,11 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     /*
-     * Allow-list: só rotas HTML da aplicação. Assim /_next/*, /api/*, imagens e assets
-     * nunca passam por este middleware (evita 404 de chunks/CSS no dev e edge cases de regex).
+     * Padrão Next.js: exclui explicitamente /_next/static, /_next/image e /api para
+     * o middleware nunca interferir com chunks/CSS/JS (evita 404 em dev e em deploy).
+     * Inclui '/' porque o grupo negativo sozinho pode não casar a raiz.
      */
     '/',
-    '/dashboard/:path*',
-    '/expenses/:path*',
-    '/revenues/:path*',
-    '/projections/:path*',
-    '/reports/:path*',
-    '/credit-cards/:path*',
-    '/goals/:path*',
-    '/income-sources/:path*',
-    '/subscriptions/:path*',
-    '/settings/:path*',
-    '/profile/:path*',
-    '/expired/:path*',
-    '/import-statement',
-    '/import-statement/:path*',
-    '/import-history',
-    '/import-history/:path*',
+    '/((?!api|_next/static|_next/image|_next/webpack-hmr|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
   ],
 }

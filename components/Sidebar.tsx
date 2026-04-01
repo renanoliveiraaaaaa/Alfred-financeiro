@@ -3,6 +3,8 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState, useEffect } from 'react'
+import OrganizationSwitcher from '@/components/OrganizationSwitcher'
+import { createSupabaseClient } from '@/lib/supabaseClient'
 import {
   LayoutDashboard,
   Receipt,
@@ -68,6 +70,27 @@ function isActive(href: string, pathname: string) {
 
 export default function Sidebar() {
   const pathname = usePathname()
+  const supabase = createSupabaseClient()
+  const [isAdmin, setIsAdmin] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user || cancelled) return
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .maybeSingle()
+      if (!cancelled && profile?.role === 'admin') setIsAdmin(true)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [supabase])
 
   // Abre o accordion cujo item está ativo
   const getInitialOpen = () => {
@@ -96,7 +119,7 @@ export default function Sidebar() {
     setOpenAccordions((prev) => ({ ...prev, [key]: !prev[key] }))
 
   return (
-    <aside className="max-lg:hidden fixed inset-y-0 left-0 z-50 h-screen w-60 bg-surface border-r border-border flex flex-col shrink-0 transition-colors glass-sidebar overflow-y-auto">
+    <aside className="max-lg:hidden fixed inset-y-0 left-0 z-50 h-screen w-60 bg-surface border-r border-border flex flex-col shrink-0 transition-colors glass-sidebar overflow-hidden">
 
       {/* ── Brand header ── */}
       <div className="flex items-center gap-2.5 px-4 h-14 border-b border-border shrink-0">
@@ -108,8 +131,10 @@ export default function Sidebar() {
         </span>
       </div>
 
+      <OrganizationSwitcher />
+
       {/* ── Navigation ── */}
-      <nav className="flex-1 px-2 py-3 overflow-y-auto">
+      <nav className="flex-1 min-h-0 px-2 py-3 overflow-y-auto overflow-x-hidden">
         <div className="space-y-0.5">
 
           {/* Itens fixos */}
@@ -205,6 +230,27 @@ export default function Sidebar() {
               </div>
             )
           })}
+
+          {isAdmin ? (
+            <>
+              <div className="my-3 mx-1 border-t border-border" />
+              <Link
+                href="/admin/dashboard"
+                title="Painel Admin"
+                className={`relative flex items-center gap-2.5 px-2.5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-150 border border-amber-500/35 bg-amber-500/[0.08] dark:bg-amber-500/10 text-amber-950 dark:text-amber-100 shadow-sm hover:bg-amber-500/15 dark:hover:bg-amber-500/20 ${
+                  pathname.startsWith('/admin') ? 'ring-1 ring-amber-500/40' : ''
+                }`}
+              >
+                {pathname.startsWith('/admin') && (
+                  <span className="absolute left-0 top-1/2 -translate-y-1/2 h-4 w-0.5 rounded-r-full bg-amber-600 dark:bg-amber-400" />
+                )}
+                <span className="text-base leading-none" aria-hidden>
+                  ⚙️
+                </span>
+                <span className="leading-none">Painel Admin</span>
+              </Link>
+            </>
+          ) : null}
 
         </div>
       </nav>

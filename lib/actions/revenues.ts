@@ -1,5 +1,6 @@
 'use server'
 
+import { resolveActiveOrganizationId } from '@/lib/activeOrganizationServer'
 import { createSupabaseServerClient } from '@/lib/supabaseServer'
 
 export type CreateRevenueInput = {
@@ -22,8 +23,12 @@ export async function createRevenue(input: CreateRevenueInput): Promise<ActionRe
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) return { success: false, error: 'Usuário não autenticado.' }
 
+  const orgRes = await resolveActiveOrganizationId()
+  if (!orgRes.ok) return { success: false, error: orgRes.error }
+
   const { error: insertError } = await supabase.from('revenues').insert({
     user_id: user.id,
+    organization_id: orgRes.organizationId,
     amount: input.amount,
     description: input.description.trim(),
     date: input.date,

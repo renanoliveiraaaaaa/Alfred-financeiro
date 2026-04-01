@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createSupabaseServerClient } from '@/lib/supabaseServer'
 import { parseStatement, detectFormat, detectBankFromOfxContent, SupportedBank } from '@/lib/parsers'
 
 /**
@@ -12,6 +13,15 @@ import { parseStatement, detectFormat, detectBankFromOfxContent, SupportedBank }
  */
 export async function POST(request: NextRequest) {
   try {
+    const supabaseAuth = createSupabaseServerClient()
+    const {
+      data: { user },
+      error: authError,
+    } = await supabaseAuth.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 })
+    }
+
     const formData = await request.formData()
     const file = formData.get('file') as File | null
     const bank = (formData.get('bank') as string | null) ?? 'generic'

@@ -1,11 +1,15 @@
 'use server'
 
 import { GoogleGenerativeAI } from '@google/generative-ai'
+import { resolveActiveOrganizationId } from '@/lib/activeOrganizationServer'
 import { createSupabaseServerClient } from '@/lib/supabaseServer'
 import { calculateInstallmentDates, addMonths } from '@/lib/installments'
 import { extractPdfPlainText } from '@/lib/parsers/extractPdfText'
 import { parseCardInvoiceFromPdfText } from '@/lib/parsers/cardInvoicePdfHeuristics'
-import { getGeminiApiKey } from '@/lib/geminiEnv'
+import { formatGeminiCallError, getGeminiApiKey, getGeminiModelId } from '@/lib/geminiEnv'
+import { parseGeminiJsonResponse } from '@/lib/parseGeminiJson'
+import { extractPlainTextFromEgidePdf } from '@/lib/egideClient'
+import { isEgideConfigured } from '@/lib/egideEnv'
 
 // ── Tipos exportados ──────────────────────────────────────────────────────────
 
@@ -31,8 +35,13 @@ export type ParsedCardStatement = {
 }
 
 export type ParseStatementResult =
-  | { success: true; data: ParsedCardStatement; parse_source: 'local' | 'gemini' }
+  | { success: true; data: ParsedCardStatement; parse_source: 'local' | 'gemini' | 'egide' }
   | { success: false; error: string }
+
+/** Opções opcionais da server action (texto já extraído no cliente com pdf.js). */
+export type ParseCardStatementOptions = {
+  clientText?: string
+}
 
 export type ConfirmStatementInput = {
   card_id: string | null          // null = criar novo cartão
@@ -116,9 +125,10 @@ function safeParseCardLocal(text: string): ParsedCardStatement | null {
 export async function parseCardStatement(
   pdfBase64: string,
   mimeType: string = 'application/pdf',
+  options?: ParseCardStatementOptions,
 ): Promise<ParseStatementResult> {
   try {
-    return await parseCardStatementImpl(pdfBase64, mimeType)
+    return await parseCardStatementImpl(pdfBase64, mimeType, options)
   } catch (err: unknown) {
     console.error('[parseCardStatement]', err)
     return {
@@ -132,6 +142,7 @@ export async function parseCardStatement(
 async function parseCardStatementImpl(
   pdfBase64: string,
   mimeType: string,
+  options?: ParseCardStatementOptions,
 ): Promise<ParseStatementResult> {
   const supabase = createSupabaseServerClient()
   const { data: { user }, error: authErr } = await supabase.auth.getUser()
@@ -144,6 +155,14 @@ async function parseCardStatementImpl(
     return { success: false, error: 'Ficheiro inválido. Envie um PDF.' }
   }
 
+  const pre = options?.clientText?.trim() ?? ''
+  if (pre.length >= MIN_TEXT_LEN) {
+    const fromClient = safeParseCardLocal(pre)
+    if (fromClient && fromClient.transactions.length > 0) {
+      return { success: true, data: fromClient, parse_source: 'local' }
+    }
+  }
+
   let plainText = await extractPdfPlainText(buffer, { maxPages: LOCAL_CARD_MAX_PAGES })
 
   if (plainText.length >= MIN_TEXT_LEN) {
@@ -153,11 +172,30 @@ async function parseCardStatementImpl(
     }
   }
 
+  if (isEgideConfigured()) {
+    const egideText = await extractPlainTextFromEgidePdf(buffer)
+    if (egideText && egideText.length >= MIN_TEXT_LEN) {
+      const fromEgide = safeParseCardLocal(egideText)
+      if (fromEgide && fromEgide.transactions.length > 0) {
+        return { success: true, data: fromEgide, parse_source: 'egide' }
+      }
+    }
+  }
+
   const apiKey = getGeminiApiKey()
   if (apiKey) {
     try {
       const genAI = new GoogleGenerativeAI(apiKey)
-      const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
+      const model = genAI.getGenerativeModel({
+        model: getGeminiModelId(),
+        generationConfig: {
+          temperature: 0.1,
+          /** Faturas com muitas linhas; 8k cortava o JSON a meio. */
+          maxOutputTokens: 32768,
+          /** Evita ```json fences e reduz tokens desperdiçados. */
+          responseMimeType: 'application/json',
+        },
+      })
 
       const result = await model.generateContent([
         EXTRACTION_PROMPT,
@@ -165,14 +203,15 @@ async function parseCardStatementImpl(
       ])
 
       const text = result.response.text().trim()
-      const jsonStr = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim()
-
-      let parsed: ParsedCardStatement
-      try {
-        parsed = JSON.parse(jsonStr) as ParsedCardStatement
-      } catch {
-        return { success: false, error: `Gemini retornou formato inválido. Tente novamente.\n\nResposta: ${text.slice(0, 200)}` }
+      const jsonResult = parseGeminiJsonResponse<ParsedCardStatement>(text)
+      if (!jsonResult.ok) {
+        return {
+          success: false,
+          error:
+            `${jsonResult.hint}${jsonResult.truncated ? '' : `\n\nTrecho: ${text.slice(0, 280)}`}`,
+        }
       }
+      const parsed = jsonResult.data
 
       if (!parsed.transactions || !Array.isArray(parsed.transactions)) {
         return { success: false, error: 'Não foi possível extrair transações da fatura.' }
@@ -193,8 +232,7 @@ async function parseCardStatementImpl(
 
       return { success: true, data: parsed, parse_source: 'gemini' }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Erro desconhecido'
-      return { success: false, error: `Erro ao chamar Gemini: ${msg}` }
+      return { success: false, error: formatGeminiCallError(err) }
     }
   }
 
@@ -241,6 +279,10 @@ export async function confirmCardStatement(
   const supabase = createSupabaseServerClient()
   const { data: { user }, error: authErr } = await supabase.auth.getUser()
   if (authErr || !user) return { success: false, error: 'Usuário não autenticado.' }
+
+  const orgRes = await resolveActiveOrganizationId()
+  if (!orgRes.ok) return { success: false, error: orgRes.error }
+  const organizationId = orgRes.organizationId
 
   // 1. Criar ou atualizar cartão
   let cardId = input.card_id
@@ -325,6 +367,7 @@ export async function confirmCardStatement(
         const installNum = current + i
         rows.push({
           user_id: user.id,
+          organization_id: organizationId,
           credit_card_id: cardId,
           amount: t.amount,
           description: `${t.description} (${installNum}/${n})`,
@@ -341,6 +384,7 @@ export async function confirmCardStatement(
       // À vista, última parcela, ou parcela única — competência = mês da fatura no vencimento
       rows.push({
         user_id: user.id,
+        organization_id: organizationId,
         credit_card_id: cardId,
         amount: t.amount,
         description: isParcelado ? `${t.description} (${current}/${n})` : t.description,

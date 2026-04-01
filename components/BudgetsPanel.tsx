@@ -2,6 +2,8 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
+import { resolveActiveOrganizationIdForClient } from '@/lib/activeOrganizationClient'
+import { useActiveOrganizationRevision } from '@/lib/useActiveOrganizationRevision'
 import { createSupabaseClient } from '@/lib/supabaseClient'
 import MaskedValue from '@/components/MaskedValue'
 import { useToast, CONNECTION_ERROR_MSG, isConnectionError } from '@/lib/toastContext'
@@ -30,6 +32,7 @@ function percentLabel(percent: number): string {
 
 export default function BudgetsPanel() {
   const supabase = createSupabaseClient()
+  const orgRevision = useActiveOrganizationRevision()
   const { toastError } = useToast()
   const [items, setItems] = useState<BudgetItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -39,6 +42,20 @@ export default function BudgetsPanel() {
     const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
     const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10)
 
+    const { data: userData } = await supabase.auth.getUser()
+    if (!userData.user) {
+      setItems([])
+      setLoading(false)
+      return
+    }
+
+    const orgId = await resolveActiveOrganizationIdForClient(supabase, userData.user.id)
+    if (!orgId) {
+      setItems([])
+      setLoading(false)
+      return
+    }
+
     const [catRes, expRes] = await Promise.all([
       supabase
         .from('categories')
@@ -47,6 +64,7 @@ export default function BudgetsPanel() {
       supabase
         .from('expenses')
         .select('category, amount')
+        .eq('organization_id', orgId)
         .gte('due_date', monthStart)
         .lte('due_date', monthEnd),
     ])
@@ -92,7 +110,7 @@ export default function BudgetsPanel() {
 
     setItems(result)
     setLoading(false)
-  }, [supabase, toastError])
+  }, [supabase, toastError, orgRevision])
 
   useEffect(() => {
     fetchData()

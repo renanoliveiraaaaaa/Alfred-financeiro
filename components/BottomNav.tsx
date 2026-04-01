@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useTheme } from 'next-themes'
 import { createSupabaseClient } from '@/lib/supabaseClient'
@@ -47,6 +47,26 @@ export default function BottomNav() {
   const [sheetOpen, setSheetOpen] = useState(false)
   const [showLogoutModal, setShowLogoutModal] = useState(false)
   const [loggingOut, setLoggingOut] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user || cancelled) return
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .maybeSingle()
+      if (!cancelled && profile?.role === 'admin') setIsAdmin(true)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [supabase])
 
   const isDark = resolvedTheme === 'dark'
   const moreActive = moreItems.some((item) => isActive(item.href, pathname))
@@ -155,6 +175,23 @@ export default function BottomNav() {
                 )
               })}
             </div>
+
+            {isAdmin ? (
+              <div className="px-4 pb-2">
+                <Link
+                  href="/admin/dashboard"
+                  onClick={handleMoreLink}
+                  className={`flex w-full items-center justify-center gap-2 rounded-xl border border-amber-500/35 bg-amber-500/[0.08] dark:bg-amber-500/10 px-3 py-3 text-sm font-semibold text-amber-950 dark:text-amber-100 transition-colors hover:bg-amber-500/15 ${
+                    isActive('/admin/dashboard', pathname) ? 'ring-1 ring-amber-500/40' : ''
+                  }`}
+                >
+                  <span className="text-base" aria-hidden>
+                    ⚙️
+                  </span>
+                  Painel Admin
+                </Link>
+              </div>
+            ) : null}
 
             {/* Ações rápidas */}
             <div className="px-4 pb-2 flex items-center gap-2 border-t border-border pt-3">
