@@ -22,12 +22,20 @@ import BudgetsPanel from '@/components/BudgetsPanel'
 import { useUserPreferences } from '@/lib/userPreferencesContext'
 import { useToast, CONNECTION_ERROR_MSG, isConnectionError } from '@/lib/toastContext'
 import { RefreshCw, Loader2, ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react'
+import BuyingPowerCard from '@/components/dashboard/BuyingPowerCard'
+import SubscriptionWasteRadar from '@/components/dashboard/SubscriptionWasteRadar'
+import {
+  auditSubscriptions,
+  computeBuyingPower,
+  threeMonthWindowEnd,
+} from '@/lib/lifestyleFinance'
 import type { Database } from '@/types/supabase'
 
 type Revenue = Database['public']['Tables']['revenues']['Row']
 type Expense = Database['public']['Tables']['expenses']['Row']
 type Subscription = Database['public']['Tables']['subscriptions']['Row']
 type IncomeSource = Database['public']['Tables']['income_sources']['Row']
+type Goal = Database['public']['Tables']['goals']['Row']
 
 type Movement = {
   id: string
@@ -83,6 +91,9 @@ export default function DashboardPageClient({ children }: { children?: ReactNode
   const [dueIncomeSources, setDueIncomeSources] = useState<IncomeSource[]>([])
   const [processingIncomeId, setProcessingIncomeId] = useState<string | null>(null)
   const [showWelcomeModal, setShowWelcomeModal] = useState(false)
+  const [goals, setGoals] = useState<Goal[]>([])
+  const [expensesThreeMonthWindow, setExpensesThreeMonthWindow] = useState<Expense[]>([])
+  const [allActiveSubscriptions, setAllActiveSubscriptions] = useState<Subscription[]>([])
 
   const [viewMonth, setViewMonth] = useState(getCurrentCalendarMonth)
   const [monthBusy, setMonthBusy] = useState(false)
@@ -107,6 +118,34 @@ export default function DashboardPageClient({ children }: { children?: ReactNode
 
   const balance = totalRevenues - totalExpenses
   const budgetPercent = projectedExpenses > 0 ? (totalExpenses / projectedExpenses) * 100 : 0
+
+  const buyingPower = useMemo(() => {
+    const { start: monthStart, end: monthEnd } = getCalendarMonthRange(
+      viewMonth.year,
+      viewMonth.month,
+    )
+    const monthExpenses = expensesThreeMonthWindow.filter(
+      (e) => e.due_date && e.due_date >= monthStart && e.due_date <= monthEnd,
+    )
+    return computeBuyingPower({
+      totalRevenues,
+      monthExpenses,
+      goals,
+      viewYear: viewMonth.year,
+      viewMonth1to12: viewMonth.month,
+    })
+  }, [totalRevenues, expensesThreeMonthWindow, goals, viewMonth.year, viewMonth.month])
+
+  const subscriptionAlerts = useMemo(
+    () =>
+      auditSubscriptions(
+        allActiveSubscriptions,
+        expensesThreeMonthWindow,
+        viewMonth.year,
+        viewMonth.month,
+      ),
+    [allActiveSubscriptions, expensesThreeMonthWindow, viewMonth.year, viewMonth.month],
+  )
 
   useEffect(() => {
     const load = async () => {
@@ -141,6 +180,9 @@ export default function DashboardPageClient({ children }: { children?: ReactNode
           setUnpaid([])
           setDueSubs([])
           setDueIncomeSources([])
+          setGoals([])
+          setExpensesThreeMonthWindow([])
+          setAllActiveSubscriptions([])
           return
         }
 
@@ -151,8 +193,18 @@ export default function DashboardPageClient({ children }: { children?: ReactNode
 
         const { start: monthStart, end: monthEnd } = getCalendarMonthRange(viewMonth.year, viewMonth.month)
         const today = new Date().toISOString().slice(0, 10)
+        const win3 = threeMonthWindowEnd(viewMonth.year, viewMonth.month)
 
-        const [revRes, expRes, projRes, unpaidRes, subsRes, incomeRes] = await Promise.all([
+        const [
+          revRes,
+          expRes,
+          projRes,
+          unpaidRes,
+          subsAllRes,
+          incomeRes,
+          goalsRes,
+          expWinRes,
+        ] = await Promise.all([
           supabase
             .from('revenues')
             .select('*')
@@ -178,8 +230,8 @@ export default function DashboardPageClient({ children }: { children?: ReactNode
           supabase
             .from('subscriptions')
             .select('*')
+            .eq('user_id', userData.user.id)
             .eq('active', true)
-            .lte('next_billing_date', today)
             .order('next_billing_date', { ascending: true }),
           supabase
             .from('income_sources')
@@ -187,10 +239,18 @@ export default function DashboardPageClient({ children }: { children?: ReactNode
             .eq('active', true)
             .lte('next_receipt_date', today)
             .order('next_receipt_date', { ascending: true }),
+          supabase.from('goals').select('*').eq('user_id', userData.user.id),
+          supabase
+            .from('expenses')
+            .select('*')
+            .eq('organization_id', activeOrgId)
+            .gte('due_date', win3.start)
+            .lte('due_date', win3.end),
         ])
 
         if (revRes.error) throw revRes.error
         if (expRes.error) throw expRes.error
+        if (subsAllRes.error) throw subsAllRes.error
 
         const revenues = (revRes.data ?? []) as Revenue[]
         const expenses = (expRes.data ?? []) as Expense[]
@@ -201,8 +261,20 @@ export default function DashboardPageClient({ children }: { children?: ReactNode
         setTotalExpenses(tExp)
         setProjectedExpenses(Number(projRes.data?.projected_expenses || 0))
         setUnpaid((unpaidRes.data ?? []) as Expense[])
-        setDueSubs((subsRes.data ?? []) as Subscription[])
+
+        const subsAll = (subsAllRes.data ?? []) as Subscription[]
+        setAllActiveSubscriptions(subsAll)
+        setDueSubs(
+          subsAll
+            .filter((s) => s.next_billing_date <= today)
+            .sort((a, b) => a.next_billing_date.localeCompare(b.next_billing_date)),
+        )
+
         setDueIncomeSources((incomeRes.data ?? []) as IncomeSource[])
+        setGoals(goalsRes.error ? [] : ((goalsRes.data ?? []) as Goal[]))
+        setExpensesThreeMonthWindow(
+          expWinRes.error ? [] : ((expWinRes.data ?? []) as Expense[]),
+        )
 
         const revMoves: Movement[] = revenues.map((r) => ({
           id: r.id,
@@ -557,6 +629,15 @@ export default function DashboardPageClient({ children }: { children?: ReactNode
             </p>
           )}
         </div>
+      </section>
+
+      <section
+        className={`grid gap-4 relative transition-opacity ${
+          subscriptionAlerts.length > 0 ? 'lg:grid-cols-2' : ''
+        } ${monthBusy ? 'opacity-60 pointer-events-none' : ''}`}
+      >
+        <BuyingPowerCard data={buyingPower} monthLabel={monthLabel} />
+        <SubscriptionWasteRadar alerts={subscriptionAlerts} />
       </section>
 
       <BudgetsPanel />

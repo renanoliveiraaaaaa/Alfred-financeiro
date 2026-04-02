@@ -4,6 +4,11 @@ import { GoogleGenerativeAI } from '@google/generative-ai'
 import { createSupabaseServerClient } from '@/lib/supabaseServer'
 import { formatGeminiCallError, getGeminiApiKey, getGeminiModelId } from '@/lib/geminiEnv'
 import {
+  auditSubscriptions,
+  computeBuyingPower,
+  threeMonthWindowEnd,
+} from '@/lib/lifestyleFinance'
+import {
   getCalendarMonthRange,
   getCurrentCalendarMonth,
   shiftCalendarMonth,
@@ -19,7 +24,7 @@ export type ButlerInsightData = {
 
 const COOKIE_ORG = 'alfred.activeOrganizationId'
 
-const MORDOMO_SYSTEM_INSTRUCTION = `Você é o Alfred, um mordomo de luxo e consultor financeiro sênior. Analise os dados financeiros do usuário abaixo. Seja formal, use 'Senhor' e forneça um insight curto, analítico e acionável. Diferencie se o contexto é Pessoal ou Business.`
+const MORDOMO_SYSTEM_INSTRUCTION = `Você é o Alfred, um mordomo de luxo e consultor financeiro sênior. Analise os dados financeiros do usuário abaixo. Seja formal, use 'Senhor' e forneça um insight curto, analítico e acionável. Diferencie se o contexto é Pessoal ou Business. Considere também o 'Dinheiro Livre' (estilo de vida) e possíveis aumentos em assinaturas para dar o conselho de hoje.`
 
 const CACHE_TAG = 'alfred-butler-gemini'
 const CACHE_REVALIDATE_SECONDS = 86_400 // 24 h
@@ -32,6 +37,10 @@ type ButlerFinanceSnapshot = {
   maiorCategoriaGasto: string
   saldoMes: number
   totalGastosMesAnterior: number
+  dinheiroLivreEstiloVida: number
+  gastoLazerOutrosMes: number
+  limiteConforto: string
+  resumoAlertasAssinaturas: string
 }
 
 function formatCategoryLabel(raw: string): string {
@@ -92,6 +101,10 @@ function buildUserPrompt(snapshot: ButlerFinanceSnapshot): string {
 • Maior categoria de gasto: ${snapshot.maiorCategoriaGasto}
 • Saldo do mês (receitas − gastos): ${formatBrl(snapshot.saldoMes)}
 • Total de gastos no mês anterior (referência): ${formatBrl(snapshot.totalGastosMesAnterior)}
+• Dinheiro livre (estilo de vida): ${formatBrl(snapshot.dinheiroLivreEstiloVida)} — após essenciais/contas e compromisso mensal estimado das metas
+• Gasto em lazer + outros no mês: ${formatBrl(snapshot.gastoLazerOutrosMes)}
+• Limite de conforto (lazer vs. dinheiro livre): ${snapshot.limiteConforto}
+• Assinaturas (auditoria): ${snapshot.resumoAlertasAssinaturas}
 
 Redija um único parágrafo com o conselho ao Senhor, sem listas numeradas e sem repetir integralmente os números acima, salvo se for essencial à recomendação.`
 }
@@ -175,7 +188,7 @@ export async function getButlerInsightData(): Promise<ButlerInsightData | null> 
     const expenseQuery = (range: { start: string; end: string }) => {
       let q = supabase
         .from('expenses')
-        .select('amount, category')
+        .select('amount, category, description, due_date')
         .eq('user_id', user.id)
         .gte('due_date', range.start)
         .lte('due_date', range.end)
@@ -194,10 +207,29 @@ export async function getButlerInsightData(): Promise<ButlerInsightData | null> 
       return q
     }
 
-    const [curExpRes, prevExpRes, curRevRes] = await Promise.all([
+    const win3 = threeMonthWindowEnd(cur.year, cur.month)
+    const expenseWindowQuery = () => {
+      let q = supabase
+        .from('expenses')
+        .select('amount, category, description, due_date')
+        .eq('user_id', user.id)
+        .gte('due_date', win3.start)
+        .lte('due_date', win3.end)
+      if (expenseOrgFilter) q = q.eq('organization_id', expenseOrgFilter)
+      return q
+    }
+
+    const [curExpRes, prevExpRes, curRevRes, goalsRes, subsRes, expWinRes] = await Promise.all([
       expenseQuery(curRange),
       expenseQuery(prevRange),
       revenueQuery(curRange),
+      supabase.from('goals').select('target_amount, current_amount, deadline').eq('user_id', user.id),
+      supabase
+        .from('subscriptions')
+        .select('id, name, amount, active, created_at')
+        .eq('user_id', user.id)
+        .eq('active', true),
+      expenseWindowQuery(),
     ])
 
     if (curExpRes.error || prevExpRes.error || curRevRes.error) return null
@@ -205,6 +237,9 @@ export async function getButlerInsightData(): Promise<ButlerInsightData | null> 
     const curRows = curExpRes.data ?? []
     const prevRows = prevExpRes.data ?? []
     const revRows = curRevRes.data ?? []
+    const goalsRows = goalsRes.error ? [] : (goalsRes.data ?? [])
+    const subsRows = subsRes.error ? [] : (subsRes.data ?? [])
+    const expWinRows = expWinRes.error ? [] : (expWinRes.data ?? [])
 
     const sum = (rows: { amount: number | string | null }[]) =>
       rows.reduce((s, r) => s + Number(r.amount ?? 0), 0)
@@ -249,6 +284,30 @@ export async function getButlerInsightData(): Promise<ButlerInsightData | null> 
           ? 100
           : 0
 
+    const bp = computeBuyingPower({
+      totalRevenues: totalReceitasMes,
+      monthExpenses: curRows,
+      goals: goalsRows,
+      viewYear: cur.year,
+      viewMonth1to12: cur.month,
+    })
+
+    const subAlerts = auditSubscriptions(subsRows, expWinRows, cur.year, cur.month)
+    const resumoAlertasAssinaturas =
+      subAlerts.length === 0
+        ? 'Nenhum alerta relevante no período.'
+        : subAlerts
+            .slice(0, 4)
+            .map((a) => a.message)
+            .join(' ')
+
+    const limiteConforto =
+      bp.dinheiroLivre > 0 && bp.lifestyleShareOfFree != null && bp.lifestyleShareOfFree > 0.8
+        ? 'Atenção: mais de 80% do dinheiro livre já consumido em lazer/outros.'
+        : bp.dinheiroLivre <= 0 && bp.lifestyleSpend > 0
+          ? 'Sem margem de dinheiro livre; há gasto em lazer/outros.'
+          : 'Dentro do limite de conforto para lazer/outros.'
+
     const snapshot: ButlerFinanceSnapshot = {
       contextoOrganizacao: context === 'business' ? 'Business' : 'Personal',
       mesReferencia: monthLabelPt(cur.year, cur.month),
@@ -257,6 +316,10 @@ export async function getButlerInsightData(): Promise<ButlerInsightData | null> 
       maiorCategoriaGasto: topCategory,
       saldoMes,
       totalGastosMesAnterior: previousTotal,
+      dinheiroLivreEstiloVida: bp.dinheiroLivre,
+      gastoLazerOutrosMes: bp.lifestyleSpend,
+      limiteConforto,
+      resumoAlertasAssinaturas,
     }
 
     const monthKey = `${cur.year}-${String(cur.month).padStart(2, '0')}`
