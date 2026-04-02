@@ -1,5 +1,3 @@
-import { cookies } from 'next/headers'
-import { ACTIVE_ORG_COOKIE_NAME } from '@/lib/activeOrganizationServer'
 import { createSupabaseServerClient } from '@/lib/supabaseServer'
 import AdminActivitySection, {
   type DailySignup,
@@ -51,15 +49,6 @@ function fillDailySignups(
 
 export default async function AdminDashboardPage() {
   const supabase = createSupabaseServerClient()
-  const filterOrgId = cookies().get(ACTIVE_ORG_COOKIE_NAME)?.value?.trim() || null
-
-  const qExpensesHead = supabase.from('expenses').select('*', { count: 'exact', head: true })
-  const qRevenuesHead = supabase.from('revenues').select('*', { count: 'exact', head: true })
-  const qExpensesInvoice = supabase
-    .from('expenses')
-    .select('*', { count: 'exact', head: true })
-    .not('invoice_url', 'is', null)
-    .neq('invoice_url', '')
 
   const weekAgo = new Date()
   weekAgo.setUTCDate(weekAgo.getUTCDate() - 7)
@@ -90,19 +79,20 @@ export default async function AdminDashboardPage() {
       .from('profiles')
       .select('*', { count: 'exact', head: true })
       .gte('created_at', weekAgoIso),
-    supabase
-      .from('profiles')
-      .select('*', { count: 'exact', head: true })
-      .eq('role', 'admin'),
+    supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'admin'),
     supabase
       .from('profiles')
       .select('*', { count: 'exact', head: true })
       .not('full_name', 'is', null)
       .neq('full_name', ''),
-    filterOrgId ? qExpensesHead.eq('organization_id', filterOrgId) : qExpensesHead,
-    filterOrgId ? qRevenuesHead.eq('organization_id', filterOrgId) : qRevenuesHead,
+    supabase.from('expenses').select('*', { count: 'exact', head: true }),
+    supabase.from('revenues').select('*', { count: 'exact', head: true }),
     supabase.from('credit_cards').select('*', { count: 'exact', head: true }),
-    filterOrgId ? qExpensesInvoice.eq('organization_id', filterOrgId) : qExpensesInvoice,
+    supabase
+      .from('expenses')
+      .select('*', { count: 'exact', head: true })
+      .not('invoice_url', 'is', null)
+      .neq('invoice_url', ''),
     supabase.from('import_sessions').select('*', { count: 'exact', head: true }),
     supabase.from('profiles').select('created_at').gte('created_at', thirtyAgoIso),
     supabase
@@ -121,13 +111,6 @@ export default async function AdminDashboardPage() {
       .eq('subscription_plan', 'business')
       .in('subscription_status', ['active', 'trial']),
   ])
-
-  const profileErrors = [errTotal, errWeek, errAdmin, errNamed, errProf30, errLatest, errPrem, errBus].filter(
-    Boolean,
-  )
-  const telemetryErrors = [errExp, errRev, errCards, errInv, errImport].filter(Boolean)
-  const hasProfileError = profileErrors.length > 0
-  const hasTelemetryError = telemetryErrors.length > 0
 
   const total = totalUsers ?? 0
   const adoptionPct =
@@ -155,25 +138,25 @@ export default async function AdminDashboardPage() {
   const kpisUsers = [
     {
       title: 'Total de Usuários',
-      value: totalUsers ?? '—',
+      value: errTotal ? '—' : (totalUsers ?? '—'),
       subtitle: 'Registos em profiles',
       Icon: Users,
     },
     {
       title: 'Novos esta semana',
-      value: newThisWeek ?? '—',
+      value: errWeek ? '—' : (newThisWeek ?? '—'),
       subtitle: 'Criados nos últimos 7 dias',
       Icon: UserPlus,
     },
     {
       title: 'Administradores',
-      value: adminCount ?? '—',
+      value: errAdmin ? '—' : (adminCount ?? '—'),
       subtitle: 'Contas com role admin',
       Icon: ShieldCheck,
     },
     {
       title: 'Taxa de adoção',
-      value: adoptionPct != null ? `${adoptionPct}%` : '—',
+      value: errNamed || errTotal ? '—' : adoptionPct != null ? `${adoptionPct}%` : '—',
       subtitle: 'Perfis com nome preenchido / total',
       Icon: Percent,
     },
@@ -182,19 +165,19 @@ export default async function AdminDashboardPage() {
   const kpisTelemetry = [
     {
       title: 'Despesas cadastradas',
-      value: totalExpenses ?? '—',
-      subtitle: 'Linhas na tabela expenses',
+      value: errExp ? '—' : (totalExpenses ?? '—'),
+      subtitle: 'Linhas na tabela expenses (todos os utilizadores)',
       Icon: Receipt,
     },
     {
       title: 'Receitas cadastradas',
-      value: totalRevenues ?? '—',
-      subtitle: 'Linhas na tabela revenues',
+      value: errRev ? '—' : (totalRevenues ?? '—'),
+      subtitle: 'Linhas na tabela revenues (todos os utilizadores)',
       Icon: Wallet,
     },
     {
       title: 'Cartões de crédito',
-      value: totalCards ?? '—',
+      value: errCards ? '—' : (totalCards ?? '—'),
       subtitle: 'Registos em credit_cards',
       Icon: CreditCard,
     },
@@ -209,16 +192,13 @@ export default async function AdminDashboardPage() {
   const dailySignups = errProf30 ? buckets : fillDailySignups(buckets, profiles30 ?? [])
   const latestUsers = latestFive ?? []
 
-  const nPremium = premiumPaying ?? 0
-  const nBusiness = businessPaying ?? 0
-  const mrrEstimate =
-    !errPrem && !errBus
-      ? nPremium * PREMIUM_MRR_UNIT_BRL + nBusiness * BUSINESS_MRR_UNIT_BRL
-      : null
-  const mrrFormatted =
-    mrrEstimate != null
-      ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(mrrEstimate)
-      : '—'
+  const nPremium = errPrem ? 0 : (premiumPaying ?? 0)
+  const nBusiness = errBus ? 0 : (businessPaying ?? 0)
+  const mrrEstimate = nPremium * PREMIUM_MRR_UNIT_BRL + nBusiness * BUSINESS_MRR_UNIT_BRL
+  const mrrFormatted = new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  }).format(mrrEstimate)
 
   return (
     <div className="p-4 lg:p-8">
@@ -226,15 +206,8 @@ export default async function AdminDashboardPage() {
         Visão Geral do Sistema
       </h1>
       <p className="mt-1 text-sm text-slate-500">
-        Indicadores de contas e de utilização agregada (requer políticas RLS de admin nas tabelas de
-        negócio).
+        Indicadores globais de todas as contas (sem filtro de organização do app cliente).
       </p>
-
-      {hasProfileError && (
-        <p className="mt-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-          Não foi possível carregar alguns indicadores de perfis. Confirme o login e as políticas RLS.
-        </p>
-      )}
 
       <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {kpisUsers.map(({ title, value, subtitle, Icon }) => (
@@ -259,24 +232,7 @@ export default async function AdminDashboardPage() {
       <h2 className="mt-10 text-base font-semibold text-slate-800">Uso do sistema</h2>
       <p className="mt-1 text-sm text-slate-500">
         Totais globais de transações, cartões e ficheiros referenciados na base de dados.
-        {filterOrgId ? (
-          <>
-            {' '}
-            <span className="font-medium text-slate-700">
-              Despesas e receitas estão filtradas pela organização ativa no cookie do app (
-              <code className="rounded bg-slate-100 px-1 text-xs">{filterOrgId.slice(0, 8)}…</code>
-              ).
-            </span>
-          </>
-        ) : null}
       </p>
-
-      {hasTelemetryError && (
-        <p className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-          Parte da telemetria falhou (tabelas em falta ou RLS). Aplique a migração{' '}
-          <code className="text-amber-950">20260328120000_admin_telemetry_rls_and_rpc</code>.
-        </p>
-      )}
 
       <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {kpisTelemetry.map(({ title, value, subtitle, Icon }) => (
@@ -300,7 +256,7 @@ export default async function AdminDashboardPage() {
 
       <h2 className="mt-10 text-base font-semibold text-slate-800">Monetização (estimativa)</h2>
       <p className="mt-1 text-sm text-slate-500">
-        MRR fictício: preços placeholder por plano (contas em trial ou ativas com plano pago).
+        MRR fictício: soma sobre todos os perfis com plano premium ou business em trial ou ativo.
       </p>
       <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <div className="rounded-xl border border-emerald-200/80 bg-emerald-50/40 p-5 shadow-sm ring-1 ring-emerald-900/5">

@@ -13,18 +13,34 @@ import {
   getCurrentCalendarMonth,
   shiftCalendarMonth,
 } from '@/lib/monthRange'
+import {
+  detectExpenseContextMismatch,
+  resolveTargetOrganization,
+  type UserOrgRef,
+} from '@/lib/transactionAuditor'
 
 export type ButlerOrgContext = 'personal' | 'business'
+
+export type ButlerContextConflictItem = {
+  transactionId: string
+  description: string
+  suggestedTargetOrgId: string
+  suggestedTargetOrgName: string
+}
 
 export type ButlerInsightData = {
   context: ButlerOrgContext
   message: string
   trend: 'up' | 'down' | 'flat'
+  /** Despesas do mês com possível contexto trocado (para UI / conciliação) */
+  contextConflicts?: ButlerContextConflictItem[]
 }
 
 const COOKIE_ORG = 'alfred.activeOrganizationId'
 
-const MORDOMO_SYSTEM_INSTRUCTION = `Você é o Alfred, um mordomo de luxo e consultor financeiro sênior. Analise os dados financeiros do usuário abaixo. Seja formal, use 'Senhor' e forneça um insight curto, analítico e acionável. Diferencie se o contexto é Pessoal ou Business. Considere também o 'Dinheiro Livre' (estilo de vida) e possíveis aumentos em assinaturas para dar o conselho de hoje.`
+const MORDOMO_SYSTEM_INSTRUCTION = `Você é o Alfred, um mordomo de luxo e consultor financeiro sênior. Analise os dados financeiros do usuário abaixo. Seja formal, use 'Senhor' e forneça um insight curto, analítico e acionável. Diferencie se o contexto é Pessoal ou Business. Considere também o 'Dinheiro Livre' (estilo de vida) e possíveis aumentos em assinaturas para dar o conselho de hoje.
+
+Quando a secção «Suspeitas de contexto» listar despesas que parecem estar na organização errada (Pessoal vs Business), incorpore naturalmente no mesmo parágrafo uma observação acionável: por exemplo, se uma despesa em «Minhas Finanças» parecer custo operacional, diga algo como: «Senhor, notei que a despesa [nome curto] foi registrada em 'Minhas Finanças', mas parece ser um custo operacional. Deseja que eu a mova para a organização Business?» — adapte o nome da organização de destino ao que vier nos dados. Se o gasto parecer pessoal mas estiver no Business, inverta o sentido. Não prometa que moverá sozinho; o utilizador confirma na aplicação. Se não houver suspeitas, ignore este parágrafo extra.`
 
 const CACHE_TAG = 'alfred-butler-gemini'
 const CACHE_REVALIDATE_SECONDS = 86_400 // 24 h
@@ -41,6 +57,8 @@ type ButlerFinanceSnapshot = {
   gastoLazerOutrosMes: number
   limiteConforto: string
   resumoAlertasAssinaturas: string
+  /** Texto para o modelo; vazio ou "Nenhuma." */
+  suspeitasContexto: string
 }
 
 function formatCategoryLabel(raw: string): string {
@@ -106,6 +124,9 @@ function buildUserPrompt(snapshot: ButlerFinanceSnapshot): string {
 • Limite de conforto (lazer vs. dinheiro livre): ${snapshot.limiteConforto}
 • Assinaturas (auditoria): ${snapshot.resumoAlertasAssinaturas}
 
+Suspeitas de contexto (despesas que podem pertencer à outra organização):
+${snapshot.suspeitasContexto}
+
 Redija um único parágrafo com o conselho ao Senhor, sem listas numeradas e sem repetir integralmente os números acima, salvo se for essencial à recomendação.`
 }
 
@@ -142,7 +163,7 @@ const getCachedButlerGeminiMessage = unstable_cache(
     const snapshot = JSON.parse(snapshotJson) as ButlerFinanceSnapshot
     return generateButlerInsightWithGemini(snapshot)
   },
-  ['alfred-butler-gemini-v1'],
+  ['alfred-butler-gemini-v2'],
   { revalidate: CACHE_REVALIDATE_SECONDS, tags: [CACHE_TAG] },
 )
 
@@ -188,7 +209,7 @@ export async function getButlerInsightData(): Promise<ButlerInsightData | null> 
     const expenseQuery = (range: { start: string; end: string }) => {
       let q = supabase
         .from('expenses')
-        .select('amount, category, description, due_date')
+        .select('id, amount, category, description, due_date, organization_id')
         .eq('user_id', user.id)
         .gte('due_date', range.start)
         .lte('due_date', range.end)
@@ -308,6 +329,65 @@ export async function getButlerInsightData(): Promise<ButlerInsightData | null> 
           ? 'Sem margem de dinheiro livre; há gasto em lazer/outros.'
           : 'Dentro do limite de conforto para lazer/outros.'
 
+    const { data: memLinks } = await supabase
+      .from('organization_members')
+      .select('organization_id')
+      .eq('profile_id', user.id)
+
+    const memberOrgIds = [...new Set(memLinks?.map((m) => m.organization_id) ?? [])]
+    const { data: orgRows } =
+      memberOrgIds.length > 0
+        ? await supabase.from('organizations').select('id, type, name').in('id', memberOrgIds)
+        : { data: [] as { id: string; type: string; name: string }[] }
+
+    const userOrgs: UserOrgRef[] = (orgRows ?? []).map((o) => ({
+      id: o.id,
+      type: o.type as 'personal' | 'business',
+      name: (o.name && o.name.trim()) || (o.type === 'personal' ? 'Minhas Finanças' : 'Empresa'),
+    }))
+
+    const orgTypeById = new Map<string, 'personal' | 'business'>()
+    for (const o of userOrgs) orgTypeById.set(o.id, o.type)
+
+    const contextConflicts: ButlerContextConflictItem[] = []
+    const suspicionLines: string[] = []
+
+    for (const row of curRows) {
+      const id = (row as { id?: string }).id
+      const orgId = String((row as { organization_id?: string }).organization_id ?? '')
+      if (!id || !orgId) continue
+      const orgType = orgTypeById.get(orgId)
+      if (!orgType) continue
+
+      const mismatch = detectExpenseContextMismatch({
+        description: String((row as { description?: string }).description ?? ''),
+        category: String((row as { category?: string }).category ?? ''),
+        organizationType: orgType,
+      })
+      if (!mismatch) continue
+      const target = resolveTargetOrganization(mismatch.suggestedTarget, userOrgs)
+      if (!target) continue
+
+      const rawDesc = String((row as { description?: string }).description ?? '').trim() || 'Despesa'
+      const rowCtxNome =
+        orgType === 'personal' ? '«Minhas Finanças» (Pessoal)' : 'contexto Business'
+
+      contextConflicts.push({
+        transactionId: id,
+        description: rawDesc.length > 120 ? `${rawDesc.slice(0, 117)}…` : rawDesc,
+        suggestedTargetOrgId: target.id,
+        suggestedTargetOrgName: target.name,
+      })
+      suspicionLines.push(
+        `— «${rawDesc.slice(0, 70)}${rawDesc.length > 70 ? '…' : ''}» (pistas: ${mismatch.matchedHints.slice(0, 4).join(', ')}) em ${rowCtxNome}; destino sugerido: «${target.name}».`,
+      )
+    }
+
+    const suspeitasContexto =
+      suspicionLines.length > 0
+        ? suspicionLines.join('\n')
+        : 'Nenhuma suspeita relevante neste mês.'
+
     const snapshot: ButlerFinanceSnapshot = {
       contextoOrganizacao: context === 'business' ? 'Business' : 'Personal',
       mesReferencia: monthLabelPt(cur.year, cur.month),
@@ -320,6 +400,7 @@ export async function getButlerInsightData(): Promise<ButlerInsightData | null> 
       gastoLazerOutrosMes: bp.lifestyleSpend,
       limiteConforto,
       resumoAlertasAssinaturas,
+      suspeitasContexto,
     }
 
     const monthKey = `${cur.year}-${String(cur.month).padStart(2, '0')}`
@@ -335,9 +416,12 @@ export async function getButlerInsightData(): Promise<ButlerInsightData | null> 
       previous: previousTotal,
     })
 
+    const conflictsPayload =
+      contextConflicts.length > 0 ? { contextConflicts } : {}
+
     const apiKey = getGeminiApiKey()
     if (!apiKey) {
-      return { context, message: fallbackMessage, trend }
+      return { context, message: fallbackMessage, trend, ...conflictsPayload }
     }
 
     try {
@@ -347,10 +431,10 @@ export async function getButlerInsightData(): Promise<ButlerInsightData | null> 
         monthKey,
         snapshotJson,
       )
-      return { context, message, trend }
+      return { context, message, trend, ...conflictsPayload }
     } catch (err: unknown) {
       console.error('[butlerInsightServer] Gemini:', formatGeminiCallError(err))
-      return { context, message: fallbackMessage, trend }
+      return { context, message: fallbackMessage, trend, ...conflictsPayload }
     }
   } catch {
     return null

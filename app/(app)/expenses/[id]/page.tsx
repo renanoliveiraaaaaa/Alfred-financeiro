@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { createSupabaseClient } from '@/lib/supabaseClient'
@@ -9,6 +9,12 @@ import { Loader2, Trash2, ArrowLeft, ExternalLink, Paperclip } from 'lucide-reac
 import ConfirmDangerModal from '@/components/ConfirmDangerModal'
 import { useToast, CONNECTION_ERROR_MSG, isConnectionError } from '@/lib/toastContext'
 import { useGreetingPronoun } from '@/lib/greeting'
+import {
+  detectExpenseContextMismatch,
+  resolveTargetOrganization,
+  type UserOrgRef,
+} from '@/lib/transactionAuditor'
+import ExpenseContextMoveButton from '@/components/ExpenseContextMoveButton'
 
 const DEFAULT_CATEGORIES = [
   { value: 'mercado', label: 'Mercado' },
@@ -63,6 +69,8 @@ export default function EditExpensePage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+  const [expenseOrgId, setExpenseOrgId] = useState<string | null>(null)
+  const [userOrgs, setUserOrgs] = useState<UserOrgRef[]>([])
 
   const loadExpense = useCallback(async () => {
     setFetching(true)
@@ -93,6 +101,35 @@ export default function EditExpensePage() {
       if (expense.installments && expense.installment_number) {
         setInstallmentInfo(`Parcela ${expense.installment_number}/${expense.installments}`)
       }
+
+      setExpenseOrgId(expense.organization_id ?? null)
+
+      const { data: auth } = await supabase.auth.getUser()
+      if (auth.user) {
+        const { data: links } = await supabase
+          .from('organization_members')
+          .select('organization_id')
+          .eq('profile_id', auth.user.id)
+        const memIds = [...new Set((links ?? []).map((l) => l.organization_id))]
+        if (memIds.length > 0) {
+          const { data: orgs } = await supabase
+            .from('organizations')
+            .select('id, type, name')
+            .in('id', memIds)
+          setUserOrgs(
+            (orgs ?? []).map((o) => ({
+              id: o.id,
+              type: o.type as 'personal' | 'business',
+              name:
+                (o.name && o.name.trim()) || (o.type === 'personal' ? 'Minhas Finanças' : 'Empresa'),
+            })),
+          )
+        } else {
+          setUserOrgs([])
+        }
+      } else {
+        setUserOrgs([])
+      }
     } catch (err: unknown) {
       const msg = isConnectionError(err) ? CONNECTION_ERROR_MSG : 'Erro ao carregar despesa.'
       setError(msg)
@@ -103,6 +140,21 @@ export default function EditExpensePage() {
   }, [supabase, id])
 
   useEffect(() => { loadExpense() }, [loadExpense])
+
+  const contextMoveSuggestion = useMemo(() => {
+    if (!expenseOrgId) return null
+    const om = userOrgs.find((o) => o.id === expenseOrgId)
+    if (!om) return null
+    const mismatch = detectExpenseContextMismatch({
+      description,
+      category,
+      organizationType: om.type,
+    })
+    if (!mismatch) return null
+    const target = resolveTargetOrganization(mismatch.suggestedTarget, userOrgs)
+    if (!target || target.id === expenseOrgId) return null
+    return { targetId: target.id, targetName: target.name, hints: mismatch.matchedHints }
+  }, [expenseOrgId, userOrgs, description, category])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -231,6 +283,26 @@ export default function EditExpensePage() {
       {error && (
         <div className="mb-4 rounded-lg border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-300">
           {error}
+        </div>
+      )}
+
+      {contextMoveSuggestion && (
+        <div className="mb-4 flex flex-col gap-3 rounded-xl border border-brand/25 bg-brand/5 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-main">
+            <span className="font-medium text-brand">Conciliação:</span>{' '}
+            esta saída parece mais adequada ao contexto «{contextMoveSuggestion.targetName}».
+            {contextMoveSuggestion.hints.length > 0 && (
+              <span className="block text-xs text-muted mt-1">
+                Pistas: {contextMoveSuggestion.hints.slice(0, 4).join(', ')}
+              </span>
+            )}
+          </p>
+          <ExpenseContextMoveButton
+            expenseId={id}
+            targetOrgId={contextMoveSuggestion.targetId}
+            targetLabel={contextMoveSuggestion.targetName}
+            onMoved={() => loadExpense()}
+          />
         </div>
       )}
 

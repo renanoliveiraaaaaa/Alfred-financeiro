@@ -1,5 +1,6 @@
 'use server'
 
+import { revalidatePath } from 'next/cache'
 import { resolveActiveOrganizationId } from '@/lib/activeOrganizationServer'
 import { createSupabaseServerClient } from '@/lib/supabaseServer'
 import { calculateInstallmentDates, addMonths } from '@/lib/installments'
@@ -103,4 +104,54 @@ export async function createExpense(input: CreateExpenseInput): Promise<ActionRe
   }
 
   return { success: true }
+}
+
+export type MoveTransactionResult = { ok: true } | { ok: false; error: string }
+
+/**
+ * Move uma despesa para outra organização (conciliação de contexto Pessoal/Business).
+ */
+export async function moveTransaction(transactionId: string, targetOrgId: string): Promise<MoveTransactionResult> {
+  const tid = transactionId?.trim()
+  const oid = targetOrgId?.trim()
+  if (!tid || !oid) return { ok: false, error: 'Parâmetros inválidos.' }
+
+  const supabase = createSupabaseServerClient()
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser()
+  if (authError || !user) return { ok: false, error: 'Sessão inválida.' }
+
+  const { data: row, error: fetchErr } = await supabase
+    .from('expenses')
+    .select('id, user_id, organization_id')
+    .eq('id', tid)
+    .maybeSingle()
+
+  if (fetchErr || !row) return { ok: false, error: 'Despesa não encontrada.' }
+  if (row.user_id !== user.id) return { ok: false, error: 'Sem permissão para esta despesa.' }
+  if (row.organization_id === oid) return { ok: false, error: 'A despesa já está nesta organização.' }
+
+  const { data: membership, error: memErr } = await supabase
+    .from('organization_members')
+    .select('organization_id')
+    .eq('profile_id', user.id)
+    .eq('organization_id', oid)
+    .maybeSingle()
+
+  if (memErr || !membership) return { ok: false, error: 'Não tem acesso à organização de destino.' }
+
+  const { error: updErr } = await supabase
+    .from('expenses')
+    .update({ organization_id: oid })
+    .eq('id', tid)
+    .eq('user_id', user.id)
+
+  if (updErr) return { ok: false, error: updErr.message }
+
+  revalidatePath('/dashboard')
+  revalidatePath('/expenses')
+  revalidatePath(`/expenses/${tid}`)
+  return { ok: true }
 }

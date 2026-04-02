@@ -1,10 +1,13 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
-import { Building2, ChevronDown, User } from 'lucide-react'
+import { Building2, ChevronDown, Loader2, Plus, User, X } from 'lucide-react'
 import { createSupabaseClient } from '@/lib/supabaseClient'
 import { ACTIVE_ORG_CHANGE_EVENT } from '@/lib/useActiveOrganizationRevision'
+import { createBusinessOrganization } from '@/lib/actions/organizations'
+import { useToast } from '@/lib/toastContext'
 
 const STORAGE_KEY = 'alfred.activeOrganizationId'
 const COOKIE_NAME = 'alfred.activeOrganizationId'
@@ -24,11 +27,16 @@ type OrgRow = {
 export default function OrganizationSwitcher() {
   const router = useRouter()
   const supabase = createSupabaseClient()
+  const { toast, toastError } = useToast()
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(true)
   const [orgs, setOrgs] = useState<OrgRow[]>([])
   const [activeId, setActiveId] = useState<string | null>(null)
   const [displayName, setDisplayName] = useState<string | null>(null)
+
+  const [createModalOpen, setCreateModalOpen] = useState(false)
+  const [companyName, setCompanyName] = useState('')
+  const [createSubmitting, setCreateSubmitting] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -108,6 +116,34 @@ export default function OrganizationSwitcher() {
     setOpen(false)
   }
 
+  const openCreateModal = () => {
+    setOpen(false)
+    setCompanyName('')
+    setCreateModalOpen(true)
+  }
+
+  const handleCreateBusiness = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (createSubmitting) return
+    setCreateSubmitting(true)
+    try {
+      const result = await createBusinessOrganization(companyName)
+      if (!result.ok) {
+        toastError(result.error)
+        return
+      }
+      toast('Organização criada com sucesso.', 'success')
+      setCreateModalOpen(false)
+      setCompanyName('')
+      await load()
+      selectOrg(result.organizationId)
+    } catch (err: unknown) {
+      toastError(err instanceof Error ? err.message : 'Erro ao criar organização.')
+    } finally {
+      setCreateSubmitting(false)
+    }
+  }
+
   const activeLabel = useMemo(() => {
     const o = orgs.find((x) => x.id === activeId)
     if (!o) return 'Contexto'
@@ -127,8 +163,85 @@ export default function OrganizationSwitcher() {
     return null
   }
 
+  const createModal =
+    createModalOpen && typeof document !== 'undefined'
+      ? createPortal(
+          <div
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+            role="presentation"
+            onClick={() => !createSubmitting && setCreateModalOpen(false)}
+          >
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="create-org-title"
+              className="w-full max-w-md rounded-2xl border border-border bg-surface p-6 shadow-xl"
+              onClick={(ev) => ev.stopPropagation()}
+            >
+              <div className="flex items-start justify-between gap-3 mb-4">
+                <div>
+                  <h2 id="create-org-title" className="text-lg font-semibold text-main">
+                    Nova organização Business
+                  </h2>
+                  <p className="text-sm text-muted mt-1">
+                    Os dados financeiros ficam separados da sua conta pessoal.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  disabled={createSubmitting}
+                  onClick={() => setCreateModalOpen(false)}
+                  className="rounded-lg p-2 text-muted hover:bg-background hover:text-main transition-colors"
+                  aria-label="Fechar"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <form onSubmit={handleCreateBusiness} className="space-y-4">
+                <div>
+                  <label htmlFor="company-name" className="block text-xs font-medium text-muted mb-1.5">
+                    Nome da empresa
+                  </label>
+                  <input
+                    id="company-name"
+                    type="text"
+                    value={companyName}
+                    onChange={(e) => setCompanyName(e.target.value)}
+                    placeholder="Ex.: Silva & Associados Lda."
+                    className="block w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-main placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+                    autoFocus
+                    disabled={createSubmitting}
+                    maxLength={120}
+                  />
+                </div>
+                <div className="flex justify-end gap-2 pt-2">
+                  <button
+                    type="button"
+                    disabled={createSubmitting}
+                    onClick={() => setCreateModalOpen(false)}
+                    className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-main hover:bg-background transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={createSubmitting || companyName.trim().length < 2}
+                    className="inline-flex items-center gap-2 rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50 transition-opacity"
+                  >
+                    {createSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                    Criar
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>,
+          document.body,
+        )
+      : null
+
   return (
     <div className="relative z-20 mx-2 mb-2 shrink-0">
+      {createModal}
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -172,12 +285,16 @@ export default function OrganizationSwitcher() {
                 </span>
               </button>
             ))}
-            {businessOrgs.length === 0 ? (
-              <div className="flex items-center gap-2 px-3 py-2.5 text-sm text-muted">
-                <Building2 className="h-4 w-4 shrink-0 opacity-50" />
-                <span>Minha Empresa (Business) — em breve</span>
-              </div>
-            ) : null}
+            <div className="mt-1 border-t border-border pt-1">
+              <button
+                type="button"
+                onClick={openCreateModal}
+                className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm font-medium text-brand transition-colors hover:bg-brand/10"
+              >
+                <Plus className="h-4 w-4 shrink-0" />
+                <span>+ Criar Organização Business</span>
+              </button>
+            </div>
           </div>
         </>
       ) : null}

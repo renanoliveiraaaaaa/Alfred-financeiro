@@ -31,6 +31,12 @@ import {
   clusterDuplicatesByFingerprint,
   expenseDuplicateFingerprint,
 } from '@/lib/transactionDuplicates'
+import {
+  detectExpenseContextMismatch,
+  resolveTargetOrganization,
+  type UserOrgRef,
+} from '@/lib/transactionAuditor'
+import ExpenseContextMoveButton from '@/components/ExpenseContextMoveButton'
 
 type Expense = Database['public']['Tables']['expenses']['Row']
 
@@ -80,27 +86,74 @@ export default function ExpensesPage() {
     loading: boolean
   }>({ open: false, ids: [], loading: false })
 
-  useEffect(() => {
-    const load = async () => {
-      setLoading(true)
-      setError(null)
-      try {
-        const { data, error: fetchError } = await supabase
-          .from('expenses')
-          .select('*')
-          .order('due_date', { ascending: false })
+  const [userOrgs, setUserOrgs] = useState<UserOrgRef[]>([])
 
-        if (fetchError) throw fetchError
-        setExpenses((data ?? []) as Expense[])
-      } catch (err: any) {
-        console.error(err)
-        setError(err?.message || 'Erro ao carregar despesas.')
-      } finally {
-        setLoading(false)
+  const loadData = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const { data: auth } = await supabase.auth.getUser()
+      const uid = auth.user?.id
+
+      const [expRes, linksRes] = await Promise.all([
+        supabase.from('expenses').select('*').order('due_date', { ascending: false }),
+        uid
+          ? supabase.from('organization_members').select('organization_id').eq('profile_id', uid)
+          : Promise.resolve({ data: null as { organization_id: string }[] | null }),
+      ])
+
+      if (expRes.error) throw expRes.error
+      setExpenses((expRes.data ?? []) as Expense[])
+
+      const memIds = [...new Set((linksRes.data ?? []).map((l) => l.organization_id))]
+      if (memIds.length > 0) {
+        const { data: orgs } = await supabase.from('organizations').select('id, type, name').in('id', memIds)
+        setUserOrgs(
+          (orgs ?? []).map((o) => ({
+            id: o.id,
+            type: o.type as 'personal' | 'business',
+            name:
+              (o.name && o.name.trim()) || (o.type === 'personal' ? 'Minhas Finanças' : 'Empresa'),
+          })),
+        )
+      } else {
+        setUserOrgs([])
       }
+    } catch (err: unknown) {
+      console.error(err)
+      const msg = err instanceof Error ? err.message : 'Erro ao carregar despesas.'
+      setError(msg)
+    } finally {
+      setLoading(false)
     }
-    load()
   }, [supabase])
+
+  useEffect(() => {
+    loadData()
+  }, [loadData])
+
+  const orgById = useMemo(() => {
+    const m = new Map<string, { type: 'personal' | 'business'; name: string }>()
+    for (const o of userOrgs) m.set(o.id, { type: o.type, name: o.name })
+    return m
+  }, [userOrgs])
+
+  const getContextMoveSuggestion = useCallback(
+    (e: Expense): { targetId: string; targetName: string } | null => {
+      const om = orgById.get(e.organization_id)
+      if (!om) return null
+      const mismatch = detectExpenseContextMismatch({
+        description: e.description ?? '',
+        category: e.category ?? '',
+        organizationType: om.type,
+      })
+      if (!mismatch) return null
+      const target = resolveTargetOrganization(mismatch.suggestedTarget, userOrgs)
+      if (!target || target.id === e.organization_id) return null
+      return { targetId: target.id, targetName: target.name }
+    },
+    [orgById, userOrgs],
+  )
 
   const filtered = useMemo(() => {
     let result = expenses
@@ -435,6 +488,7 @@ export default function ExpensesPage() {
             const isToggling = togglingIds.has(e.id)
             const isSelected = selectedIds.has(e.id)
             const isDup = duplicateHintIds.has(e.id)
+            const moveSuggestion = getContextMoveSuggestion(e)
             return (
               <div
                 key={e.id}
@@ -511,6 +565,17 @@ export default function ExpensesPage() {
                     <Pencil className="h-4 w-4" />
                   </Link>
                 </div>
+                {moveSuggestion && (
+                  <div className="mt-2 flex flex-wrap items-center justify-end gap-2 border-t border-dashed border-border/60 pt-2">
+                    <span className="text-[10px] uppercase tracking-wide text-muted mr-auto">Conciliação</span>
+                    <ExpenseContextMoveButton
+                      expenseId={e.id}
+                      targetOrgId={moveSuggestion.targetId}
+                      targetLabel={moveSuggestion.targetName}
+                      onMoved={loadData}
+                    />
+                  </div>
+                )}
               </div>
             )
           })
@@ -579,6 +644,7 @@ export default function ExpensesPage() {
                   const isToggling = togglingIds.has(e.id)
                   const isSelected = selectedIds.has(e.id)
                   const isDup = duplicateHintIds.has(e.id)
+                  const moveSuggestion = getContextMoveSuggestion(e)
 
                   return (
                     <tr
@@ -652,7 +718,7 @@ export default function ExpensesPage() {
                       </td>
 
                       <td className="px-4 py-3">
-                        <div className="flex items-center justify-center gap-1">
+                        <div className="flex flex-wrap items-center justify-center gap-1">
                           {e.invoice_url ? (
                             <a
                               href={e.invoice_url}
@@ -669,6 +735,16 @@ export default function ExpensesPage() {
                               <Paperclip className="h-4 w-4" />
                             </span>
                           )}
+                          {moveSuggestion ? (
+                            <ExpenseContextMoveButton
+                              expenseId={e.id}
+                              targetOrgId={moveSuggestion.targetId}
+                              targetLabel={moveSuggestion.targetName}
+                              compact
+                              onMoved={loadData}
+                              className="min-h-[44px] min-w-[44px] px-2"
+                            />
+                          ) : null}
                           <Link
                             href={`/expenses/${e.id}`}
                             className="inline-flex items-center justify-center min-h-[44px] min-w-[44px] rounded-lg text-muted hover:text-main hover:bg-background transition-colors"
