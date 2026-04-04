@@ -219,7 +219,12 @@ export default function DashboardPageClient({ children }: { children?: ReactNode
             .gte('due_date', monthStart)
             .lte('due_date', monthEnd)
             .order('due_date', { ascending: false }),
-          supabase.from('projections').select('projected_expenses').eq('month', monthStart).maybeSingle(),
+          supabase
+            .from('projections')
+            .select('projected_expenses')
+            .eq('organization_id', activeOrgId)
+            .eq('month', monthStart)
+            .maybeSingle(),
           supabase
             .from('expenses')
             .select('*')
@@ -231,15 +236,17 @@ export default function DashboardPageClient({ children }: { children?: ReactNode
             .from('subscriptions')
             .select('*')
             .eq('user_id', userData.user.id)
+            .eq('organization_id', activeOrgId)
             .eq('active', true)
             .order('next_billing_date', { ascending: true }),
           supabase
             .from('income_sources')
             .select('*')
+            .eq('organization_id', activeOrgId)
             .eq('active', true)
             .lte('next_receipt_date', today)
             .order('next_receipt_date', { ascending: true }),
-          supabase.from('goals').select('*').eq('user_id', userData.user.id),
+          supabase.from('goals').select('*').eq('user_id', userData.user.id).eq('organization_id', activeOrgId),
           supabase
             .from('expenses')
             .select('*')
@@ -250,6 +257,7 @@ export default function DashboardPageClient({ children }: { children?: ReactNode
 
         if (revRes.error) throw revRes.error
         if (expRes.error) throw expRes.error
+        if (projRes.error) throw projRes.error
         if (subsAllRes.error) throw subsAllRes.error
 
         const revenues = (revRes.data ?? []) as Revenue[]

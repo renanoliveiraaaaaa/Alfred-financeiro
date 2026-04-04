@@ -288,6 +288,7 @@ export interface Database {
         Row: {
           id: string
           user_id: string
+          organization_id: string
           name: string
           credit_limit: number
           closing_day: number
@@ -299,6 +300,7 @@ export interface Database {
         Insert: {
           id?: string
           user_id: string
+          organization_id: string
           name: string
           credit_limit: number
           closing_day: number
@@ -310,6 +312,7 @@ export interface Database {
         Update: {
           id?: string
           user_id?: string
+          organization_id?: string
           name?: string
           credit_limit?: number
           closing_day?: number
@@ -323,6 +326,7 @@ export interface Database {
         Row: {
           id: string
           user_id: string
+          organization_id: string
           name: string
           amount: number
           category: string
@@ -334,6 +338,7 @@ export interface Database {
         Insert: {
           id?: string
           user_id: string
+          organization_id: string
           name: string
           amount: number
           category?: string
@@ -345,6 +350,7 @@ export interface Database {
         Update: {
           id?: string
           user_id?: string
+          organization_id?: string
           name?: string
           amount?: number
           category?: string
@@ -358,6 +364,7 @@ export interface Database {
         Row: {
           id: string
           user_id: string
+          organization_id: string
           name: string
           amount: number
           frequency: 'mensal' | 'quinzenal' | 'semanal'
@@ -368,6 +375,7 @@ export interface Database {
         Insert: {
           id?: string
           user_id: string
+          organization_id: string
           name: string
           amount: number
           frequency: 'mensal' | 'quinzenal' | 'semanal'
@@ -378,6 +386,7 @@ export interface Database {
         Update: {
           id?: string
           user_id?: string
+          organization_id?: string
           name?: string
           amount?: number
           frequency?: 'mensal' | 'quinzenal' | 'semanal'
@@ -390,6 +399,7 @@ export interface Database {
         Row: {
           id: string
           user_id: string
+          organization_id: string
           name: string
           target_amount: number
           current_amount: number
@@ -401,6 +411,7 @@ export interface Database {
         Insert: {
           id?: string
           user_id: string
+          organization_id: string
           name: string
           target_amount: number
           current_amount?: number
@@ -412,6 +423,7 @@ export interface Database {
         Update: {
           id?: string
           user_id?: string
+          organization_id?: string
           name?: string
           target_amount?: number
           current_amount?: number
@@ -425,6 +437,7 @@ export interface Database {
         Row: {
           id: string
           user_id: string
+          organization_id: string
           month: string
           projected_expenses: number
           projected_revenues: number
@@ -435,6 +448,7 @@ export interface Database {
         Insert: {
           id?: string
           user_id: string
+          organization_id: string
           month: string
           projected_expenses: number
           projected_revenues: number
@@ -445,6 +459,7 @@ export interface Database {
         Update: {
           id?: string
           user_id?: string
+          organization_id?: string
           month?: string
           projected_expenses?: number
           projected_revenues?: number

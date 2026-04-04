@@ -6,9 +6,12 @@ import { formatCurrency } from '@/lib/format'
 import { useGreetingPronoun } from '@/lib/greeting'
 import CurrencyInput from '@/components/CurrencyInput'
 import { useToast, CONNECTION_ERROR_MSG, isConnectionError } from '@/lib/toastContext'
+import { resolveActiveOrganizationIdForClient } from '@/lib/activeOrganizationClient'
+import { useActiveOrganizationRevision } from '@/lib/useActiveOrganizationRevision'
 
 type Projection = {
   id: string
+  organization_id: string
   projected_expenses: number
   projected_revenues: number
   actual_expenses: number
@@ -34,6 +37,7 @@ function clamp(v: number, min: number, max: number) {
 
 export default function ProjectionsPage() {
   const supabase = createSupabaseClient()
+  const orgRevision = useActiveOrganizationRevision()
   const { toastError } = useToast()
   const pronoun = useGreetingPronoun()
   const now = new Date()
@@ -61,20 +65,45 @@ export default function ProjectionsPage() {
     setError(null)
     setSuccess(null)
     try {
+      const { data: auth } = await supabase.auth.getUser()
+      const uid = auth.user?.id
+      if (!uid) {
+        setProjection(null)
+        setProjRev(0)
+        setProjExp(0)
+        setActualRevenues(0)
+        setActualExpenses(0)
+        return
+      }
+
+      const activeOrgId = await resolveActiveOrganizationIdForClient(supabase, uid)
+      if (!activeOrgId) {
+        setProjection(null)
+        setProjRev(0)
+        setProjExp(0)
+        setActualRevenues(0)
+        setActualExpenses(0)
+        setError('Não foi possível determinar a organização ativa. Tente recarregar a página.')
+        return
+      }
+
       const [projRes, revRes, expRes] = await Promise.all([
         supabase
           .from('projections')
           .select('*')
+          .eq('organization_id', activeOrgId)
           .eq('month', monthStr)
           .maybeSingle(),
         supabase
           .from('revenues')
           .select('amount')
+          .eq('organization_id', activeOrgId)
           .gte('date', monthStr)
           .lte('date', lastDay),
         supabase
           .from('expenses')
           .select('amount')
+          .eq('organization_id', activeOrgId)
           .gte('due_date', monthStr)
           .lte('due_date', lastDay),
       ])
@@ -103,7 +132,7 @@ export default function ProjectionsPage() {
     } finally {
       setLoading(false)
     }
-  }, [supabase, monthStr, lastDay])
+  }, [supabase, monthStr, lastDay, orgRevision])
 
   useEffect(() => { loadData() }, [loadData])
 
@@ -121,8 +150,14 @@ export default function ProjectionsPage() {
       const { data: userData, error: authErr } = await supabase.auth.getUser()
       if (authErr || !userData.user) throw new Error('Usuário não autenticado.')
 
+      const activeOrgId = await resolveActiveOrganizationIdForClient(supabase, userData.user.id)
+      if (!activeOrgId) {
+        throw new Error('Não foi possível determinar a organização ativa. Tente recarregar a página.')
+      }
+
       const payload = {
         user_id: userData.user.id,
+        organization_id: activeOrgId,
         month: monthStr,
         projected_revenues: projRev,
         projected_expenses: projExp,
@@ -138,6 +173,7 @@ export default function ProjectionsPage() {
             projected_expenses: projExp,
           })
           .eq('id', projection.id)
+          .eq('organization_id', activeOrgId)
         if (upErr) throw upErr
       } else {
         const { error: insErr } = await supabase.from('projections').insert(payload)
