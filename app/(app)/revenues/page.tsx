@@ -29,11 +29,14 @@ import {
   Download,
 } from 'lucide-react'
 import { downloadCsv, formatDateBR } from '@/lib/exportCsv'
+import { resolveActiveOrganizationIdForClient } from '@/lib/activeOrganizationClient'
+import { useActiveOrganizationRevision } from '@/lib/useActiveOrganizationRevision'
 
 type Revenue = Database['public']['Tables']['revenues']['Row']
 
 export default function RevenuesPage() {
   const supabase = createSupabaseClient()
+  const orgRevision = useActiveOrganizationRevision()
   const { toastError } = useToast()
   const pronoun = useGreetingPronoun()
   const [revenues, setRevenues] = useState<Revenue[]>([])
@@ -54,27 +57,44 @@ export default function RevenuesPage() {
   const duplicateHintIds = useMemo(() => allIdsInDuplicateClusters(duplicateClusters), [duplicateClusters])
   const suggestedDeleteIds = useMemo(() => allSuggestedDeleteIds(duplicateClusters), [duplicateClusters])
 
-  useEffect(() => {
-    const load = async () => {
-      setLoading(true)
-      setError(null)
-      try {
-        const { data, error: fetchError } = await supabase
-          .from('revenues')
-          .select('*')
-          .order('date', { ascending: false })
-
-        if (fetchError) throw fetchError
-        setRevenues((data ?? []) as Revenue[])
-      } catch (err: any) {
-        console.error(err)
-        setError(err?.message || 'Erro ao carregar receitas.')
-      } finally {
-        setLoading(false)
+  const loadData = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const { data: auth } = await supabase.auth.getUser()
+      const uid = auth.user?.id
+      if (!uid) {
+        setRevenues([])
+        return
       }
+
+      const activeOrgId = await resolveActiveOrganizationIdForClient(supabase, uid)
+      if (!activeOrgId) {
+        setRevenues([])
+        setError('Não foi possível determinar a organização ativa. Tente recarregar a página.')
+        return
+      }
+
+      const { data, error: fetchError } = await supabase
+        .from('revenues')
+        .select('*')
+        .eq('organization_id', activeOrgId)
+        .order('date', { ascending: false })
+
+      if (fetchError) throw fetchError
+      setRevenues((data ?? []) as Revenue[])
+    } catch (err: unknown) {
+      console.error(err)
+      const msg = err instanceof Error ? err.message : 'Erro ao carregar receitas.'
+      setError(msg)
+    } finally {
+      setLoading(false)
     }
-    load()
-  }, [supabase])
+  }, [supabase, orgRevision])
+
+  useEffect(() => {
+    loadData()
+  }, [loadData])
 
   const toggleReceived = useCallback(async (id: string, currentReceived: boolean) => {
     const newReceived = !currentReceived

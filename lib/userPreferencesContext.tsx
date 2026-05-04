@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react'
+import { createContext, useContext, useState, useCallback, useMemo, type ReactNode } from 'react'
 import { createSupabaseClient } from '@/lib/supabaseClient'
 
 export type Gender = 'M' | 'F' | 'O'
@@ -9,6 +9,9 @@ export type AppTheme = 'normal' | 'gala' | 'classic' | 'club' | 'liquid'
 type UserPreferencesContextType = {
   gender: Gender | null
   appTheme: AppTheme
+  isAdmin: boolean
+  activeOrgType: 'personal' | 'business'
+  setActiveOrgType: (type: 'personal' | 'business') => void
   loadPreferences: (userId: string) => Promise<void>
   updatePreferences: (updates: { gender?: Gender | null; appTheme?: AppTheme }) => Promise<void>
   setLocalPreferences: (updates: { gender?: Gender | null; appTheme?: AppTheme }) => void
@@ -17,6 +20,9 @@ type UserPreferencesContextType = {
 const UserPreferencesContext = createContext<UserPreferencesContextType>({
   gender: null,
   appTheme: 'normal',
+  isAdmin: false,
+  activeOrgType: 'personal',
+  setActiveOrgType: () => {},
   loadPreferences: async () => {},
   updatePreferences: async () => {},
   setLocalPreferences: () => {},
@@ -25,18 +31,21 @@ const UserPreferencesContext = createContext<UserPreferencesContextType>({
 export function UserPreferencesProvider({ children }: { children: ReactNode }) {
   const [gender, setGender] = useState<Gender | null>(null)
   const [appTheme, setAppTheme] = useState<AppTheme>('normal')
-  const supabase = createSupabaseClient()
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [activeOrgType, setActiveOrgType] = useState<'personal' | 'business'>('personal')
+  const supabase = useMemo(() => createSupabaseClient(), [])
 
   const loadPreferences = useCallback(
     async (userId: string) => {
       const { data } = await supabase
         .from('profiles')
-        .select('gender, app_theme')
+        .select('gender, app_theme, role')
         .eq('id', userId)
         .maybeSingle()
       if (data) {
         setGender((data.gender as Gender) || null)
         setAppTheme((data.app_theme as AppTheme) || 'normal')
+        setIsAdmin(data.role === 'admin')
       }
     },
     [supabase]
@@ -71,10 +80,13 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
     if (updates.appTheme !== undefined) setAppTheme(updates.appTheme)
   }, [])
 
+  const contextValue = useMemo(
+    () => ({ gender, appTheme, isAdmin, activeOrgType, setActiveOrgType, loadPreferences, updatePreferences, setLocalPreferences }),
+    [gender, appTheme, isAdmin, activeOrgType, setActiveOrgType, loadPreferences, updatePreferences, setLocalPreferences]
+  )
+
   return (
-    <UserPreferencesContext.Provider
-      value={{ gender, appTheme, loadPreferences, updatePreferences, setLocalPreferences }}
-    >
+    <UserPreferencesContext.Provider value={contextValue}>
       {children}
     </UserPreferencesContext.Provider>
   )

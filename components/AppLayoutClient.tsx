@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import Topbar from '@/components/Topbar'
 import Sidebar from '@/components/Sidebar'
@@ -18,7 +18,8 @@ export default function AppLayoutClient({
 }) {
   const pathname = usePathname()
   const router = useRouter()
-  const supabase = createSupabaseClient()
+  // useMemo evita recriar o cliente a cada render, prevenindo re-execuções do useEffect
+  const supabase = useMemo(() => createSupabaseClient(), [])
   const { loadPreferences } = useUserPreferences()
   const { setPrivacyMode } = usePrivacy()
   const [checking, setChecking] = useState(true)

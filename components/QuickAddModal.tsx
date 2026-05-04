@@ -4,11 +4,12 @@ import { useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { X, Loader2, ArrowDownLeft, ArrowUpRight, Check } from 'lucide-react'
-import { createExpense } from '@/lib/actions/expenses'
+import { createExpense, type CreateExpenseInput } from '@/lib/actions/expenses'
 import { createRevenue } from '@/lib/actions/revenues'
 import CurrencyInput from '@/components/CurrencyInput'
 import { useToast, CONNECTION_ERROR_MSG, isConnectionError } from '@/lib/toastContext'
 import { useGreetingPronoun } from '@/lib/greeting'
+import { useUserPreferences } from '@/lib/userPreferencesContext'
 
 type Tab = 'expense' | 'revenue'
 
@@ -21,6 +22,8 @@ export default function QuickAddModal({ open, onClose }: Props) {
   const router = useRouter()
   const { toastError } = useToast()
   const pronoun = useGreetingPronoun()
+  const { activeOrgType } = useUserPreferences()
+  const isBusiness = activeOrgType === 'business'
   const [tab, setTab] = useState<Tab>('expense')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -70,7 +73,7 @@ export default function QuickAddModal({ open, onClose }: Props) {
           amount: value,
           description,
           category,
-          payment_method: paymentMethod as any,
+          payment_method: paymentMethod as CreateExpenseInput['payment_method'],
           installments: 1,
           due_date: date,
           paid,
@@ -144,7 +147,7 @@ export default function QuickAddModal({ open, onClose }: Props) {
                 : 'text-muted hover:text-main'
             }`}
           >
-            <ArrowDownLeft className="h-3.5 w-3.5" /> Despesa
+            <ArrowDownLeft className="h-3.5 w-3.5" /> {isBusiness ? 'Custo / Despesa' : 'Despesa'}
           </button>
           <button
             onClick={() => switchTab('revenue')}
@@ -154,7 +157,7 @@ export default function QuickAddModal({ open, onClose }: Props) {
                 : 'text-muted hover:text-main'
             }`}
           >
-            <ArrowUpRight className="h-3.5 w-3.5" /> Receita
+            <ArrowUpRight className="h-3.5 w-3.5" /> {isBusiness ? 'Faturamento' : 'Receita'}
           </button>
         </div>
 
@@ -197,7 +200,9 @@ export default function QuickAddModal({ open, onClose }: Props) {
             <label className={cls.label}>Descrição</label>
             <input
               className={cls.input}
-              placeholder={tab === 'expense' ? 'Ex.: Almoço, Uber, Conta de luz...' : 'Ex.: Salário, Freelance, Rendimento...'}
+              placeholder={tab === 'expense'
+                ? (isBusiness ? 'Ex.: Fornecedor, Aluguel escritório, AWS...' : 'Ex.: Almoço, Uber, Conta de luz...')
+                : (isBusiness ? 'Ex.: NF #1234, Venda produto, Serviço prestado...' : 'Ex.: Salário, Freelance, Rendimento...')}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               required

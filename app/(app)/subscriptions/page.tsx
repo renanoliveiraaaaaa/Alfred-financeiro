@@ -15,6 +15,8 @@ import {
 } from 'lucide-react'
 import CurrencyInput from '@/components/CurrencyInput'
 import type { Database } from '@/types/supabase'
+import { resolveActiveOrganizationIdForClient } from '@/lib/activeOrganizationClient'
+import { useActiveOrganizationRevision } from '@/lib/useActiveOrganizationRevision'
 
 type Subscription = Database['public']['Tables']['subscriptions']['Row']
 
@@ -50,6 +52,7 @@ function getIcon(category: string) {
 
 export default function SubscriptionsPage() {
   const supabase = createSupabaseClient()
+  const orgRevision = useActiveOrganizationRevision()
   const { toastError } = useToast()
   const pronoun = useGreetingPronoun()
 
@@ -73,14 +76,28 @@ export default function SubscriptionsPage() {
 
   const fetchSubs = useCallback(async () => {
     setLoading(true)
+    const { data: auth } = await supabase.auth.getUser()
+    const uid = auth.user?.id
+    if (!uid) {
+      setSubs([])
+      setLoading(false)
+      return
+    }
+    const activeOrgId = await resolveActiveOrganizationIdForClient(supabase, uid)
+    if (!activeOrgId) {
+      setSubs([])
+      setLoading(false)
+      return
+    }
     const { data } = await supabase
       .from('subscriptions')
       .select('*')
+      .eq('organization_id', activeOrgId)
       .order('active', { ascending: false })
       .order('next_billing_date', { ascending: true })
     if (data) setSubs(data as Subscription[])
     setLoading(false)
-  }, [supabase])
+  }, [supabase, orgRevision])
 
   useEffect(() => { fetchSubs() }, [fetchSubs])
 
@@ -130,6 +147,13 @@ export default function SubscriptionsPage() {
     const { data: userData } = await supabase.auth.getUser()
     if (!userData.user) { setSaving(false); return }
 
+    const activeOrgId = await resolveActiveOrganizationIdForClient(supabase, userData.user.id)
+    if (!activeOrgId) {
+      setFormError('Não foi possível determinar a organização ativa.')
+      setSaving(false)
+      return
+    }
+
     if (editId) {
       const { error } = await supabase.from('subscriptions').update({
         name: fName.trim(),
@@ -148,6 +172,7 @@ export default function SubscriptionsPage() {
     } else {
       const { error } = await supabase.from('subscriptions').insert({
         user_id: userData.user.id,
+        organization_id: activeOrgId,
         name: fName.trim(),
         amount,
         category: fCategory,

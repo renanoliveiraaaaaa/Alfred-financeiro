@@ -11,6 +11,8 @@ import {
   Plus, X, Loader2, Pencil, Wallet, Calendar, Repeat,
 } from 'lucide-react'
 import type { Database } from '@/types/supabase'
+import { resolveActiveOrganizationIdForClient } from '@/lib/activeOrganizationClient'
+import { useActiveOrganizationRevision } from '@/lib/useActiveOrganizationRevision'
 
 type IncomeSource = Database['public']['Tables']['income_sources']['Row']
 
@@ -22,6 +24,7 @@ const FREQUENCY_LABELS: Record<string, string> = {
 
 export default function IncomeSourcesPage() {
   const supabase = createSupabaseClient()
+  const orgRevision = useActiveOrganizationRevision()
   const { toastError } = useToast()
 
   const [sources, setSources] = useState<IncomeSource[]>([])
@@ -41,14 +44,28 @@ export default function IncomeSourcesPage() {
 
   const fetchSources = useCallback(async () => {
     setLoading(true)
+    const { data: auth } = await supabase.auth.getUser()
+    const uid = auth.user?.id
+    if (!uid) {
+      setSources([])
+      setLoading(false)
+      return
+    }
+    const activeOrgId = await resolveActiveOrganizationIdForClient(supabase, uid)
+    if (!activeOrgId) {
+      setSources([])
+      setLoading(false)
+      return
+    }
     const { data } = await supabase
       .from('income_sources')
       .select('*')
+      .eq('organization_id', activeOrgId)
       .order('active', { ascending: false })
       .order('next_receipt_date', { ascending: true })
     if (data) setSources(data as IncomeSource[])
     setLoading(false)
-  }, [supabase])
+  }, [supabase, orgRevision])
 
   useEffect(() => { fetchSources() }, [fetchSources])
 
@@ -90,6 +107,13 @@ export default function IncomeSourcesPage() {
     const { data: userData } = await supabase.auth.getUser()
     if (!userData.user) { setSaving(false); return }
 
+    const activeOrgId = await resolveActiveOrganizationIdForClient(supabase, userData.user.id)
+    if (!activeOrgId) {
+      setFormError('Não foi possível determinar a organização ativa.')
+      setSaving(false)
+      return
+    }
+
     if (editId) {
       const { error } = await supabase.from('income_sources').update({
         name: fName.trim(),
@@ -107,6 +131,7 @@ export default function IncomeSourcesPage() {
     } else {
       const { error } = await supabase.from('income_sources').insert({
         user_id: userData.user.id,
+        organization_id: activeOrgId,
         name: fName.trim(),
         amount: fAmount,
         frequency: fFrequency,

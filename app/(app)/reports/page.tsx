@@ -3,6 +3,8 @@
 import { useEffect, useState, useMemo } from 'react'
 import { useTheme } from 'next-themes'
 import { createSupabaseClient } from '@/lib/supabaseClient'
+import { resolveActiveOrganizationIdForClient } from '@/lib/activeOrganizationClient'
+import { useActiveOrganizationRevision } from '@/lib/useActiveOrganizationRevision'
 import { useGreetingPronoun } from '@/lib/greeting'
 import { formatCurrency } from '@/lib/format'
 import MaskedValue from '@/components/MaskedValue'
@@ -73,6 +75,7 @@ function groupByMonth(items: { amount: number; dateField: string }[]): number[] 
 
 export default function ReportsPage() {
   const supabase = createSupabaseClient()
+  const orgRevision = useActiveOrganizationRevision()
   const { resolvedTheme } = useTheme()
   const pronoun = useGreetingPronoun()
   const [mounted, setMounted] = useState(false)
@@ -94,34 +97,79 @@ export default function ReportsPage() {
       setLoading(true)
       setError(null)
       try {
+        const { data: auth } = await supabase.auth.getUser()
+        const uid = auth.user?.id
+        if (!uid) {
+          setRevenues([])
+          setExpenses([])
+          setYearRevenues([])
+          setYearExpenses([])
+          return
+        }
+
+        const activeOrgId = await resolveActiveOrganizationIdForClient(supabase, uid)
+        if (!activeOrgId) {
+          setRevenues([])
+          setExpenses([])
+          setYearRevenues([])
+          setYearExpenses([])
+          setError('Não foi possível determinar a organização ativa. Tente recarregar a página.')
+          return
+        }
+
         const now = new Date()
         const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10)
         const yearStart = `${year}-01-01`
         const yearEnd = `${year}-12-31`
 
         const [revMonthRes, expMonthRes, revYearRes, expYearRes] = await Promise.all([
-          supabase.from('revenues').select('*').gte('date', firstOfMonth).order('date', { ascending: false }),
-          supabase.from('expenses').select('*').gte('due_date', firstOfMonth).order('due_date', { ascending: false }),
-          supabase.from('revenues').select('*').gte('date', yearStart).lte('date', yearEnd).order('date', { ascending: true }),
-          supabase.from('expenses').select('*').gte('due_date', yearStart).lte('due_date', yearEnd).order('due_date', { ascending: true }),
+          supabase
+            .from('revenues')
+            .select('*')
+            .eq('organization_id', activeOrgId)
+            .gte('date', firstOfMonth)
+            .order('date', { ascending: false }),
+          supabase
+            .from('expenses')
+            .select('*')
+            .eq('organization_id', activeOrgId)
+            .gte('due_date', firstOfMonth)
+            .order('due_date', { ascending: false }),
+          supabase
+            .from('revenues')
+            .select('*')
+            .eq('organization_id', activeOrgId)
+            .gte('date', yearStart)
+            .lte('date', yearEnd)
+            .order('date', { ascending: true }),
+          supabase
+            .from('expenses')
+            .select('*')
+            .eq('organization_id', activeOrgId)
+            .gte('due_date', yearStart)
+            .lte('due_date', yearEnd)
+            .order('due_date', { ascending: true }),
         ])
 
         if (revMonthRes.error) throw revMonthRes.error
         if (expMonthRes.error) throw expMonthRes.error
+        if (revYearRes.error) throw revYearRes.error
+        if (expYearRes.error) throw expYearRes.error
 
         setRevenues((revMonthRes.data ?? []) as Revenue[])
         setExpenses((expMonthRes.data ?? []) as Expense[])
         setYearRevenues((revYearRes.data ?? []) as Revenue[])
         setYearExpenses((expYearRes.data ?? []) as Expense[])
-      } catch (err: any) {
-        console.error(err)
-        setError(err?.message || 'Erro ao carregar dados.')
+      } catch (err: unknown) {
+        console.error('[reports] Erro ao carregar dados:', err instanceof Error ? err.message : err)
+        const msg = err instanceof Error ? err.message : 'Erro ao carregar dados.'
+        setError(msg)
       } finally {
         setLoading(false)
       }
     }
     load()
-  }, [supabase, year])
+  }, [supabase, year, orgRevision])
 
   const isDark = mounted && resolvedTheme === 'dark'
 

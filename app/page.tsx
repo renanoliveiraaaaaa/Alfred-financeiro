@@ -2,32 +2,53 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useTheme } from 'next-themes'
 import { createSupabaseClient } from '@/lib/supabaseClient'
-import { getLastUser, setLastUser, clearLastUser, maskEmail, type LastUser } from '@/lib/lastUserStorage'
-import { User } from 'lucide-react'
+import { getLastUser, setLastUser, clearLastUser, type LastUser } from '@/lib/lastUserStorage'
+import LandingHero from '@/components/landing/LandingHero'
+import LandingAuthForm from '@/components/landing/LandingAuthForm'
 
 export default function Home() {
+  const [booting, setBooting] = useState(true)
   const [isLogin, setIsLogin] = useState(true)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [gender, setGender] = useState<'M' | 'F' | 'O'>('O')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  /** Cadastro OK mas e-mail ainda não confirmado (Supabase não devolve sessão). */
   const [signupEmailPending, setSignupEmailPending] = useState(false)
   const [lastUser, setLastUserState] = useState<LastUser | null>(null)
   const [showEmailForm, setShowEmailForm] = useState(true)
   const router = useRouter()
   const supabase = createSupabaseClient()
-  const { setTheme } = useTheme()
 
-  // Forçar tema claro na página de login
   useEffect(() => {
-    setTheme('light')
-  }, [setTheme])
+    let cancelled = false
+    ;(async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+      if (cancelled) return
 
-  // Carregar último usuário ao montar
+      if (session?.user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', session.user.id)
+          .maybeSingle()
+        if (cancelled) return
+        const isAdmin = profile?.role === 'admin'
+        router.replace(isAdmin ? '/admin/dashboard' : '/dashboard')
+        router.refresh()
+        return
+      }
+
+      setBooting(false)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [supabase, router])
+
   useEffect(() => {
     const stored = getLastUser()
     if (stored && isLogin) {
@@ -55,7 +76,6 @@ export default function Home() {
         const { data, error } = await supabase.auth.signInWithPassword({ email, password })
         if (error) throw error
         if (data.session && data.user) {
-          // Buscar perfil para avatar e nome
           const { data: profile } = await supabase
             .from('profiles')
             .select('full_name, avatar_url, role')
@@ -87,12 +107,18 @@ export default function Home() {
           setPassword('')
         }
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Erro de autenticação Supabase:', err)
-      if (err?.message === 'Failed to fetch') {
-        setError('Não foi possível estabelecer conexão com o servidor. Verifique suas credenciais de ambiente e a disponibilidade do serviço.')
+      const msg =
+        err && typeof err === 'object' && 'message' in err && typeof (err as { message: unknown }).message === 'string'
+          ? (err as { message: string }).message
+          : 'Falha na autenticação. Tente novamente.'
+      if (msg === 'Failed to fetch') {
+        setError(
+          'Não foi possível estabelecer conexão com o servidor. Verifique suas credenciais de ambiente e a disponibilidade do serviço.',
+        )
       } else {
-        setError(err?.message || 'Falha na autenticação. Tente novamente.')
+        setError(msg)
       }
     } finally {
       setLoading(false)
@@ -128,167 +154,60 @@ export default function Home() {
     setSignupEmailPending(false)
   }
 
-  const displayName = lastUser?.fullName
-    ? lastUser.fullName.split(' ').map((w) => w.toUpperCase()).join(' ')
-    : lastUser?.email
-      ? lastUser.email.split('@')[0].toUpperCase()
-      : ''
+  if (booting) {
+    return (
+      <div className="flex min-h-[100dvh] items-center justify-center bg-slate-950">
+        <div
+          className="h-10 w-10 animate-spin rounded-full border-2 border-emerald-500/30 border-t-emerald-400"
+          aria-hidden
+        />
+        <span className="sr-only">A carregar…</span>
+      </div>
+    )
+  }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background px-4 transition-colors">
-      <div className="max-w-md w-full space-y-8 p-8 bg-surface rounded-2xl border border-border shadow-lg transition-colors">
-        <div className="text-center animate-stagger-up" style={{ animationDelay: '0ms' }}>
-          <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-brand/15 border border-brand/30 mb-4">
-            <span className="text-3xl">🎩</span>
-          </div>
-          <h1 className="text-2xl font-semibold text-main tracking-tight">
-            Alfred Financeiro
-          </h1>
-          <p className="mt-2 text-sm text-muted">
-            {lastUser && !showEmailForm
-              ? `Olá, ${displayName}. Que bom te ver de novo!`
-              : !isLogin && signupEmailPending
-                ? 'Quase lá — confirme seu e-mail para entrar.'
-                : isLogin
-                  ? 'Bem-vindo de volta à Mansão.'
-                  : 'Permita-me preparar sua conta.'}
-          </p>
+    <div className="flex min-h-[100dvh] h-[100dvh] flex-col overflow-hidden bg-slate-950 lg:flex-row">
+      {/* Vitrine */}
+      <section className="relative flex min-h-0 flex-1 flex-col bg-slate-950 lg:w-1/2 lg:max-w-[50%]">
+        <div
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_-10%,rgba(16,185,129,0.18),transparent_55%)]"
+          aria-hidden
+        />
+        <LandingHero />
+      </section>
+
+      {/* Porta do cofre */}
+      <section className="relative flex flex-1 flex-col items-center justify-center border-t border-white/5 bg-slate-900/40 px-6 py-10 backdrop-blur-xl lg:w-1/2 lg:max-w-[50%] lg:border-l lg:border-t-0 lg:px-10">
+        <div
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_70%_50%,rgba(255,255,255,0.06),transparent_50%)]"
+          aria-hidden
+        />
+        <div
+          className="relative z-10 w-full max-w-lg animate-stagger-up"
+          style={{ animationDelay: '100ms' }}
+        >
+          <LandingAuthForm
+            isLogin={isLogin}
+            email={email}
+            password={password}
+            gender={gender}
+            loading={loading}
+            error={error}
+            signupEmailPending={signupEmailPending}
+            lastUser={lastUser}
+            showEmailForm={showEmailForm}
+            onEmailChange={setEmail}
+            onPasswordChange={setPassword}
+            onGenderChange={setGender}
+            onSubmit={handleAuth}
+            onTrocarConta={handleTrocarConta}
+            onGoToLoginAfterSignup={goToLoginAfterSignup}
+            onTabAccess={switchToLogin}
+            onTabInvite={switchToRegister}
+          />
         </div>
-
-        <form className="space-y-5" onSubmit={handleAuth}>
-          {error && (
-            <div className="rounded-lg border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-300 animate-fade-in">
-              {error}
-            </div>
-          )}
-
-          {!isLogin && signupEmailPending && (
-            <div className="rounded-lg border border-emerald-200 dark:border-emerald-500/35 bg-emerald-50 dark:bg-emerald-500/10 px-4 py-4 text-sm text-emerald-900 dark:text-emerald-100 animate-fade-in space-y-3">
-              <p className="font-medium">Conta criada com sucesso</p>
-              <p className="text-emerald-800/90 dark:text-emerald-200/90 leading-relaxed">
-                Enviamos um link de confirmação para{' '}
-                <span className="font-medium text-main">{email}</span>.
-                Abra o e-mail e clique no link para ativar a conta; em seguida você poderá entrar com e-mail e senha.
-              </p>
-              <button
-                type="button"
-                onClick={goToLoginAfterSignup}
-                className="w-full mt-1 py-2.5 px-4 rounded-lg text-sm font-medium bg-brand text-white hover:opacity-90 transition-colors"
-              >
-                Ir para o login
-              </button>
-            </div>
-          )}
-
-          {/* Box do usuário lembrado */}
-          {lastUser && !showEmailForm && isLogin ? (
-            <div className="rounded-xl border border-border bg-background p-4 space-y-3">
-              <div className="flex items-center gap-3">
-                <div className="h-12 w-12 rounded-full border-2 border-brand/30 overflow-hidden bg-border flex items-center justify-center shrink-0">
-                  {lastUser.avatarUrl ? (
-                    <img src={lastUser.avatarUrl} alt="" className="h-full w-full object-cover" />
-                  ) : (
-                    <User className="h-6 w-6 text-muted" />
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <label className="block text-xs font-medium text-muted uppercase tracking-wider mb-0.5">
-                    Email
-                  </label>
-                  <p className="text-sm font-medium text-main truncate">{maskEmail(lastUser.email)}</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleTrocarConta}
-                  className="text-xs font-medium text-brand hover:opacity-80 transition-colors shrink-0"
-                >
-                  Trocar de conta
-                </button>
-              </div>
-            </div>
-          ) : !signupEmailPending ? (
-            <div className="animate-stagger-up" style={{ animationDelay: '80ms' }}>
-              <label htmlFor="email" className="block text-xs font-medium text-muted uppercase tracking-wider mb-1.5">
-                E-mail
-              </label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="username"
-                required
-                className="block w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm text-main placeholder-muted focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand transition-colors"
-                placeholder="seu@email.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </div>
-          ) : null}
-
-          {!signupEmailPending && (
-          <div className="animate-stagger-up" style={{ animationDelay: '160ms' }}>
-            <label htmlFor="password" className="block text-xs font-medium text-muted uppercase tracking-wider mb-1.5">
-              {lastUser && !showEmailForm ? 'Digite sua senha' : 'Senha'}
-            </label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              autoComplete={isLogin ? 'current-password' : 'new-password'}
-              required
-              className="block w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm text-main placeholder-muted focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand transition-colors"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          </div>
-          )}
-          {!isLogin && !signupEmailPending && (
-            <div className="animate-stagger-up" style={{ animationDelay: '200ms' }}>
-              <label htmlFor="gender" className="block text-xs font-medium text-muted uppercase tracking-wider mb-1.5">
-                Gênero <span className="text-red-400">*</span>
-              </label>
-              <select
-                id="gender"
-                name="gender"
-                required
-                value={gender}
-                onChange={(e) => setGender(e.target.value as 'M' | 'F' | 'O')}
-                className="block w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm text-main focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand transition-colors"
-              >
-                <option value="O">Prefiro não informar / Outro</option>
-                <option value="M">Masculino</option>
-                <option value="F">Feminino</option>
-              </select>
-            </div>
-          )}
-
-          {!signupEmailPending && (
-          <div className="animate-stagger-up" style={{ animationDelay: '240ms' }}>
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full flex justify-center items-center gap-2 py-2.5 px-4 rounded-lg text-sm font-medium bg-brand text-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2 focus:ring-offset-surface disabled:opacity-50 transition-colors"
-            >
-              {loading ? 'Um momento...' : isLogin ? 'Continuar' : 'Criar conta'}
-            </button>
-          </div>
-          )}
-        </form>
-
-        {/* Fora do <form>: evita submit/validação HTML5 interferindo no clique */}
-        <div className="text-center mt-6 animate-stagger-up" style={{ animationDelay: '320ms' }}>
-          <button
-            type="button"
-            onClick={isLogin ? switchToRegister : switchToLogin}
-            className="text-sm text-brand hover:opacity-80 transition-colors underline-offset-2 hover:underline"
-          >
-            {isLogin
-              ? 'Ainda não possui conta? Registrar-se'
-              : 'Já possui conta? Entrar'}
-          </button>
-        </div>
-      </div>
+      </section>
     </div>
   )
 }

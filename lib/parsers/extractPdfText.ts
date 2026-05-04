@@ -6,42 +6,38 @@ export type ExtractPdfPlainTextOptions = {
   maxPages?: number
 }
 
-type PdfParserInstance = {
-  getText: (params?: { first?: number }) => Promise<{ text?: string }>
-  destroy: () => Promise<void>
-}
-
 /**
  * Extrai texto bruto de um PDF (Node.js / server action).
  * Falha em PDFs só-imagem (sem camada de texto).
  *
- * Import dinâmico: evita 500 no bundle se pdf-parse/pdfjs falhar no ambiente serverless;
+ * Import dinâmico: evita 500 no bundle se pdfjs falhar no ambiente serverless;
  * erros viram string vazia e o fluxo segue para Gemini ou mensagem amigável.
  */
 export async function extractPdfPlainText(
   buffer: Buffer,
   options?: ExtractPdfPlainTextOptions,
 ): Promise<string> {
-  let parser: PdfParserInstance | null = null
   try {
-    const mod = await import('pdf-parse')
-    const PDFParse = mod.PDFParse as new (opts: { data: Uint8Array }) => PdfParserInstance
+    const { getDocument, GlobalWorkerOptions } = await import('pdfjs-dist')
+    // Node.js não tem Workers — desabilitar para processar no thread principal
+    GlobalWorkerOptions.workerSrc = ''
     const data = new Uint8Array(buffer)
-    parser = new PDFParse({ data })
-    const max = options?.maxPages
-    const parseParams =
-      max != null && max > 0 ? { first: max } : undefined
-    const result = await parser.getText(parseParams)
-    return (result.text ?? '').trim()
+    const loadingTask = getDocument({ data })
+    const pdf = await loadingTask.promise
+    const maxPages = options?.maxPages ?? pdf.numPages
+    const last = Math.min(pdf.numPages, maxPages)
+    const parts: string[] = []
+    for (let p = 1; p <= last; p++) {
+      const page = await pdf.getPage(p)
+      const content = await page.getTextContent()
+      const line = content.items
+        .map((item) => ('str' in item && typeof item.str === 'string' ? item.str : ''))
+        .filter(Boolean)
+        .join(' ')
+      if (line) parts.push(line)
+    }
+    return parts.join('\n\n')
   } catch {
     return ''
-  } finally {
-    if (parser) {
-      try {
-        await parser.destroy()
-      } catch {
-        /* ignore */
-      }
-    }
   }
 }

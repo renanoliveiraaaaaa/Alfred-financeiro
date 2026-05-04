@@ -2,11 +2,12 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTheme } from 'next-themes'
 import { createSupabaseClient } from '@/lib/supabaseClient'
 import { usePrivacy } from '@/lib/privacyContext'
+import { useUserPreferences } from '@/lib/userPreferencesContext'
 import {
   LayoutDashboard, TrendingUp, Receipt, CreditCard, MoreHorizontal,
   RefreshCw, Wallet, PiggyBank, Settings, UserCircle,
@@ -25,17 +26,19 @@ const mainItems = [
   { href: '/credit-cards', label: 'Cartões', Icon: CreditCard },
 ]
 
-const moreItems = [
-  { href: '/subscriptions', label: 'Assinaturas', Icon: RefreshCw },
-  { href: '/income-sources', label: 'Fontes de renda', Icon: Wallet },
-  { href: '/goals', label: 'Cofres', Icon: PiggyBank },
-  { href: '/projections', label: 'Orçamento', Icon: Target },
-  { href: '/reports', label: 'Relatórios', Icon: BarChart3 },
-  { href: '/import-statement', label: 'Importar extrato', Icon: FileUp },
-  { href: '/import-history', label: 'Histórico', Icon: History },
-  { href: '/settings', label: 'Cadastros', Icon: Settings },
-  { href: '/profile', label: 'Perfil', Icon: UserCircle },
-]
+function getMoreItems(isBusiness: boolean) {
+  return [
+    { href: '/subscriptions', label: isBusiness ? 'Custos Recorrentes' : 'Assinaturas', Icon: RefreshCw },
+    { href: '/income-sources', label: isBusiness ? 'Fontes de Receita' : 'Fontes de renda', Icon: Wallet },
+    { href: '/goals', label: isBusiness ? 'Reservas' : 'Cofres', Icon: PiggyBank },
+    { href: '/projections', label: 'Orçamento', Icon: Target },
+    { href: '/reports', label: 'Relatórios', Icon: BarChart3 },
+    { href: '/import-statement', label: 'Importar extrato', Icon: FileUp },
+    { href: '/import-history', label: 'Histórico', Icon: History },
+    { href: '/settings', label: 'Cadastros', Icon: Settings },
+    { href: '/profile', label: 'Perfil', Icon: UserCircle },
+  ]
+}
 
 export default function BottomNav() {
   const pathname = usePathname()
@@ -44,29 +47,12 @@ export default function BottomNav() {
   const { resolvedTheme, setTheme } = useTheme()
   const { isPrivacyMode, togglePrivacyMode } = usePrivacy()
 
+  const { isAdmin, activeOrgType } = useUserPreferences()
+  const isBusiness = activeOrgType === 'business'
+  const moreItems = getMoreItems(isBusiness)
   const [sheetOpen, setSheetOpen] = useState(false)
   const [showLogoutModal, setShowLogoutModal] = useState(false)
   const [loggingOut, setLoggingOut] = useState(false)
-  const [isAdmin, setIsAdmin] = useState(false)
-
-  useEffect(() => {
-    let cancelled = false
-    ;(async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      if (!user || cancelled) return
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .maybeSingle()
-      if (!cancelled && profile?.role === 'admin') setIsAdmin(true)
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [supabase])
 
   const isDark = resolvedTheme === 'dark'
   const moreActive = moreItems.some((item) => isActive(item.href, pathname))

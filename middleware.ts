@@ -1,4 +1,4 @@
-import { createServerClient } from '@supabase/ssr'
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 /** Copia cookies definidos na resposta `from` (ex.: refresh Supabase) para redirecionamentos. */
@@ -43,10 +43,10 @@ export async function middleware(request: NextRequest) {
       get(name: string) {
         return request.cookies.get(name)?.value
       },
-      set(name: string, value: string, options: any) {
+      set(name: string, value: string, options: CookieOptions) {
         response.cookies.set(name, value, options)
       },
-      remove(name: string, options: any) {
+      remove(name: string, options: CookieOptions) {
         response.cookies.set(name, '', { ...options, maxAge: 0 })
       },
     },
@@ -64,8 +64,8 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // Proteger rotas que começam com /dashboard, /expenses, /revenues, /reports, /settings
-  if (
+  // Rotas protegidas da app do cliente
+  const isAppRoute =
     pathname.startsWith('/dashboard') ||
     pathname.startsWith('/expenses') ||
     pathname.startsWith('/revenues') ||
@@ -80,9 +80,29 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/expired') ||
     pathname.startsWith('/import-statement') ||
     pathname.startsWith('/import-history')
-  ) {
+
+  if (isAppRoute) {
     if (!user) {
       return redirectWithSession(request, '/', response)
+    }
+
+    // Verificação de trial expirado server-side (evita bypass via JS desabilitado)
+    if (!pathname.startsWith('/expired')) {
+      const { data: trialProfile } = await supabase
+        .from('profiles')
+        .select('plan_status, trial_ends_at')
+        .eq('id', user.id)
+        .maybeSingle()
+
+      const now = new Date()
+      const isExpired =
+        trialProfile?.plan_status === 'trial' &&
+        trialProfile?.trial_ends_at != null &&
+        now > new Date(trialProfile.trial_ends_at)
+
+      if (isExpired) {
+        return redirectWithSession(request, '/expired', response)
+      }
     }
   }
 

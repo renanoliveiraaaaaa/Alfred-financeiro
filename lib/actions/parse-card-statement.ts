@@ -293,6 +293,7 @@ export async function confirmCardStatement(
       .from('credit_cards')
       .insert({
         user_id: user.id,
+        organization_id: organizationId,
         name: input.card_name,
         credit_limit: input.credit_limit ?? 0,
         closing_day: input.closing_day ?? 1,
@@ -315,6 +316,7 @@ export async function confirmCardStatement(
         .update({ credit_limit: input.credit_limit })
         .eq('id', cardId)
         .eq('user_id', user.id)
+        .eq('organization_id', organizationId)
     }
   }
 

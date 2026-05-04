@@ -23,6 +23,8 @@ import {
   Circle,
 } from 'lucide-react'
 import type { Database } from '@/types/supabase'
+import { resolveActiveOrganizationIdForClient } from '@/lib/activeOrganizationClient'
+import { useActiveOrganizationRevision } from '@/lib/useActiveOrganizationRevision'
 
 type Card = Database['public']['Tables']['credit_cards']['Row']
 type Expense = Database['public']['Tables']['expenses']['Row']
@@ -97,6 +99,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 export default function CreditCardDetailPage() {
   const params = useParams()
   const supabase = createSupabaseClient()
+  const orgRevision = useActiveOrganizationRevision()
   const { toast, toastError } = useToast()
   const pronoun = useGreetingPronoun()
   const cardId = params.id as string
@@ -115,16 +118,40 @@ export default function CreditCardDetailPage() {
 
   const fetchData = useCallback(async () => {
     setLoading(true)
+    const { data: auth } = await supabase.auth.getUser()
+    const uid = auth.user?.id
+    if (!uid) {
+      setNotFound(true)
+      setLoading(false)
+      return
+    }
+    const activeOrgId = await resolveActiveOrganizationIdForClient(supabase, uid)
+    if (!activeOrgId) {
+      setNotFound(true)
+      setLoading(false)
+      return
+    }
+
     const [{ data: cardData, error: cardErr }, { data: expData }] = await Promise.all([
-      supabase.from('credit_cards').select('*').eq('id', cardId).maybeSingle(),
-      supabase.from('expenses').select('*').eq('credit_card_id', cardId).order('due_date', { ascending: false }),
+      supabase
+        .from('credit_cards')
+        .select('*')
+        .eq('id', cardId)
+        .eq('organization_id', activeOrgId)
+        .maybeSingle(),
+      supabase
+        .from('expenses')
+        .select('*')
+        .eq('organization_id', activeOrgId)
+        .eq('credit_card_id', cardId)
+        .order('due_date', { ascending: false }),
     ])
 
     if (cardErr || !cardData) { setNotFound(true); setLoading(false); return }
     setCard(cardData as Card)
     setExpenses((expData ?? []) as Expense[])
     setLoading(false)
-  }, [supabase, cardId])
+  }, [supabase, cardId, orgRevision])
 
   useEffect(() => { fetchData() }, [fetchData])
 

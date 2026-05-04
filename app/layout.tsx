@@ -10,7 +10,10 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "Alfred Financeiro",
+  title: {
+    default: "Alfred",
+    template: "%s — Alfred",
+  },
   description: "Seu mordomo financeiro pessoal — elegância e controle ao seu dispor.",
   manifest: "/manifest.json",
   // Padrão moderno (Chrome); appleWebApp continua para Safari / iOS

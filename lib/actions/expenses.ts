@@ -42,8 +42,10 @@ export async function createExpense(input: CreateExpenseInput): Promise<ActionRe
 
   if (isParcelado) {
     const n = input.installments
-    const perInstallment = Math.round((input.amount / n) * 100) / 100
-    const remainder = Math.round((input.amount - perInstallment * n) * 100) / 100
+    // Trabalhar em centavos inteiros elimina erros de arredondamento com float
+    const totalCents = Math.round(input.amount * 100)
+    const baseCents = Math.floor(totalCents / n)
+    const remainderCents = totalCents - baseCents * n
 
     let dueDates: string[]
 
@@ -52,6 +54,7 @@ export async function createExpense(input: CreateExpenseInput): Promise<ActionRe
         .from('credit_cards')
         .select('closing_day, due_day')
         .eq('id', input.credit_card_id)
+        .eq('organization_id', organizationId)
         .maybeSingle()
 
       if (card) {
@@ -71,7 +74,7 @@ export async function createExpense(input: CreateExpenseInput): Promise<ActionRe
     const rows = Array.from({ length: n }, (_, i) => ({
       user_id: user.id,
       organization_id: organizationId,
-      amount: i === 0 ? perInstallment + remainder : perInstallment,
+      amount: i === 0 ? (baseCents + remainderCents) / 100 : baseCents / 100,
       description: `${input.description.trim()} (${i + 1}/${n})`,
       category: input.category,
       payment_method: 'credito_parcelado' as const,

@@ -37,6 +37,8 @@ import {
   type UserOrgRef,
 } from '@/lib/transactionAuditor'
 import ExpenseContextMoveButton from '@/components/ExpenseContextMoveButton'
+import { resolveActiveOrganizationIdForClient } from '@/lib/activeOrganizationClient'
+import { useActiveOrganizationRevision } from '@/lib/useActiveOrganizationRevision'
 
 type Expense = Database['public']['Tables']['expenses']['Row']
 
@@ -66,6 +68,7 @@ const PAYMENT_LABELS: Record<string, string> = {
 
 export default function ExpensesPage() {
   const supabase = createSupabaseClient()
+  const orgRevision = useActiveOrganizationRevision()
   const { toastError } = useToast()
   const pronoun = useGreetingPronoun()
   const [expenses, setExpenses] = useState<Expense[]>([])
@@ -94,12 +97,27 @@ export default function ExpensesPage() {
     try {
       const { data: auth } = await supabase.auth.getUser()
       const uid = auth.user?.id
+      if (!uid) {
+        setExpenses([])
+        setUserOrgs([])
+        return
+      }
+
+      const activeOrgId = await resolveActiveOrganizationIdForClient(supabase, uid)
+      if (!activeOrgId) {
+        setExpenses([])
+        setUserOrgs([])
+        setError('Não foi possível determinar a organização ativa. Tente recarregar a página.')
+        return
+      }
 
       const [expRes, linksRes] = await Promise.all([
-        supabase.from('expenses').select('*').order('due_date', { ascending: false }),
-        uid
-          ? supabase.from('organization_members').select('organization_id').eq('profile_id', uid)
-          : Promise.resolve({ data: null as { organization_id: string }[] | null }),
+        supabase
+          .from('expenses')
+          .select('*')
+          .eq('organization_id', activeOrgId)
+          .order('due_date', { ascending: false }),
+        supabase.from('organization_members').select('organization_id').eq('profile_id', uid),
       ])
 
       if (expRes.error) throw expRes.error
@@ -126,7 +144,7 @@ export default function ExpensesPage() {
     } finally {
       setLoading(false)
     }
-  }, [supabase])
+  }, [supabase, orgRevision])
 
   useEffect(() => {
     loadData()

@@ -7,9 +7,10 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useTheme } from 'next-themes'
 import { createSupabaseClient } from '@/lib/supabaseClient'
 import { usePrivacy } from '@/lib/privacyContext'
-import { LogOut, Sun, Moon, Eye, EyeOff, Loader2, DoorOpen, Plus } from 'lucide-react'
+import { LogOut, Sun, Moon, Eye, EyeOff, Loader2, DoorOpen, Plus, Building2 } from 'lucide-react'
 import { useGreetingPronoun } from '@/lib/greeting'
 import QuickAddModal from '@/components/QuickAddModal'
+import { useUserPreferences } from '@/lib/userPreferencesContext'
 
 const PAGE_TITLES: Record<string, string> = {
   '/dashboard': 'Visão geral',
@@ -27,9 +28,18 @@ const PAGE_TITLES: Record<string, string> = {
   '/profile': 'Perfil',
 }
 
-function getPageTitle(pathname: string): string {
-  if (PAGE_TITLES[pathname]) return PAGE_TITLES[pathname]
+const BUSINESS_PAGE_TITLES: Record<string, string> = {
+  '/revenues': 'Receitas',
+  '/expenses': 'Despesas',
+  '/subscriptions': 'Custos Recorrentes',
+  '/income-sources': 'Fontes de Receita',
+  '/goals': 'Reservas',
+}
+
+function getPageTitle(pathname: string, isBusiness: boolean): string {
   const base = '/' + pathname.split('/')[1]
+  if (isBusiness && BUSINESS_PAGE_TITLES[base]) return BUSINESS_PAGE_TITLES[base]
+  if (PAGE_TITLES[pathname]) return PAGE_TITLES[pathname]
   return PAGE_TITLES[base] ?? ''
 }
 
@@ -39,6 +49,8 @@ export default function Topbar() {
   const supabase = createSupabaseClient()
   const { theme, setTheme, resolvedTheme } = useTheme()
   const { isPrivacyMode, togglePrivacyMode } = usePrivacy()
+  const { activeOrgType } = useUserPreferences()
+  const isBusiness = activeOrgType === 'business'
   const [mounted, setMounted] = useState(false)
 
   const [displayName, setDisplayName] = useState('')
@@ -76,7 +88,7 @@ export default function Topbar() {
 
   const initials = displayName ? displayName[0].toUpperCase() : '?'
   const isDark = resolvedTheme === 'dark'
-  const pageTitle = getPageTitle(pathname)
+  const pageTitle = getPageTitle(pathname, isBusiness)
 
   const trialDaysLeft =
     planStatus === 'trial' && trialEndsAt
@@ -113,8 +125,14 @@ export default function Topbar() {
             className="inline-flex flex-col gap-0.5 min-w-0 group"
             title="Ir para a visão geral"
           >
-            <span className="text-base font-bold tracking-tight text-main leading-none group-hover:text-brand transition-colors">
+            <span className="text-base font-bold tracking-tight text-main leading-none group-hover:text-brand transition-colors flex items-center gap-1.5">
               Alfred
+              {isBusiness && (
+                <span className="inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-semibold bg-blue-500/15 text-blue-600 dark:text-blue-400 ring-1 ring-inset ring-blue-500/20">
+                  <Building2 className="h-2.5 w-2.5" />
+                  Business
+                </span>
+              )}
             </span>
             {pageTitle ? (
               <span className="text-[11px] sm:text-xs font-medium text-muted truncate max-w-[65vw] sm:max-w-none">

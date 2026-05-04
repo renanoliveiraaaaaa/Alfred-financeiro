@@ -240,16 +240,31 @@ export async function getButlerInsightData(): Promise<ButlerInsightData | null> 
       return q
     }
 
+    const goalsQuery = () => {
+      let q = supabase
+        .from('goals')
+        .select('target_amount, current_amount, deadline')
+        .eq('user_id', user.id)
+      if (expenseOrgFilter) q = q.eq('organization_id', expenseOrgFilter)
+      return q
+    }
+
+    const subsQuery = () => {
+      let q = supabase
+        .from('subscriptions')
+        .select('id, name, amount, active, created_at')
+        .eq('user_id', user.id)
+        .eq('active', true)
+      if (expenseOrgFilter) q = q.eq('organization_id', expenseOrgFilter)
+      return q
+    }
+
     const [curExpRes, prevExpRes, curRevRes, goalsRes, subsRes, expWinRes] = await Promise.all([
       expenseQuery(curRange),
       expenseQuery(prevRange),
       revenueQuery(curRange),
-      supabase.from('goals').select('target_amount, current_amount, deadline').eq('user_id', user.id),
-      supabase
-        .from('subscriptions')
-        .select('id, name, amount, active, created_at')
-        .eq('user_id', user.id)
-        .eq('active', true),
+      goalsQuery(),
+      subsQuery(),
       expenseWindowQuery(),
     ])
 
@@ -269,6 +284,16 @@ export async function getButlerInsightData(): Promise<ButlerInsightData | null> 
     const previousTotal = sum(prevRows)
     const totalReceitasMes = sum(revRows)
     const saldoMes = totalReceitasMes - currentTotal
+
+    // Novo utilizador: sem dados ainda — evita chamada desnecessária ao Gemini
+    if (currentTotal === 0 && previousTotal === 0 && totalReceitasMes === 0) {
+      return {
+        context,
+        message:
+          'Bem-vindo ao Alfred, Senhor. Para que eu possa começar a apoiá-lo com insights financeiros, registe as suas primeiras receitas e despesas do mês.',
+        trend: 'flat',
+      }
+    }
 
     const byCat = new Map<string, number>()
     for (const row of curRows) {

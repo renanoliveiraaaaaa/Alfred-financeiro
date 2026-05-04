@@ -6,6 +6,8 @@ import Link from 'next/link'
 import CurrencyInput from '@/components/CurrencyInput'
 import { createExpense } from '@/lib/actions/expenses'
 import { createSupabaseClient } from '@/lib/supabaseClient'
+import { resolveActiveOrganizationIdForClient } from '@/lib/activeOrganizationClient'
+import { useActiveOrganizationRevision } from '@/lib/useActiveOrganizationRevision'
 import { useToast, CONNECTION_ERROR_MSG, isConnectionError } from '@/lib/toastContext'
 import { calculateInstallmentDates, addMonths } from '@/lib/installments'
 import { Loader2, Calendar, Info } from 'lucide-react'
@@ -107,6 +109,7 @@ export default function NewExpensePage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const supabase = createSupabaseClient()
+  const orgRevision = useActiveOrganizationRevision()
   const { toastError } = useToast()
 
   const [categories, setCategories] = useState(DEFAULT_CATEGORIES)
@@ -114,9 +117,19 @@ export default function NewExpensePage() {
 
   useEffect(() => {
     const loadData = async () => {
+      const { data: auth } = await supabase.auth.getUser()
+      const uid = auth.user?.id
+      const activeOrgId = uid ? await resolveActiveOrganizationIdForClient(supabase, uid) : null
+
       const [catRes, cardRes] = await Promise.all([
         supabase.from('categories').select('name').order('name', { ascending: true }),
-        supabase.from('credit_cards').select('*').order('name', { ascending: true }),
+        activeOrgId
+          ? supabase
+              .from('credit_cards')
+              .select('*')
+              .eq('organization_id', activeOrgId)
+              .order('name', { ascending: true })
+          : Promise.resolve({ data: [] as CreditCard[] }),
       ])
       if (catRes.data && catRes.data.length > 0) {
         const userCats = catRes.data.map((c: { name: string }) => ({
@@ -128,7 +141,7 @@ export default function NewExpensePage() {
       if (cardRes.data) setCreditCards(cardRes.data as CreditCard[])
     }
     loadData()
-  }, [supabase])
+  }, [supabase, orgRevision])
 
   const [amount, setAmount] = useState(0)
   const [description, setDescription] = useState('')

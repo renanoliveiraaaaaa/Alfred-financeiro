@@ -181,6 +181,12 @@ async function parseBankStatementPdfImpl(
   } catch {
     return { success: false, error: 'Ficheiro inválido. Envie um PDF.' }
   }
+
+  const MAX_PDF_SIZE = 10 * 1024 * 1024 // 10 MB
+  if (buffer.length > MAX_PDF_SIZE) {
+    return { success: false, error: 'Arquivo muito grande. Tamanho máximo: 10 MB.' }
+  }
+
   let plainText = ''
   try {
     plainText = await extractPdfPlainText(buffer, { maxPages: LOCAL_BANK_MAX_PAGES })

@@ -12,6 +12,8 @@ import { useToast, CONNECTION_ERROR_MSG, isConnectionError } from '@/lib/toastCo
 import { useGreetingPronoun } from '@/lib/greeting'
 import { Plus, X, Loader2, Vault, Trophy, PiggyBank, ArrowUpCircle } from 'lucide-react'
 import type { Database } from '@/types/supabase'
+import { resolveActiveOrganizationIdForClient } from '@/lib/activeOrganizationClient'
+import { useActiveOrganizationRevision } from '@/lib/useActiveOrganizationRevision'
 
 type Goal = Database['public']['Tables']['goals']['Row']
 
@@ -37,6 +39,7 @@ function progressColor(pct: number) {
 
 export default function GoalsPage() {
   const supabase = createSupabaseClient()
+  const orgRevision = useActiveOrganizationRevision()
   const { toastError } = useToast()
   const pronoun = useGreetingPronoun()
 
@@ -61,13 +64,27 @@ export default function GoalsPage() {
 
   const fetchGoals = useCallback(async () => {
     setLoading(true)
+    const { data: auth } = await supabase.auth.getUser()
+    const uid = auth.user?.id
+    if (!uid) {
+      setGoals([])
+      setLoading(false)
+      return
+    }
+    const activeOrgId = await resolveActiveOrganizationIdForClient(supabase, uid)
+    if (!activeOrgId) {
+      setGoals([])
+      setLoading(false)
+      return
+    }
     const { data } = await supabase
       .from('goals')
       .select('*')
+      .eq('organization_id', activeOrgId)
       .order('created_at', { ascending: false })
     if (data) setGoals(data as Goal[])
     setLoading(false)
-  }, [supabase])
+  }, [supabase, orgRevision])
 
   useEffect(() => { fetchGoals() }, [fetchGoals])
 
@@ -90,8 +107,16 @@ export default function GoalsPage() {
     const { data: userData } = await supabase.auth.getUser()
     if (!userData.user) { setSaving(false); return }
 
+    const activeOrgId = await resolveActiveOrganizationIdForClient(supabase, userData.user.id)
+    if (!activeOrgId) {
+      setFormError('Não foi possível determinar a organização ativa.')
+      setSaving(false)
+      return
+    }
+
     const { error } = await supabase.from('goals').insert({
       user_id: userData.user.id,
+      organization_id: activeOrgId,
       name: newName.trim(),
       target_amount: newTarget,
       deadline: newDeadline || null,

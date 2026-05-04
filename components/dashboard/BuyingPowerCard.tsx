@@ -1,8 +1,9 @@
 'use client'
 
-import { Sparkles, CreditCard } from 'lucide-react'
+import { Sparkles, CreditCard, TrendingUp } from 'lucide-react'
 import MaskedValue from '@/components/MaskedValue'
 import type { BuyingPowerResult } from '@/lib/lifestyleFinance'
+import { useUserPreferences } from '@/lib/userPreferencesContext'
 
 type Props = {
   data: BuyingPowerResult
@@ -10,6 +11,8 @@ type Props = {
 }
 
 export default function BuyingPowerCard({ data, monthLabel }: Props) {
+  const { activeOrgType } = useUserPreferences()
+  const isBusiness = activeOrgType === 'business'
   const {
     dinheiroLivre,
     fixedCommitted,
@@ -37,16 +40,16 @@ export default function BuyingPowerCard({ data, monthLabel }: Props) {
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
             <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-border bg-background/80 text-brand shadow-inner">
-              <CreditCard className="h-5 w-5" strokeWidth={1.75} aria-hidden />
+              {isBusiness ? <TrendingUp className="h-5 w-5" strokeWidth={1.75} aria-hidden /> : <CreditCard className="h-5 w-5" strokeWidth={1.75} aria-hidden />}
             </span>
             <div className="min-w-0">
               <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted">
-                Estilo de vida
+                {isBusiness ? 'Margem operacional' : 'Estilo de vida'}
               </p>
               <h3 className="text-base font-semibold tracking-tight text-main">
-                Disponível para Estilo de Vida
+                {isBusiness ? 'Margem Operacional Livre' : 'Disponível para Estilo de Vida'}
               </h3>
-              <p className="text-xs text-muted mt-0.5">Base: receitas − contas essenciais − metas · {monthLabel}</p>
+              <p className="text-xs text-muted mt-0.5">{isBusiness ? 'Base: faturamento − custos fixos − reservas · ' : 'Base: receitas − contas essenciais − metas · '}{monthLabel}</p>
             </div>
           </div>
           <Sparkles className="h-5 w-5 shrink-0 text-amber-400/90 opacity-80" aria-hidden />
@@ -64,19 +67,19 @@ export default function BuyingPowerCard({ data, monthLabel }: Props) {
 
         <dl className="grid grid-cols-1 gap-2 text-xs sm:grid-cols-3">
           <div className="rounded-lg border border-border/60 bg-background/40 px-3 py-2">
-            <dt className="text-muted">Essenciais / contas</dt>
+            <dt className="text-muted">{isBusiness ? 'Custos fixos' : 'Essenciais / contas'}</dt>
             <dd className="font-medium tabular-nums text-main">
               <MaskedValue value={fixedCommitted} />
             </dd>
           </div>
           <div className="rounded-lg border border-border/60 bg-background/40 px-3 py-2">
-            <dt className="text-muted">Metas (mês)</dt>
+            <dt className="text-muted">{isBusiness ? 'Reservas (mês)' : 'Metas (mês)'}</dt>
             <dd className="font-medium tabular-nums text-main">
               <MaskedValue value={monthlyInvestCommitment} />
             </dd>
           </div>
           <div className="rounded-lg border border-border/60 bg-background/40 px-3 py-2">
-            <dt className="text-muted">Lazer + outros</dt>
+            <dt className="text-muted">{isBusiness ? 'Variáveis / outros' : 'Lazer + outros'}</dt>
             <dd className="font-medium tabular-nums text-main">
               <MaskedValue value={lifestyleSpend} />
             </dd>
@@ -85,7 +88,7 @@ export default function BuyingPowerCard({ data, monthLabel }: Props) {
 
         <div className="space-y-2">
           <div className="flex items-center justify-between text-xs text-muted">
-            <span>Uso de lazer/outros vs. dinheiro livre</span>
+            <span>{isBusiness ? 'Custos variáveis vs. margem livre' : 'Uso de lazer/outros vs. dinheiro livre'}</span>
             {lifestyleShareOfFree != null && dinheiroLivre > 0 ? (
               <span className="tabular-nums text-main font-medium">{barPct}%</span>
             ) : null}
@@ -98,11 +101,11 @@ export default function BuyingPowerCard({ data, monthLabel }: Props) {
           </div>
           {comfortWarning ? (
             <p className="text-xs leading-relaxed text-amber-700 dark:text-amber-300/95">
-              Senhor, seu limite de conforto para este mês está próximo do fim.
+              {isBusiness ? 'Senhor, os custos variáveis estão consumindo a margem operacional prevista.' : 'Senhor, seu limite de conforto para este mês está próximo do fim.'}
             </p>
           ) : (
             <p className="text-xs text-muted">
-              Mantém reserva para lazer dentro do que previu para o mês, Senhor.
+              {isBusiness ? 'Margem operacional dentro do previsto para o período, Senhor.' : 'Mantém reserva para lazer dentro do que previu para o mês, Senhor.'}
             </p>
           )}
         </div>

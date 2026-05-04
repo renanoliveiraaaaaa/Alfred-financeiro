@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import OrganizationSwitcher from '@/components/OrganizationSwitcher'
-import { createSupabaseClient } from '@/lib/supabaseClient'
+import { useUserPreferences } from '@/lib/userPreferencesContext'
 import {
   LayoutDashboard,
   Receipt,
@@ -13,10 +13,12 @@ import {
   BarChart3,
   CreditCard,
   PiggyBank,
+  Briefcase,
   RefreshCw,
   Settings,
   UserCircle,
   Wallet,
+  Building2,
   FileUp,
   History,
   ChevronDown,
@@ -29,18 +31,20 @@ type NavItem = {
   sub?: boolean
 }
 
-// Itens sempre visíveis (sem agrupamento com label)
-const flatItems: NavItem[] = [
-  { href: '/dashboard', label: 'Visão geral', Icon: LayoutDashboard },
-  { href: '/revenues', label: 'Entradas', Icon: TrendingUp },
-  { href: '/expenses', label: 'Saídas', Icon: Receipt },
-  { href: '/credit-cards', label: 'Cartões', Icon: CreditCard },
-  { href: '/subscriptions', label: 'Assinaturas', Icon: RefreshCw },
-  { href: '/income-sources', label: 'Fontes de renda', Icon: Wallet },
-  { href: '/goals', label: 'Cofres', Icon: PiggyBank },
-  { href: '/settings', label: 'Cadastros', Icon: Settings },
-  { href: '/profile', label: 'Perfil', Icon: UserCircle },
-]
+// Itens sempre visíveis — variam conforme contexto personal / business
+function getFlatItems(isBusiness: boolean): NavItem[] {
+  return [
+    { href: '/dashboard', label: 'Visão geral', Icon: LayoutDashboard },
+    { href: '/revenues', label: isBusiness ? 'Receitas' : 'Entradas', Icon: isBusiness ? Building2 : TrendingUp },
+    { href: '/expenses', label: isBusiness ? 'Despesas' : 'Saídas', Icon: isBusiness ? Briefcase : Receipt },
+    { href: '/credit-cards', label: 'Cartões', Icon: CreditCard },
+    { href: '/subscriptions', label: isBusiness ? 'Custos Recorrentes' : 'Assinaturas', Icon: RefreshCw },
+    { href: '/income-sources', label: isBusiness ? 'Fontes de Receita' : 'Fontes de renda', Icon: isBusiness ? Building2 : Wallet },
+    { href: '/goals', label: isBusiness ? 'Reservas' : 'Cofres', Icon: isBusiness ? Briefcase : PiggyBank },
+    { href: '/settings', label: 'Cadastros', Icon: Settings },
+    { href: '/profile', label: 'Perfil', Icon: UserCircle },
+  ]
+}
 
 // Grupos que viram botões expansíveis
 const accordions = [
@@ -70,27 +74,9 @@ function isActive(href: string, pathname: string) {
 
 export default function Sidebar() {
   const pathname = usePathname()
-  const supabase = createSupabaseClient()
-  const [isAdmin, setIsAdmin] = useState(false)
-
-  useEffect(() => {
-    let cancelled = false
-    ;(async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      if (!user || cancelled) return
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .maybeSingle()
-      if (!cancelled && profile?.role === 'admin') setIsAdmin(true)
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [supabase])
+  const { isAdmin, activeOrgType } = useUserPreferences()
+  const isBusiness = activeOrgType === 'business'
+  const flatItems = getFlatItems(isBusiness)
 
   // Abre o accordion cujo item está ativo
   const getInitialOpen = () => {

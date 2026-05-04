@@ -8,6 +8,7 @@ import { createSupabaseClient } from '@/lib/supabaseClient'
 import { ACTIVE_ORG_CHANGE_EVENT } from '@/lib/useActiveOrganizationRevision'
 import { createBusinessOrganization } from '@/lib/actions/organizations'
 import { useToast } from '@/lib/toastContext'
+import { useUserPreferences } from '@/lib/userPreferencesContext'
 
 const STORAGE_KEY = 'alfred.activeOrganizationId'
 const COOKIE_NAME = 'alfred.activeOrganizationId'
@@ -37,6 +38,7 @@ export default function OrganizationSwitcher() {
   const [createModalOpen, setCreateModalOpen] = useState(false)
   const [companyName, setCompanyName] = useState('')
   const [createSubmitting, setCreateSubmitting] = useState(false)
+  const { setActiveOrgType } = useUserPreferences()
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -89,6 +91,8 @@ export default function OrganizationSwitcher() {
       const personal = list.find((o) => o.type === 'personal')
       const nextId = valid ? stored! : personal?.id ?? list[0]?.id ?? null
       setActiveId(nextId)
+      const activeOrg = list.find((o) => o.id === nextId)
+      if (activeOrg) setActiveOrgType(activeOrg.type)
       if (nextId && typeof window !== 'undefined') {
         window.localStorage.setItem(STORAGE_KEY, nextId)
         setOrgCookie(nextId)
@@ -107,6 +111,8 @@ export default function OrganizationSwitcher() {
 
   const selectOrg = (id: string) => {
     setActiveId(id)
+    const org = orgs.find((o) => o.id === id)
+    if (org) setActiveOrgType(org.type)
     if (typeof window !== 'undefined') {
       window.localStorage.setItem(STORAGE_KEY, id)
       setOrgCookie(id)

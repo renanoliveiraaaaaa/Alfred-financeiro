@@ -148,7 +148,8 @@ export async function confirmImport(input: ConfirmImportInput): Promise<ActionRe
   if (revenues.length > 0) {
     const { error: revError } = await supabase.from('revenues').insert(revenues)
     if (revError) {
-      return rollback(`Erro ao importar receitas: ${revError.message}`)
+      console.error('[import] Erro ao inserir receitas:', revError)
+      return rollback('Erro ao importar receitas. Tente novamente.')
     }
     imported += revenues.length
   }
@@ -158,7 +159,8 @@ export async function confirmImport(input: ConfirmImportInput): Promise<ActionRe
     const { error: expError } = await supabase.from('expenses').insert(expenses)
     if (expError) {
       // Receitas já inseridas são desfeitas antes de retornar o erro
-      return rollback(`Erro ao importar despesas: ${expError.message}`)
+      console.error('[import] Erro ao inserir despesas:', expError)
+      return rollback('Erro ao importar despesas. Tente novamente.')
     }
     imported += expenses.length
   }

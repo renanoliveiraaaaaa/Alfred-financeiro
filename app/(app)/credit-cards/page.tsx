@@ -18,6 +18,8 @@ import {
 } from 'lucide-react'
 import CardStatementImportModal from '@/components/CardStatementImportModal'
 import type { Database } from '@/types/supabase'
+import { resolveActiveOrganizationIdForClient } from '@/lib/activeOrganizationClient'
+import { useActiveOrganizationRevision } from '@/lib/useActiveOrganizationRevision'
 
 type Card = Database['public']['Tables']['credit_cards']['Row']
 type Expense = Database['public']['Tables']['expenses']['Row']
@@ -85,6 +87,7 @@ function fmtDate(iso: string | null | undefined) {
 
 export default function CreditCardsPage() {
   const supabase = createSupabaseClient()
+  const orgRevision = useActiveOrganizationRevision()
   const { toast, toastError } = useToast()
   const pronoun = useGreetingPronoun()
 
@@ -115,16 +118,41 @@ export default function CreditCardsPage() {
 
   const fetchCards = useCallback(async () => {
     setLoading(true)
+    const { data: auth } = await supabase.auth.getUser()
+    const uid = auth.user?.id
+    if (!uid) {
+      setCards([])
+      setMonthlySpend({})
+      setCommittedByCard({})
+      setRecentExpenses([])
+      setLoading(false)
+      return
+    }
+    const activeOrgId = await resolveActiveOrganizationIdForClient(supabase, uid)
+    if (!activeOrgId) {
+      setCards([])
+      setMonthlySpend({})
+      setCommittedByCard({})
+      setRecentExpenses([])
+      setLoading(false)
+      return
+    }
+
     const now = new Date()
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10)
     const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10)
 
     const [{ data: cardsData }, { data: currentMonthData }, { data: allUnpaidData }, { data: recentData }] = await Promise.all([
-      supabase.from('credit_cards').select('*').order('created_at', { ascending: false }),
+      supabase
+        .from('credit_cards')
+        .select('*')
+        .eq('organization_id', activeOrgId)
+        .order('created_at', { ascending: false }),
       // Fatura do mês atual (o que está vencendo este mês)
       supabase
         .from('expenses')
         .select('credit_card_id, amount')
+        .eq('organization_id', activeOrgId)
         .not('credit_card_id', 'is', null)
         .gte('due_date', monthStart)
         .lte('due_date', monthEnd),
@@ -132,12 +160,14 @@ export default function CreditCardsPage() {
       supabase
         .from('expenses')
         .select('credit_card_id, amount')
+        .eq('organization_id', activeOrgId)
         .not('credit_card_id', 'is', null)
         .eq('paid', false),
       // Últimos 8 lançamentos em qualquer cartão
       supabase
         .from('expenses')
         .select('*')
+        .eq('organization_id', activeOrgId)
         .not('credit_card_id', 'is', null)
         .order('due_date', { ascending: false })
         .limit(8),
@@ -165,7 +195,7 @@ export default function CreditCardsPage() {
 
     setRecentExpenses((recentData ?? []) as Expense[])
     setLoading(false)
-  }, [supabase])
+  }, [supabase, orgRevision])
 
   useEffect(() => { fetchCards() }, [fetchCards])
 
@@ -226,7 +256,17 @@ export default function CreditCardsPage() {
     } else {
       const { data: userData } = await supabase.auth.getUser()
       if (!userData.user) { setSaving(false); return }
-      const { error } = await supabase.from('credit_cards').insert({ ...payload, user_id: userData.user.id })
+      const activeOrgId = await resolveActiveOrganizationIdForClient(supabase, userData.user.id)
+      if (!activeOrgId) {
+        setFormError('Não foi possível determinar a organização ativa.')
+        setSaving(false)
+        return
+      }
+      const { error } = await supabase.from('credit_cards').insert({
+        ...payload,
+        user_id: userData.user.id,
+        organization_id: activeOrgId,
+      })
       if (error) setFormError(isConnectionError(error) ? CONNECTION_ERROR_MSG : error.message)
       else { toast('Cartão adicionado.', 'success'); setShowForm(false); resetForm(); await fetchCards() }
     }
