@@ -1,0 +1,7 @@
+{
+  "modal.danger.title": "Attention, Sir.",
+  "modal.danger.description": "Are you sure you want to permanently delete this record(s)? This action is irreversible and will affect reports.",
+  "modal.danger.confirm": "Yes, Delete",
+  "modal.danger.cancel": "Cancel",
+  "modal.danger.loading": "Deleting..."
+}

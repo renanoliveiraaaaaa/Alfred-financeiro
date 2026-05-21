@@ -2,6 +2,7 @@
 
 import { createPortal } from 'react-dom'
 import { AlertTriangle, Loader2 } from 'lucide-react'
+import { useI18n } from '@/lib/i18n'
 
 type Props = {
   open: boolean
@@ -12,17 +13,17 @@ type Props = {
   onConfirm: () => void
   onCancel: () => void
 }
-
-export default function ConfirmDangerModal({
+function ConfirmDangerModal({
   open,
-  title = 'Atenção, Senhor.',
-  description = 'Tem certeza que deseja apagar permanentemente este(s) registro(s)? Esta ação é irreversível e afetará os relatórios.',
-  confirmLabel = 'Sim, Excluir',
+  title,
+  description,
+  confirmLabel,
   loading = false,
   onConfirm,
   onCancel,
 }: Props) {
-  if (!open) return null
+  const { t } = useI18n();
+  if (!open) return null;
 
   const modal = (
     <div className="fixed inset-0 z-[999] flex flex-col sm:items-center sm:justify-center bg-black/60 backdrop-blur-sm px-0 sm:px-4 py-4 sm:py-0 overflow-y-auto animate-backdrop-enter">
@@ -31,30 +32,34 @@ export default function ConfirmDangerModal({
           <div className="h-11 w-11 rounded-full bg-red-100 dark:bg-red-500/15 flex items-center justify-center shrink-0">
             <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
           </div>
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{title}</h2>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{title ?? t('modal.danger.title')}</h2>
         </div>
 
-        <p className="text-sm text-gray-600 dark:text-manor-300 leading-relaxed">{description}</p>
+        <p className="text-sm text-gray-600 dark:text-manor-300 leading-relaxed">{description ?? t('modal.danger.description')}</p>
 
         <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-2">
           <button
             onClick={onCancel}
             disabled={loading}
             className="min-h-[44px] w-full sm:w-auto px-4 py-2.5 rounded-lg text-sm font-medium border border-gray-300 dark:border-manor-700 text-gray-600 dark:text-manor-400 hover:bg-gray-100 dark:hover:bg-manor-800 disabled:opacity-50 transition-colors touch-manipulation"
+            aria-label={t('modal.danger.cancel')}
+            tabIndex={0}
           >
-            Cancelar
+            {t('modal.danger.cancel')}
           </button>
           <button
             onClick={onConfirm}
             disabled={loading}
             className="min-h-[44px] w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 transition-colors touch-manipulation"
+            aria-label={t('modal.danger.confirm')}
+            tabIndex={0}
           >
-            {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Excluindo...</> : confirmLabel}
+            {loading ? <><Loader2 className="h-4 w-4 animate-spin" aria-hidden /> {t('modal.danger.loading')}</> : (confirmLabel ?? t('modal.danger.confirm'))}
           </button>
         </div>
       </div>
     </div>
-  )
+  );
 
-  return typeof document !== 'undefined' ? createPortal(modal, document.body) : null
+  return typeof document !== 'undefined' ? createPortal(modal, document.body) : null;
 }

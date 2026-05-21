@@ -8,6 +8,7 @@ import { useTheme } from 'next-themes'
 import { createSupabaseClient } from '@/lib/supabaseClient'
 import { usePrivacy } from '@/lib/privacyContext'
 import { LogOut, Sun, Moon, Eye, EyeOff, Loader2, DoorOpen, Plus, Building2 } from 'lucide-react'
+import LanguageSwitcher from '@/components/LanguageSwitcher'
 import { useGreetingPronoun } from '@/lib/greeting'
 import QuickAddModal from '@/components/QuickAddModal'
 import { useUserPreferences } from '@/lib/userPreferencesContext'
@@ -153,6 +154,11 @@ export default function Topbar() {
               {trialBadgeLabel}
             </span>
           )}
+
+          {/* Language Switcher */}
+          <div className="max-lg:hidden">
+            <LanguageSwitcher />
+          </div>
 
           {/* Quick add */}
           <button

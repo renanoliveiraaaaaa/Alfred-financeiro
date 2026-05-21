@@ -1,0 +1,22 @@
+{
+  "nav.home": "Início",
+  "nav.expenses": "Despesas",
+  "nav.revenues": "Receitas",
+  "nav.goals": "Metas",
+  "nav.profile": "Perfil",
+  "nav.more": "Mais",
+  "nav.creditCards": "Cartões",
+  "nav.incomeSources": "Fontes de renda",
+  "nav.settings": "Cadastros",
+  "nav.businessRevenues": "Receitas",
+  "nav.businessExpenses": "Despesas",
+  "nav.businessSubscriptions": "Custos Recorrentes",
+  "nav.businessIncomeSources": "Fontes de Receita",
+  "nav.businessGoals": "Reservas",
+  "nav.projections": "Orçamento",
+  "nav.reports": "Relatórios",
+  "nav.importStatement": "Importar extrato",
+  "nav.importHistory": "Histórico",
+  "nav.planning": "Planejamento",
+  "nav.statements": "Extratos"
+}

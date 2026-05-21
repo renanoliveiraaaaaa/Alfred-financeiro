@@ -132,8 +132,9 @@ export default function QuickAddModal({ open, onClose }: Props) {
             onClick={handleClose}
             className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-muted hover:text-main hover:bg-background transition-colors touch-manipulation"
             aria-label="Fechar"
+            tabIndex={0}
           >
-            <X className="h-5 w-5" />
+            <X className="h-5 w-5" aria-hidden />
           </button>
         </div>
 
@@ -146,8 +147,10 @@ export default function QuickAddModal({ open, onClose }: Props) {
                 ? 'bg-surface text-main shadow-sm'
                 : 'text-muted hover:text-main'
             }`}
+            aria-label={isBusiness ? 'Custo / Despesa' : 'Despesa'}
+            tabIndex={0}
           >
-            <ArrowDownLeft className="h-3.5 w-3.5" /> {isBusiness ? 'Custo / Despesa' : 'Despesa'}
+            <ArrowDownLeft className="h-3.5 w-3.5" aria-hidden /> {isBusiness ? 'Custo / Despesa' : 'Despesa'}
           </button>
           <button
             onClick={() => switchTab('revenue')}
@@ -156,8 +159,10 @@ export default function QuickAddModal({ open, onClose }: Props) {
                 ? 'bg-surface text-main shadow-sm'
                 : 'text-muted hover:text-main'
             }`}
+            aria-label={isBusiness ? 'Faturamento' : 'Receita'}
+            tabIndex={0}
           >
-            <ArrowUpRight className="h-3.5 w-3.5" /> {isBusiness ? 'Faturamento' : 'Receita'}
+            <ArrowUpRight className="h-3.5 w-3.5" aria-hidden /> {isBusiness ? 'Faturamento' : 'Receita'}
           </button>
         </div>
 
@@ -266,6 +271,8 @@ export default function QuickAddModal({ open, onClose }: Props) {
               type="button"
               onClick={handleClose}
               className="flex-1 min-h-[44px] inline-flex items-center justify-center px-4 py-2.5 rounded-lg text-sm font-medium border border-border text-muted hover:bg-background transition-colors touch-manipulation"
+              aria-label="Cancelar"
+              tabIndex={0}
             >
               Cancelar
             </button>
@@ -273,8 +280,10 @@ export default function QuickAddModal({ open, onClose }: Props) {
               type="submit"
               disabled={saving || success}
               className="flex-1 min-h-[44px] inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium bg-brand text-white hover:opacity-90 disabled:opacity-50 transition-colors touch-manipulation"
+              aria-label="Registrar"
+              tabIndex={0}
             >
-              {saving ? <><Loader2 className="h-4 w-4 animate-spin" /> Registrando...</> : success ? <><Check className="h-4 w-4" /> Registrado</> : 'Registrar'}
+              {saving ? <><Loader2 className="h-4 w-4 animate-spin" aria-hidden /> Registrando...</> : success ? <><Check className="h-4 w-4" aria-hidden /> Registrado</> : 'Registrar'}
             </button>
           </div>
         </form>

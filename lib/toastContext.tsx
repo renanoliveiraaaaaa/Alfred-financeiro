@@ -1,6 +1,7 @@
 'use client'
 
 import { createContext, useContext, useState, useCallback, type ReactNode, useEffect } from 'react'
+import { useI18n } from './i18n'
 import { createPortal } from 'react-dom'
 import { CheckCircle2, XCircle, X } from 'lucide-react'
 
@@ -31,6 +32,7 @@ function ToastElement({
   onClose: () => void
 }) {
   const isError = state.type === 'error'
+  const { t } = useI18n();
   return (
     <div
       role="alert"
@@ -61,7 +63,7 @@ function ToastElement({
               ? 'text-red-400 hover:text-red-600 hover:bg-red-100 dark:hover:bg-red-900/50'
               : 'text-emerald-400 hover:text-emerald-600 hover:bg-emerald-100 dark:hover:bg-emerald-900/50'
           }`}
-          aria-label="Fechar"
+          aria-label={t('toast.close')}
         >
           <X className="h-3.5 w-3.5" />
         </button>
@@ -100,8 +102,7 @@ export function useToast() {
 }
 
 /** Mensagem padrão para erros de conexão/rede */
-export const CONNECTION_ERROR_MSG =
-  'Houve um problema de comunicação. Por favor, verifique sua conexão e tente novamente.'
+export const CONNECTION_ERROR_MSG = 'toast.connectionError'
 
 export function isConnectionError(err: unknown): boolean {
   const msg = err instanceof Error ? err.message : (typeof err === 'object' && err !== null && 'message' in err ? String((err as { message: string }).message) : String(err))

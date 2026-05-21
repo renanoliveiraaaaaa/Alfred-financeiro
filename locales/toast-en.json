@@ -1,0 +1,6 @@
+{
+  "toast.connectionError": "There was a communication problem. Please check your connection and try again.",
+  "toast.success": "Operation completed successfully!",
+  "toast.error": "An unexpected error occurred. Please try again.",
+  "toast.close": "Close"
+}

@@ -14,9 +14,49 @@
 
 ---
 
+
+
+## Política de Privacidade e Termos de Uso
+
+Leia em [docs/PRIVACIDADE_TERMO_DE_USO.md](docs/PRIVACIDADE_TERMO_DE_USO.md).
+
+---
+
+## Documentação Complementar
+
+| Documento | Conteúdo |
+|-----------|----------|
+| [docs/AUDITORIA_RLS.md](docs/AUDITORIA_RLS.md) | Políticas RLS, tabelas protegidas e revisão do frontend |
+| [docs/FREE_TRIAL_SAAS.md](docs/FREE_TRIAL_SAAS.md) | Free Trial de 7 dias, migrações e como estender acesso |
+| [docs/THEMES_GLASS_MODALS_IMPORT.md](docs/THEMES_GLASS_MODALS_IMPORT.md) | Temas (`app_theme`), Liquid Glass, modais (Portal + z-index), importação CSV/OFX e tabela `import_sessions` |
+
+---
+
+
 ## Visão Geral
 
 O Alfred Financeiro é um SaaS de gestão financeira pessoal que combina interface refinada, funcionalidades avançadas e uma experiência de uso única — a *Voz do Alfred* — que guia o usuário com linguagem formal e cortês em cada interação.
+
+---
+
+## Onboarding Guiado e Primeiros Passos
+
+Ao criar uma conta, o usuário recebe um onboarding automático:
+
+- **Modal de boas-vindas**: Aparece no primeiro acesso, com checklist dos primeiros passos essenciais.
+- **Checklist sugerido**:
+   1. Completar o perfil (nome, tema, preferências)
+   2. Adicionar a primeira receita ou despesa
+   3. Explorar o dashboard e gráficos
+   4. Personalizar categorias e assinaturas
+- **Ações rápidas**: Botões para completar perfil, registrar receita/despesa direto do modal.
+- O modal só aparece no primeiro acesso (persistência via localStorage).
+
+Referências:
+- [components/WelcomeModal.tsx](components/WelcomeModal.tsx)
+- [lib/seedCategories.ts](lib/seedCategories.ts)
+
+---
 
 ### Funcionalidades Principais
 
@@ -36,8 +76,55 @@ O Alfred Financeiro é um SaaS de gestão financeira pessoal que combina interfa
 | **Animações** | Framer Motion para transições de página, modais e feedback visual. |
 | **Lançamentos** | Novas despesas/receitas pelas rotas dedicadas (ex.: `/expenses/new`, `/revenues/new`) e atalhos no dashboard. |
 | **Free Trial SaaS** | Período de teste gratuito; badge de dias restantes na Topbar só quando faltam **7 dias ou menos**; bloqueio ao expirar com página dedicada. |
-| **Onboarding** | Seed automático de categorias para novos usuários e modal de boas-vindas. |
-| **Tratamento de Erros** | Toasts globais, mensagens de conexão e feedback visual em todas as operações CRUD. |
+| **Onboarding** | Seed automático de categorias para novos usuários e modal de boas-vindas com checklist e ações rápidas. |
+---
+
+## Temas Visuais e Personalização
+
+O Alfred Financeiro oferece uma galeria de temas para personalizar a experiência:
+
+- **Temas disponíveis**: Padrão, Gala, Classic, Club, Liquid Glass
+- **Tema Liquid Glass**: Superfícies translúcidas, fundo animado com blobs coloridos, efeito glassmorphism moderno
+- **Como funciona**: O tema é salvo no perfil do usuário (`profiles.app_theme`) e aplicado via CSS custom properties e classes utilitárias do Tailwind
+- **Modo claro/escuro**: Alternância automática ou manual via next-themes
+
+Referências:
+- [docs/THEMES_GLASS_MODALS_IMPORT.md](docs/THEMES_GLASS_MODALS_IMPORT.md)
+- [components/ThemeApplier.tsx](components/ThemeApplier.tsx)
+- [lib/userPreferencesContext.tsx](lib/userPreferencesContext.tsx)
+
+---
+## Dicas rápidas para novos usuários
+
+- Use o onboarding para se familiarizar com o sistema e personalize seu perfil e temas
+- Utilize o modo privacidade para ocultar valores em ambientes compartilhados
+- Explore os gráficos e relatórios para insights financeiros
+- Importe extratos em CSV/OFX para agilizar o lançamento de despesas e receitas
+
+---
+| **Tratamento de Erros** | Toasts globais, mensagens de conexão e feedback visual em todas as operações CRUD. Empty states amigáveis em todas as telas de listagem. |
+---
+
+
+## Acessibilidade, UX e Internacionalização
+
+O Alfred Financeiro segue boas práticas de acessibilidade e experiência do usuário:
+
+- Todos os botões e links possuem `aria-label` e foco visível.
+- Empty states possuem foco automático e são lidos por leitores de tela (`aria-live`).
+- Contraste garantido em temas claros/escuros.
+- Navegação por teclado em todos os fluxos principais.
+- Feedback visual consistente (animações, transições, loading states).
+
+### Internacionalização (i18n)
+
+- Suporte a múltiplos idiomas (Português e Inglês) via arquivos de tradução em `locales/`.
+- Troca de idioma instantânea pelo seletor no topo da interface (Topbar).
+- Todos os textos principais da navegação, menus e botões já traduzidos.
+
+Para adicionar novos idiomas, basta criar um arquivo `locales/xx.json` e incluir as chaves necessárias.
+
+---
 
 ---
 
@@ -177,6 +264,24 @@ As seguintes inconsistências entre o `SUPABASE_SCHEMA.sql` e o código da aplic
 ---
 
 ## Manifesto de Design (UI/UX)
+
+### Empty States
+
+Todos os fluxos de listagem (despesas, receitas, cartões, metas, assinaturas, importações, admin) exibem um estado vazio amigável, com ícone, título, descrição e ação primária. Exemplo:
+
+```
+<EmptyState
+   icon={Receipt}
+   title="Tudo em ordem, senhor"
+   description="Não há saídas registradas para este período. Quando houver uma obrigação, estarei pronto para catalogá-la."
+   actionLabel="Registrar primeira saída"
+   onAction={() => window.location.href = '/expenses/new'}
+/>
+```
+
+Todos os empty states têm animação de entrada, foco automático e são acessíveis.
+
+---
 
 ### A Voz do Alfred
 

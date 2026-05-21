@@ -8,6 +8,7 @@ import { useTheme } from 'next-themes'
 import { createSupabaseClient } from '@/lib/supabaseClient'
 import { usePrivacy } from '@/lib/privacyContext'
 import { useUserPreferences } from '@/lib/userPreferencesContext'
+import { useI18n } from '@/lib/i18n'
 import {
   LayoutDashboard, TrendingUp, Receipt, CreditCard, MoreHorizontal,
   RefreshCw, Wallet, PiggyBank, Settings, UserCircle,
@@ -20,27 +21,28 @@ function isActive(href: string, pathname: string) {
 }
 
 const mainItems = [
-  { href: '/dashboard', label: 'Início', Icon: LayoutDashboard },
-  { href: '/revenues', label: 'Entradas', Icon: TrendingUp },
-  { href: '/expenses', label: 'Saídas', Icon: Receipt },
-  { href: '/credit-cards', label: 'Cartões', Icon: CreditCard },
+  { href: '/dashboard', label: 'nav.home', Icon: LayoutDashboard },
+  { href: '/revenues', label: 'nav.revenues', Icon: TrendingUp },
+  { href: '/expenses', label: 'nav.expenses', Icon: Receipt },
+  { href: '/credit-cards', label: 'nav.creditCards', Icon: CreditCard },
 ]
 
 function getMoreItems(isBusiness: boolean) {
   return [
-    { href: '/subscriptions', label: isBusiness ? 'Custos Recorrentes' : 'Assinaturas', Icon: RefreshCw },
-    { href: '/income-sources', label: isBusiness ? 'Fontes de Receita' : 'Fontes de renda', Icon: Wallet },
-    { href: '/goals', label: isBusiness ? 'Reservas' : 'Cofres', Icon: PiggyBank },
-    { href: '/projections', label: 'Orçamento', Icon: Target },
-    { href: '/reports', label: 'Relatórios', Icon: BarChart3 },
-    { href: '/import-statement', label: 'Importar extrato', Icon: FileUp },
-    { href: '/import-history', label: 'Histórico', Icon: History },
-    { href: '/settings', label: 'Cadastros', Icon: Settings },
-    { href: '/profile', label: 'Perfil', Icon: UserCircle },
+    { href: '/subscriptions', label: isBusiness ? 'nav.businessSubscriptions' : 'nav.more', Icon: RefreshCw },
+    { href: '/income-sources', label: isBusiness ? 'nav.businessIncomeSources' : 'nav.incomeSources', Icon: Wallet },
+    { href: '/goals', label: isBusiness ? 'nav.businessGoals' : 'nav.goals', Icon: PiggyBank },
+    { href: '/projections', label: 'nav.projections', Icon: Target },
+    { href: '/reports', label: 'nav.reports', Icon: BarChart3 },
+    { href: '/import-statement', label: 'nav.importStatement', Icon: FileUp },
+    { href: '/import-history', label: 'nav.importHistory', Icon: History },
+    { href: '/settings', label: 'nav.settings', Icon: Settings },
+    { href: '/profile', label: 'nav.profile', Icon: UserCircle },
   ]
 }
 
 export default function BottomNav() {
+  const { t } = useI18n();
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createSupabaseClient()
@@ -54,6 +56,7 @@ export default function BottomNav() {
   const [showLogoutModal, setShowLogoutModal] = useState(false)
   const [loggingOut, setLoggingOut] = useState(false)
 
+// ...existing code...
   const isDark = resolvedTheme === 'dark'
   const moreActive = moreItems.some((item) => isActive(item.href, pathname))
 
@@ -89,7 +92,7 @@ export default function BottomNav() {
                 )}
                 <Icon className="h-6 w-6 shrink-0" />
                 <span className={`text-[10px] font-medium leading-none ${active ? 'text-brand' : 'text-muted'}`}>
-                  {label}
+                  {t(label)}
                 </span>
               </Link>
             )
@@ -104,7 +107,7 @@ export default function BottomNav() {
           >
             <MoreHorizontal className="h-6 w-6 shrink-0" />
             <span className={`text-[10px] font-medium leading-none ${moreActive ? 'text-brand' : 'text-muted'}`}>
-              Mais
+              {t('nav.more')}
             </span>
           </button>
         </div>

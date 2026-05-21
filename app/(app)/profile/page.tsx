@@ -1,3 +1,28 @@
+import ConfirmDangerModal from '@/components/ConfirmDangerModal'
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  // Exclusão de conta
+  const handleDeleteAccount = async () => {
+    setDeleting(true)
+    setError(null)
+    setSuccess(null)
+    try {
+      // Remove do Supabase Auth
+      const { error: authErr } = await supabase.auth.admin.deleteUser(userId)
+      if (authErr) throw new Error('Falha ao remover autenticação: ' + authErr.message)
+      // Remove perfil
+      await supabase.from('profiles').delete().eq('id', userId)
+      setSuccess('Conta excluída com sucesso. Seus dados foram removidos. Redirecionando...')
+      setTimeout(() => {
+        window.location.href = '/login'
+      }, 2000)
+    } catch (err: any) {
+      setError(err?.message || 'Falha ao excluir conta.')
+    } finally {
+      setDeleting(false)
+      setDeleteModalOpen(false)
+    }
+  }
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
@@ -454,6 +479,31 @@ export default function ProfilePage() {
           )}
         </button>
       </div>
+      {/* Exclusão de conta */}
+      <div className="rounded-xl border border-red-200 bg-red-50 p-6 glass-card mt-8">
+        <h2 className="text-sm font-semibold text-red-700 mb-2">Excluir conta</h2>
+        <p className="text-xs text-red-700 mb-4">Esta ação é <b>irreversível</b>. Todos os seus dados serão apagados e não poderão ser recuperados.</p>
+        <button
+          type="button"
+          className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-6 py-2.5 text-sm font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:ring-offset-red-50 disabled:opacity-50 transition-colors"
+          onClick={() => setDeleteModalOpen(true)}
+          disabled={deleting}
+          aria-label="Excluir conta"
+        >
+          {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+          Excluir conta
+        </button>
+      </div>
+
+      <ConfirmDangerModal
+        open={deleteModalOpen}
+        title="Excluir conta"
+        description="Tem certeza que deseja excluir sua conta? Esta ação é irreversível e apagará todos os seus dados."
+        confirmLabel={deleting ? 'Excluindo...' : 'Sim, excluir'}
+        loading={deleting}
+        onConfirm={handleDeleteAccount}
+        onCancel={() => setDeleteModalOpen(false)}
+      />
     </div>
   )
 }

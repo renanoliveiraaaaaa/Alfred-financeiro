@@ -1,0 +1,17 @@
+{
+  "auth.welcomeBack": "Bem-vindo de volta à Mansão.",
+  "auth.prepareAccount": "Permita-me preparar sua conta.",
+  "auth.helloAgain": "Olá, {name}. Que bom te ver de novo.",
+  "auth.almostThere": "Quase lá — confirme seu e-mail para entrar.",
+  "auth.login": "Acessar",
+  "auth.register": "Solicitar convite",
+  "auth.successTitle": "Conta criada com sucesso",
+  "auth.successDesc": "Enviamos um link de confirmação para <span class=\"font-medium text-white\">{email}</span>. Abra o e-mail e clique no link para ativar a conta; em seguida poderá entrar com e-mail e senha.",
+  "auth.error.generic": "Falha na autenticação. Tente novamente.",
+  "auth.error.connection": "Não foi possível estabelecer conexão com o servidor. Verifique suas credenciais de ambiente e a disponibilidade do serviço.",
+  "auth.error.env": "Variáveis NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY não configuradas.",
+  "auth.error.invalid": "E-mail ou senha inválidos.",
+  "auth.error.exists": "Já existe uma conta com este e-mail.",
+  "auth.error.weak": "A senha deve ter pelo menos 6 caracteres.",
+  "auth.success": "Operação realizada com sucesso!"
+}

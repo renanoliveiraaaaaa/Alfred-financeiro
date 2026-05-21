@@ -2,6 +2,7 @@
 
 import { User } from 'lucide-react'
 import { maskEmail, type LastUser } from '@/lib/lastUserStorage'
+import { useI18n } from '@/lib/i18n'
 
 export type LandingAuthFormProps = {
   isLogin: boolean
@@ -48,6 +49,7 @@ export default function LandingAuthForm({
   onTabAccess,
   onTabInvite,
 }: LandingAuthFormProps) {
+  const { t } = useI18n();
   const displayName = lastUser?.fullName
     ? lastUser.fullName.split(' ').map((w) => w.toUpperCase()).join(' ')
     : lastUser?.email
@@ -69,11 +71,11 @@ export default function LandingAuthForm({
           </p>
           <p className="mt-2 text-sm text-slate-400">
             {lastUser && !showEmailForm
-              ? `Olá, ${displayName}. Que bom te ver de novo.`
+              ? t('auth.helloAgain').replace('{name}', displayName)
               : !isLogin && signupEmailPending
-                ? 'Quase lá — confirme seu e-mail para entrar.'
+                ? t('auth.almostThere')
                 : isLogin
-                  ? 'Bem-vindo de volta à Mansão.'
+                  ? t('auth.welcomeBack')
                   : 'Permita-me preparar sua conta.'}
           </p>
         </div>
@@ -167,7 +169,7 @@ export default function LandingAuthForm({
                 className={inputClass}
                 placeholder="seu@email.com"
                 value={email}
-                onChange={(e) => onEmailChange(e.target.value)}
+                {t('auth.login')}
               />
             </div>
           ) : null}
@@ -178,31 +180,29 @@ export default function LandingAuthForm({
                 {lastUser && !showEmailForm ? 'Digite sua senha' : 'Senha'}
               </label>
               <input
-                id="password"
+                {t('auth.register')}
                 name="password"
                 type="password"
                 autoComplete={isLogin ? 'current-password' : 'new-password'}
                 required
                 className={inputClass}
                 placeholder="••••••••"
-                value={password}
+                  {t(error) !== error ? t(error) : error}
                 onChange={(e) => onPasswordChange(e.target.value)}
               />
             </div>
           )}
 
-          {!isLogin && !signupEmailPending && (
+                  <p className="font-medium">{t('auth.successTitle')}</p>
             <div className="transition-all">
-              <label htmlFor="gender" className="mb-1 block text-xs font-medium uppercase tracking-wider text-slate-500">
-                Gênero <span className="text-red-400">*</span>
-              </label>
+                    <span className="font-medium text-white">{email}</span>. {t('auth.successDesc')}
               <select
                 id="gender"
                 name="gender"
                 required
                 value={gender}
                 onChange={(e) => onGenderChange(e.target.value as 'M' | 'F' | 'O')}
-                className={selectClass}
+                    {t('auth.backToLogin')}
               >
                 <option value="O">Prefiro não informar / Outro</option>
                 <option value="M">Masculino</option>

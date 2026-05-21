@@ -1,0 +1,7 @@
+{
+  "modal.danger.title": "Atenção, Senhor.",
+  "modal.danger.description": "Tem certeza que deseja apagar permanentemente este(s) registro(s)? Esta ação é irreversível e afetará os relatórios.",
+  "modal.danger.confirm": "Sim, Excluir",
+  "modal.danger.cancel": "Cancelar",
+  "modal.danger.loading": "Excluindo..."
+}

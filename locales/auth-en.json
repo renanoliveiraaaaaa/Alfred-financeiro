@@ -1,0 +1,17 @@
+{
+  "auth.welcomeBack": "Welcome back to the Mansion.",
+  "auth.prepareAccount": "Allow me to prepare your account.",
+  "auth.helloAgain": "Hello, {name}. Good to see you again.",
+  "auth.almostThere": "Almost there — confirm your email to sign in.",
+  "auth.login": "Sign in",
+  "auth.register": "Request invite",
+  "auth.successTitle": "Account created successfully",
+  "auth.successDesc": "We sent a confirmation link to <span class=\"font-medium text-white\">{email}</span>. Open the email and click the link to activate your account; then you can sign in with email and password.",
+  "auth.error.generic": "Authentication failed. Please try again.",
+  "auth.error.connection": "Could not connect to the server. Check your environment credentials and service availability.",
+  "auth.error.env": "NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY variables not set.",
+  "auth.error.invalid": "Invalid email or password.",
+  "auth.error.exists": "An account with this email already exists.",
+  "auth.error.weak": "Password must be at least 6 characters.",
+  "auth.success": "Operation completed successfully!"
+}

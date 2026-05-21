@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+
 import Providers from "@/components/Providers";
+import AppFooter from "@/components/AppFooter";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -42,7 +44,10 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <body>
-        <Providers>{children}</Providers>
+        <Providers>
+          {children}
+          <AppFooter />
+        </Providers>
       </body>
     </html>
   );

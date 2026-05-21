@@ -57,11 +57,37 @@ export default function WelcomeModal({ open, onClose, pronoun = 'senhor' }: Prop
             Preparei um conjunto de categorias básicas para organizar suas finanças: Alimentação, Transporte, Moradia, Saúde, Lazer, Educação, Assinaturas e Outros. Você pode personalizá-las em <strong>Cadastros</strong> quando desejar.
           </p>
 
-          <p className="text-sm text-muted leading-relaxed">
-            Permita-me sugerir que registre sua primeira <strong>receita</strong> ou <strong>despesa</strong> para começar a acompanhar o seu patrimônio.
-          </p>
+          <div className="mt-4">
+            <h3 className="text-sm font-semibold text-main mb-2">Primeiros passos sugeridos:</h3>
+            <ul className="space-y-2">
+              <li className="flex items-center gap-2">
+                <span className="inline-block h-4 w-4 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xs font-bold">1</span>
+                <span>Complete seu <strong>perfil</strong> (nome, tema, preferências)</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="inline-block h-4 w-4 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xs font-bold">2</span>
+                <span>Adicione sua <strong>primeira receita</strong> ou <strong>despesa</strong></span>
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="inline-block h-4 w-4 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xs font-bold">3</span>
+                <span>Explore o <strong>dashboard</strong> e gráficos</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="inline-block h-4 w-4 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xs font-bold">4</span>
+                <span>Personalize categorias e assinaturas em <strong>Cadastros</strong></span>
+              </li>
+            </ul>
+          </div>
 
-          <div className="flex flex-col sm:flex-row gap-3 pt-2">
+          <div className="flex flex-col sm:flex-row gap-3 pt-4">
+            <Link
+              href="/profile"
+              onClick={onClose}
+              className="min-h-[44px] inline-flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-medium bg-blue-600 dark:bg-blue-500 text-white hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors touch-manipulation"
+            >
+              <span className="font-bold">👤</span>
+              Completar perfil
+            </Link>
             <Link
               href="/revenues/new"
               onClick={onClose}

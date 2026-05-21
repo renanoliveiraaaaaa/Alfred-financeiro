@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import OrganizationSwitcher from '@/components/OrganizationSwitcher'
 import { useUserPreferences } from '@/lib/userPreferencesContext'
+import { useI18n } from '@/lib/i18n'
 import {
   LayoutDashboard,
   Receipt,
@@ -34,15 +35,15 @@ type NavItem = {
 // Itens sempre visíveis — variam conforme contexto personal / business
 function getFlatItems(isBusiness: boolean): NavItem[] {
   return [
-    { href: '/dashboard', label: 'Visão geral', Icon: LayoutDashboard },
-    { href: '/revenues', label: isBusiness ? 'Receitas' : 'Entradas', Icon: isBusiness ? Building2 : TrendingUp },
-    { href: '/expenses', label: isBusiness ? 'Despesas' : 'Saídas', Icon: isBusiness ? Briefcase : Receipt },
-    { href: '/credit-cards', label: 'Cartões', Icon: CreditCard },
-    { href: '/subscriptions', label: isBusiness ? 'Custos Recorrentes' : 'Assinaturas', Icon: RefreshCw },
-    { href: '/income-sources', label: isBusiness ? 'Fontes de Receita' : 'Fontes de renda', Icon: isBusiness ? Building2 : Wallet },
-    { href: '/goals', label: isBusiness ? 'Reservas' : 'Cofres', Icon: isBusiness ? Briefcase : PiggyBank },
-    { href: '/settings', label: 'Cadastros', Icon: Settings },
-    { href: '/profile', label: 'Perfil', Icon: UserCircle },
+    { href: '/dashboard', label: 'nav.home', Icon: LayoutDashboard },
+    { href: '/revenues', label: isBusiness ? 'nav.businessRevenues' : 'nav.revenues', Icon: isBusiness ? Building2 : TrendingUp },
+    { href: '/expenses', label: isBusiness ? 'nav.businessExpenses' : 'nav.expenses', Icon: isBusiness ? Briefcase : Receipt },
+    { href: '/credit-cards', label: 'nav.creditCards', Icon: CreditCard },
+    { href: '/subscriptions', label: isBusiness ? 'nav.businessSubscriptions' : 'nav.more', Icon: RefreshCw },
+    { href: '/income-sources', label: isBusiness ? 'nav.businessIncomeSources' : 'nav.incomeSources', Icon: isBusiness ? Building2 : Wallet },
+    { href: '/goals', label: isBusiness ? 'nav.businessGoals' : 'nav.goals', Icon: isBusiness ? Briefcase : PiggyBank },
+    { href: '/settings', label: 'nav.settings', Icon: Settings },
+    { href: '/profile', label: 'nav.profile', Icon: UserCircle },
   ]
 }
 
@@ -50,20 +51,20 @@ function getFlatItems(isBusiness: boolean): NavItem[] {
 const accordions = [
   {
     key: 'planejamento',
-    label: 'Planejamento',
+    label: 'nav.planning',
     Icon: Target,
     items: [
-      { href: '/projections', label: 'Orçamento', Icon: Target },
-      { href: '/reports', label: 'Relatórios', Icon: BarChart3 },
+      { href: '/projections', label: 'nav.projections', Icon: Target },
+      { href: '/reports', label: 'nav.reports', Icon: BarChart3 },
     ],
   },
   {
     key: 'extratos',
-    label: 'Extratos',
+    label: 'nav.statements',
     Icon: FileUp,
     items: [
-      { href: '/import-statement', label: 'Importar extrato', Icon: FileUp },
-      { href: '/import-history', label: 'Histórico', Icon: History },
+      { href: '/import-statement', label: 'nav.importStatement', Icon: FileUp },
+      { href: '/import-history', label: 'nav.importHistory', Icon: History },
     ],
   },
 ]
@@ -73,6 +74,7 @@ function isActive(href: string, pathname: string) {
 }
 
 export default function Sidebar() {
+  const { t } = useI18n();
   const pathname = usePathname()
   const { isAdmin, activeOrgType } = useUserPreferences()
   const isBusiness = activeOrgType === 'business'
@@ -124,25 +126,27 @@ export default function Sidebar() {
         <div className="space-y-0.5">
 
           {/* Itens fixos */}
-          {flatItems.map((item) => {
+          {flatItems.map((item) => { 
             const active = isActive(item.href, pathname)
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                title={item.label}
+                title={t(item.label)}
                 className={`relative flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm font-medium transition-all duration-150 ${
                   active
                     ? 'bg-brand/10 text-brand'
                     : 'text-muted hover:text-main hover:bg-background/80'
                 }`}
+                aria-label={t(item.label)}
+                tabIndex={0}
               >
                 {active && (
                   <span className="absolute left-0 top-1/2 -translate-y-1/2 h-4 w-0.5 rounded-r-full bg-brand" />
                 )}
                 <item.Icon className="h-4 w-4 shrink-0" />
                 <span className={`leading-none ${active ? 'font-semibold' : ''}`}>
-                  {item.label}
+                  {t(item.label)}
                 </span>
               </Link>
             )
@@ -152,7 +156,7 @@ export default function Sidebar() {
           <div className="my-2 mx-1 border-t border-border" />
 
           {/* Accordions: Planejamento e Extratos */}
-          {accordions.map((acc) => {
+          {accordions.map((acc) => { 
             const isOpen = openAccordions[acc.key]
             const hasActive = acc.items.some((item) => isActive(item.href, pathname))
 
@@ -161,7 +165,9 @@ export default function Sidebar() {
                 {/* Botão do accordion */}
                 <button
                   onClick={() => toggle(acc.key)}
-                  title={acc.label}
+                  title={t(acc.label)}
+                  aria-label={t(acc.label)}
+                  tabIndex={0}
                   className={`w-full flex items-center justify-between gap-2.5 px-2.5 py-2 rounded-lg text-sm font-medium transition-all duration-150 ${
                     hasActive
                       ? 'text-brand'
@@ -170,7 +176,7 @@ export default function Sidebar() {
                 >
                   <div className="flex items-center gap-2.5">
                     <acc.Icon className="h-4 w-4 shrink-0" />
-                    <span className="leading-none">{acc.label}</span>
+                    <span className="leading-none">{t(acc.label)}</span>
                   </div>
                   <ChevronDown
                     className={`h-3.5 w-3.5 shrink-0 transition-transform duration-200 ${
@@ -193,7 +199,9 @@ export default function Sidebar() {
                           <Link
                             key={item.href}
                             href={item.href}
-                            title={item.label}
+                            title={t(item.label)}
+                            aria-label={t(item.label)}
+                            tabIndex={0}
                             className={`relative flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-sm transition-all duration-150 ${
                               active
                                 ? 'bg-brand/10 text-brand font-semibold'
@@ -205,7 +213,7 @@ export default function Sidebar() {
                             )}
                             <item.Icon className="h-3.5 w-3.5 shrink-0" />
                             <span className="leading-none text-[13px]">
-                              {item.label}
+                              {t(item.label)}
                             </span>
                           </Link>
                         )
@@ -223,6 +231,8 @@ export default function Sidebar() {
               <Link
                 href="/admin/dashboard"
                 title="Painel Admin"
+                aria-label="Painel Admin"
+                tabIndex={0}
                 className={`relative flex items-center gap-2.5 px-2.5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-150 border border-amber-500/35 bg-amber-500/[0.08] dark:bg-amber-500/10 text-amber-950 dark:text-amber-100 shadow-sm hover:bg-amber-500/15 dark:hover:bg-amber-500/20 ${
                   pathname.startsWith('/admin') ? 'ring-1 ring-amber-500/40' : ''
                 }`}
