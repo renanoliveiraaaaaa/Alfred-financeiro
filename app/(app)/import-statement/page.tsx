@@ -99,6 +99,7 @@ export default function ImportStatementPage() {
   const [pdfDragging, setPdfDragging] = useState(false)
   const [pdfLoading, setPdfLoading] = useState(false)
   const [pdfError, setPdfError] = useState<string | null>(null)
+  const [pdfProgress, setPdfProgress] = useState<{ current: number; total: number } | null>(null)
 
   // ── Modal compartilhado ──
   const [transactions, setTransactions] = useState<ReviewTransaction[]>([])
@@ -223,24 +224,71 @@ export default function ImportStatementPage() {
 
     setPdfLoading(true)
     setPdfError(null)
+    setPdfProgress(null)
 
     try {
       const buffer = await pdfFile.arrayBuffer()
       const base64 = Buffer.from(buffer).toString('base64')
 
-      const result = await parseBankStatementPdf(base64, pdfFile.type)
+      // --- Detectar número de páginas do PDF ---
+      let totalPages = 1
+      try {
+        const { PDFDocument } = await import('pdf-lib')
+        const doc = await PDFDocument.load(buffer)
+        totalPages = doc.getPageCount()
+      } catch {}
 
-      if (!result.success) {
-        setPdfError(result.error)
-        return
+      // Se PDF grande, processar em blocos e mostrar progresso
+      if (totalPages > 10) {
+        const { PDFDocument } = await import('pdf-lib')
+        const doc = await PDFDocument.load(buffer)
+        const MAX_PAGES_PER_BLOCK = 10
+        let allTransactions: ImportTransaction[] = []
+        let bank = ''
+        let period_start = ''
+        let period_end = ''
+        let anySuccess = false
+        for (let i = 0; i < totalPages; i += MAX_PAGES_PER_BLOCK) {
+          setPdfProgress({ current: i + 1, total: totalPages })
+          const end = Math.min(i + MAX_PAGES_PER_BLOCK, totalPages)
+          const subDoc = await PDFDocument.create()
+          const pages = await subDoc.copyPages(doc, Array.from({ length: end - i }, (_, idx) => i + idx))
+          pages.forEach((p) => subDoc.addPage(p))
+          const subPdfBytes = await subDoc.save()
+          const subPdfBase64 = Buffer.from(subPdfBytes).toString('base64')
+          try {
+            // Chama a mesma função do backend
+            const result = await parseBankStatementPdf(subPdfBase64, pdfFile.type)
+            if (result.success) {
+              anySuccess = true
+              allTransactions = allTransactions.concat(result.transactions)
+              if (!bank && result.bank) bank = result.bank
+              if (!period_start && result.period_start) period_start = result.period_start
+              if (result.period_end) period_end = result.period_end
+            }
+          } catch {}
+        }
+        setPdfProgress({ current: totalPages, total: totalPages })
+        if (anySuccess && allTransactions.length > 0) {
+          openModal(pdfImportToReviewRows(allTransactions), bank, pdfFile.name)
+        } else {
+          setPdfError('Não foi possível processar o PDF em blocos. Tente dividir o extrato ou exportar em períodos menores.')
+        }
+      } else {
+        // PDF pequeno: fluxo normal
+        const result = await parseBankStatementPdf(base64, pdfFile.type)
+        if (!result.success) {
+          setPdfError(result.error)
+          return
+        }
+        openModal(pdfImportToReviewRows(result.transactions), result.bank, pdfFile.name)
       }
-
-      openModal(pdfImportToReviewRows(result.transactions), result.bank, pdfFile.name)
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro inesperado.'
       setPdfError(msg)
     } finally {
       setPdfLoading(false)
+      setPdfProgress(null)
     }
   }
 
@@ -383,7 +431,16 @@ export default function ImportStatementPage() {
               className="w-full min-h-[44px] inline-flex items-center justify-center gap-2 rounded-lg bg-brand text-white text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-colors"
             >
               {pdfLoading ? (
-                <><Loader2 className="h-4 w-4 animate-spin" /> Gemini analisando PDF...</>
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  {pdfProgress ? (
+                    <span>
+                      Processando páginas {pdfProgress.current} de {pdfProgress.total}...
+                    </span>
+                  ) : (
+                    'Gemini analisando PDF...'
+                  )}
+                </>
               ) : (
                 <><Zap className="h-4 w-4" /> Analisar PDF com IA</>
               )}

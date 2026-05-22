@@ -4,6 +4,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai'
 import { createSupabaseServerClient } from '@/lib/supabaseServer'
 import type { ImportTransaction } from './import-statement'
 import { extractPdfPlainText } from '@/lib/parsers/extractPdfText'
+import { PDFDocument } from 'pdf-lib'
 import { formatGeminiCallError, getGeminiApiKey, getGeminiModelId } from '@/lib/geminiEnv'
 import { parseGeminiJsonResponse } from '@/lib/parseGeminiJson'
 import { extractPlainTextFromEgidePdf } from '@/lib/egideClient'
@@ -175,11 +176,62 @@ async function parseBankStatementPdfImpl(
   } = await supabase.auth.getUser()
   if (authErr || !user) return { success: false, error: 'Usuário não autenticado.' }
 
+
   let buffer: Buffer
   try {
     buffer = Buffer.from(pdfBase64, 'base64')
   } catch {
     return { success: false, error: 'Ficheiro inválido. Envie um PDF.' }
+  }
+
+  // --- Divisão automática do PDF em blocos de páginas para Gemini ---
+  const MAX_PAGES_PER_BLOCK = 10
+  let doc: PDFDocument | null = null
+  try {
+    doc = await PDFDocument.load(buffer)
+  } catch {}
+
+  if (doc && doc.getPageCount() > MAX_PAGES_PER_BLOCK) {
+    const totalPages = doc.getPageCount()
+    const apiKey = getGeminiApiKey()
+    if (!apiKey) {
+      return { success: false, error: 'Gemini API Key não configurada.' }
+    }
+    let allTransactions: ImportTransaction[] = []
+    let bank = ''
+    let period_start = ''
+    let period_end = ''
+    let anySuccess = false
+    for (let i = 0; i < totalPages; i += MAX_PAGES_PER_BLOCK) {
+      const end = Math.min(i + MAX_PAGES_PER_BLOCK, totalPages)
+      const subDoc = await PDFDocument.create()
+      const pages = await subDoc.copyPages(doc, Array.from({ length: end - i }, (_, idx) => i + idx))
+      pages.forEach((p) => subDoc.addPage(p))
+      const subPdfBytes = await subDoc.save()
+      const subPdfBase64 = Buffer.from(subPdfBytes).toString('base64')
+      try {
+        const result = await parseWithGemini(subPdfBase64, mimeType, apiKey)
+        if (result.success) {
+          anySuccess = true
+          allTransactions = allTransactions.concat(result.transactions)
+          if (!bank && result.bank) bank = result.bank
+          if (!period_start && result.period_start) period_start = result.period_start
+          if (result.period_end) period_end = result.period_end
+        }
+      } catch {}
+    }
+    if (anySuccess && allTransactions.length > 0) {
+      const dates = allTransactions.map((t) => t.date).sort()
+      return {
+        success: true,
+        bank: bank || 'Desconhecido',
+        period_start: period_start || dates[0],
+        period_end: period_end || dates[dates.length - 1],
+        transactions: allTransactions,
+        parse_source: 'gemini',
+      }
+    }
+    return { success: false, error: 'Não foi possível processar o PDF em blocos. Tente dividir o extrato ou exportar em períodos menores.' }
   }
 
   const MAX_PDF_SIZE = 10 * 1024 * 1024 // 10 MB
