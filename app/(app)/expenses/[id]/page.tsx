@@ -9,38 +9,19 @@ import { Loader2, Trash2, ArrowLeft, ExternalLink, Paperclip } from 'lucide-reac
 import { ConfirmDangerModal } from '@/components/ConfirmDangerModal'
 import { useToast, CONNECTION_ERROR_MSG, isConnectionError } from '@/lib/toastContext'
 import { useGreetingPronoun } from '@/lib/greeting'
+import { useI18n } from '@/lib/i18n'
+import { formatMessage } from '@/lib/i18nFormat'
+import {
+  buildDefaultCategories,
+  buildPaymentMethods,
+  type PaymentMethodKey,
+} from '@/lib/categoryI18n'
 import {
   detectExpenseContextMismatch,
   resolveTargetOrganization,
   type UserOrgRef,
 } from '@/lib/transactionAuditor'
 import ExpenseContextMoveButton from '@/components/ExpenseContextMoveButton'
-
-const DEFAULT_CATEGORIES = [
-  { value: 'mercado', label: 'Mercado' },
-  { value: 'alimentacao', label: 'Alimentação' },
-  { value: 'compras', label: 'Compras online' },
-  { value: 'transporte', label: 'Transporte' },
-  { value: 'combustivel', label: 'Combustível' },
-  { value: 'veiculo', label: 'Veículo' },
-  { value: 'assinaturas', label: 'Assinaturas' },
-  { value: 'saude', label: 'Saúde' },
-  { value: 'educacao', label: 'Educação' },
-  { value: 'lazer', label: 'Lazer' },
-  { value: 'moradia', label: 'Moradia' },
-  { value: 'fatura_cartao', label: 'Fatura de cartão' },
-  { value: 'outros', label: 'Outros' },
-]
-
-const PAYMENT_METHODS = [
-  { value: 'pix', label: 'Pix' },
-  { value: 'debito', label: 'Débito' },
-  { value: 'credito', label: 'Crédito' },
-  { value: 'especie', label: 'Espécie / Dinheiro' },
-  { value: 'credito_parcelado', label: 'Crédito parcelado' },
-] as const
-
-type PaymentMethod = (typeof PAYMENT_METHODS)[number]['value']
 
 export default function EditExpensePage() {
   const router = useRouter()
@@ -49,15 +30,22 @@ export default function EditExpensePage() {
   const supabase = createSupabaseClient()
   const { toastError } = useToast()
   const pronoun = useGreetingPronoun()
+  const { t } = useI18n()
 
-  const [categories, setCategories] = useState(DEFAULT_CATEGORIES)
+  const defaultCategories = useMemo(() => buildDefaultCategories(t), [t])
+  const paymentMethods = useMemo(() => buildPaymentMethods(t), [t])
+  const [extraCategories, setExtraCategories] = useState<{ value: string; label: string }[]>([])
+  const categories = useMemo(
+    () => [...defaultCategories, ...extraCategories],
+    [defaultCategories, extraCategories],
+  )
   const [fetching, setFetching] = useState(true)
   const [notFound, setNotFound] = useState(false)
 
   const [amount, setAmount] = useState(0)
   const [description, setDescription] = useState('')
   const [category, setCategory] = useState('outros')
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('debito')
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethodKey>('debito')
   const [dueDate, setDueDate] = useState('')
   const [paid, setPaid] = useState(false)
   const [invoiceUrl, setInvoiceUrl] = useState<string | null>(null)
@@ -87,19 +75,22 @@ export default function EditExpensePage() {
 
       if (cats && cats.length > 0) {
         const userCats = cats.map((c: { name: string }) => ({ value: c.name, label: c.name }))
-        setCategories([...DEFAULT_CATEGORIES, ...userCats])
+        setExtraCategories(userCats)
       }
 
       setAmount(Number(expense.amount || 0))
       setDescription(expense.description || '')
       setCategory(expense.category || 'outros')
-      setPaymentMethod((expense.payment_method || 'debito') as PaymentMethod)
+      setPaymentMethod((expense.payment_method || 'debito') as PaymentMethodKey)
       setDueDate(expense.due_date || '')
       setPaid(expense.paid ?? false)
       setInvoiceUrl(expense.invoice_url || null)
 
       if (expense.installments && expense.installment_number) {
-        setInstallmentInfo(`Parcela ${expense.installment_number}/${expense.installments}`)
+        setInstallmentInfo(formatMessage(t('crud.installmentOf'), {
+          current: expense.installment_number,
+          total: expense.installments,
+        }))
       }
 
       setExpenseOrgId(expense.organization_id ?? null)
@@ -131,7 +122,7 @@ export default function EditExpensePage() {
         setUserOrgs([])
       }
     } catch (err: unknown) {
-      const msg = isConnectionError(err) ? CONNECTION_ERROR_MSG : 'Erro ao carregar despesa.'
+      const msg = isConnectionError(err) ? CONNECTION_ERROR_MSG : t('crud.error.loadExpense')
       setError(msg)
       toastError(msg)
     } finally {
@@ -160,9 +151,9 @@ export default function EditExpensePage() {
     e.preventDefault()
     setError(null)
 
-    if (amount <= 0) { setError('Informe um valor maior que zero.'); return }
-    if (!description.trim()) { setError('Informe uma descrição.'); return }
-    if (!dueDate) { setError('Informe a data de vencimento.'); return }
+    if (amount <= 0) { setError(t('crud.error.amount')); return }
+    if (!description.trim()) { setError(t('crud.error.description')); return }
+    if (!dueDate) { setError(t('crud.error.dueDate')); return }
 
     setSaving(true)
     try {
@@ -178,7 +169,7 @@ export default function EditExpensePage() {
         const { error: uploadErr } = await supabase.storage
           .from('invoices')
           .upload(filePath, file, { upsert: false })
-        if (uploadErr) throw new Error(`Falha no upload: ${uploadErr.message}`)
+        if (uploadErr) throw new Error(formatMessage(t('crud.error.upload'), { detail: uploadErr.message }))
 
         const { data: urlData } = supabase.storage.from('invoices').getPublicUrl(filePath)
         finalInvoiceUrl = urlData.publicUrl
@@ -202,7 +193,7 @@ export default function EditExpensePage() {
       setSuccess(true)
       setTimeout(() => router.push('/expenses'), 800)
     } catch (err: unknown) {
-      const msg = isConnectionError(err) ? CONNECTION_ERROR_MSG : (err instanceof Error ? err.message : 'Erro ao atualizar despesa.')
+      const msg = isConnectionError(err) ? CONNECTION_ERROR_MSG : (err instanceof Error ? err.message : t('crud.error.updateExpense'))
       setError(msg)
       toastError(msg)
     } finally {
@@ -218,7 +209,7 @@ export default function EditExpensePage() {
       if (deleteErr) throw new Error(deleteErr.message)
       router.push('/expenses')
     } catch (err: unknown) {
-      const msg = isConnectionError(err) ? CONNECTION_ERROR_MSG : (err instanceof Error ? err.message : 'Erro ao excluir despesa.')
+      const msg = isConnectionError(err) ? CONNECTION_ERROR_MSG : (err instanceof Error ? err.message : t('crud.error.deleteExpense'))
       setError(msg)
       toastError(msg)
       setDeleting(false)
@@ -248,9 +239,9 @@ export default function EditExpensePage() {
   if (notFound) {
     return (
       <div className="max-w-2xl text-center py-16 bg-background min-h-screen p-6">
-        <p className="text-muted mb-4">Registro não encontrado, {pronoun}.</p>
+        <p className="text-muted mb-4">{formatMessage(t('crud.notFound'), { pronoun })}</p>
         <Link href="/expenses" className="text-sm text-brand hover:opacity-80 hover:underline">
-          Retornar aos registros
+          {t('crud.backToList')}
         </Link>
       </div>
     )
@@ -264,9 +255,9 @@ export default function EditExpensePage() {
           className="inline-flex items-center gap-1 text-sm text-muted hover:text-main transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
-          Voltar
+          {t('crud.back')}
         </Link>
-        <h1 className="text-xl font-semibold text-main">Editar registro de saída</h1>
+        <h1 className="text-xl font-semibold text-main">{t('crud.expense.editTitle')}</h1>
         {installmentInfo && (
           <span className="rounded-full bg-amber-50 dark:bg-amber-500/15 border border-amber-200 dark:border-amber-500/30 px-2.5 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-300">
             {installmentInfo}
@@ -276,7 +267,7 @@ export default function EditExpensePage() {
 
       {success && (
         <div className="mb-4 rounded-lg border border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-300">
-          Registro atualizado com sucesso! Redirecionando...
+          {t('crud.successUpdated')}
         </div>
       )}
 
@@ -310,7 +301,7 @@ export default function EditExpensePage() {
         {/* Valor */}
         <div>
           <label htmlFor="amount" className="block text-sm font-medium text-muted mb-1">
-            Valor (R$) <span className="text-red-400">*</span>
+            {t('crud.amount')} <span className="text-red-400">*</span>
           </label>
           <div className="relative">
             <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted text-sm">R$</span>
@@ -328,14 +319,14 @@ export default function EditExpensePage() {
         {/* Descrição */}
         <div>
           <label htmlFor="description" className="block text-sm font-medium text-muted mb-1">
-            Descrição <span className="text-red-400">*</span>
+            {t('crud.description')} <span className="text-red-400">*</span>
           </label>
           <input
             id="description"
             type="text"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="Ex.: Supermercado, combustível..."
+            placeholder={t('crud.expense.placeholder')}
             className="block w-full rounded-lg border border-border bg-background py-2 px-3 text-sm text-main placeholder-muted focus:border-brand focus:ring-1 focus:ring-brand"
           />
         </div>
@@ -344,7 +335,7 @@ export default function EditExpensePage() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label htmlFor="category" className="block text-sm font-medium text-muted mb-1">
-              Categoria <span className="text-red-400">*</span>
+              {t('crud.category')} <span className="text-red-400">*</span>
             </label>
             <select
               id="category"
@@ -359,15 +350,15 @@ export default function EditExpensePage() {
           </div>
           <div>
             <label htmlFor="paymentMethod" className="block text-sm font-medium text-muted mb-1">
-              Método de pagamento <span className="text-red-400">*</span>
+              {t('crud.paymentMethod')} <span className="text-red-400">*</span>
             </label>
             <select
               id="paymentMethod"
               value={paymentMethod}
-              onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
+              onChange={(e) => setPaymentMethod(e.target.value as PaymentMethodKey)}
               className="block w-full rounded-lg border border-border bg-background py-2 px-3 text-sm text-main focus:border-brand focus:ring-1 focus:ring-brand"
             >
-              {PAYMENT_METHODS.map((m) => (
+              {paymentMethods.map((m) => (
                 <option key={m.value} value={m.value}>{m.label}</option>
               ))}
             </select>
@@ -377,7 +368,7 @@ export default function EditExpensePage() {
         {/* Data de vencimento */}
         <div className="max-w-xs">
           <label htmlFor="dueDate" className="block text-sm font-medium text-muted mb-1">
-            Data de vencimento <span className="text-red-400">*</span>
+            {t('crud.dueDate')} <span className="text-red-400">*</span>
           </label>
           <input
             id="dueDate"
@@ -391,7 +382,7 @@ export default function EditExpensePage() {
         {/* Anexo existente + novo upload */}
         <div>
           <label className="block text-sm font-medium text-muted mb-1">
-            Comprovativo anexo
+            {t('crud.attachment')}
           </label>
 
           {invoiceUrl && !file && (
@@ -403,7 +394,7 @@ export default function EditExpensePage() {
                 rel="noopener noreferrer"
                 className="flex-1 truncate text-sm text-brand hover:opacity-80 hover:underline"
               >
-                Ver ficheiro atual
+                {t('crud.viewCurrentFile')}
               </a>
               <ExternalLink className="h-3.5 w-3.5 text-muted shrink-0" />
             </div>
@@ -420,7 +411,7 @@ export default function EditExpensePage() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
                 </svg>
                 <span className="truncate">
-                  {file ? file.name : invoiceUrl ? 'Substituir ficheiro' : 'Selecionar ficheiro (imagem ou PDF)'}
+                  {file ? file.name : invoiceUrl ? t('crud.replaceFile') : t('crud.selectFile')}
                 </span>
               </div>
               <input
@@ -432,13 +423,13 @@ export default function EditExpensePage() {
             </label>
             {file && (
               <button type="button" onClick={() => setFile(null)} className="text-xs text-red-600 dark:text-red-400 hover:text-red-300 shrink-0">
-                Remover
+                {t('crud.remove')}
               </button>
             )}
           </div>
             {file && (
             <p className="mt-1 text-xs text-muted">
-              {(file.size / 1024).toFixed(0)} KB · {file.type || 'arquivo'}
+              {(file.size / 1024).toFixed(0)} KB · {file.type || t('crud.fileFallback')}
             </p>
           )}
         </div>
@@ -461,7 +452,7 @@ export default function EditExpensePage() {
             />
           </button>
           <label className="text-sm font-medium text-muted select-none cursor-pointer" onClick={() => setPaid(!paid)}>
-            Pago
+            {t('crud.paid')}
           </label>
         </div>
 
@@ -476,17 +467,17 @@ export default function EditExpensePage() {
               {saving ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Salvando...
+                  {t('crud.saving')}
                 </>
               ) : (
-                'Salvar alterações'
+                t('crud.save')
               )}
             </button>
             <Link
               href="/expenses"
             className="rounded-lg border border-border px-5 py-2.5 text-sm font-medium text-muted hover:bg-background transition-colors"
           >
-              Cancelar
+              {t('crud.cancel')}
             </Link>
           </div>
 
@@ -501,7 +492,7 @@ export default function EditExpensePage() {
             ) : (
               <Trash2 className="h-4 w-4" />
             )}
-            Excluir
+            {t('crud.delete')}
           </button>
         </div>
       </form>

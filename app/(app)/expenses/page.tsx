@@ -40,38 +40,20 @@ import {
 import ExpenseContextMoveButton from '@/components/ExpenseContextMoveButton'
 import { resolveActiveOrganizationIdForClient } from '@/lib/activeOrganizationClient'
 import { useActiveOrganizationRevision } from '@/lib/useActiveOrganizationRevision'
+import { useI18n } from '@/lib/i18n'
+import { formatMessage } from '@/lib/i18nFormat'
+import { buildCategoryLabelsMap, buildPaymentLabelsMap } from '@/lib/categoryI18n'
 
 type Expense = Database['public']['Tables']['expenses']['Row']
-
-const CATEGORY_LABELS: Record<string, string> = {
-  mercado: 'Mercado',
-  alimentacao: 'Alimentação',
-  compras: 'Compras online',
-  transporte: 'Transporte',
-  combustivel: 'Combustível',
-  veiculo: 'Veículo',
-  assinaturas: 'Assinaturas',
-  saude: 'Saúde',
-  educacao: 'Educação',
-  lazer: 'Lazer',
-  moradia: 'Moradia',
-  fatura_cartao: 'Fatura de cartão',
-  outros: 'Outros',
-}
-
-const PAYMENT_LABELS: Record<string, string> = {
-  pix: 'Pix',
-  debito: 'Débito',
-  credito: 'Crédito',
-  especie: 'Espécie',
-  credito_parcelado: 'Parcelado',
-}
 
 export default function ExpensesPage() {
   const supabase = createSupabaseClient()
   const orgRevision = useActiveOrganizationRevision()
   const { toastError } = useToast()
   const pronoun = useGreetingPronoun()
+  const { t } = useI18n()
+  const CATEGORY_LABELS = useMemo(() => buildCategoryLabelsMap(t), [t])
+  const PAYMENT_LABELS = useMemo(() => buildPaymentLabelsMap(t), [t])
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -507,14 +489,14 @@ export default function ExpensesPage() {
           expenses.length === 0 ? (
             <EmptyState
               icon={Receipt}
-              title={`Tudo em ordem, ${pronoun}`}
-              description="Não há saídas registradas para este período. Quando houver uma obrigação, estarei pronto para catalogá-la."
-              actionLabel="Registrar primeira saída"
+              title={formatMessage(t('crud.list.expensesEmptyTitle'), { pronoun })}
+              description={t('crud.list.expensesEmptyDesc')}
+              actionLabel={t('crud.list.expensesEmptyAction')}
               onAction={() => window.location.href = '/expenses/new'}
             />
           ) : (
             <div className="rounded-xl border border-border bg-surface px-4 py-12 text-center text-sm text-muted glass-card">
-              Nenhum resultado para os filtros aplicados, {pronoun}.
+              {formatMessage(t('crud.list.noFilterResults'), { pronoun })}
             </div>
           )
         ) : (
@@ -661,14 +643,14 @@ export default function ExpensesPage() {
                     {expenses.length === 0 ? (
                       <EmptyState
                         icon={Receipt}
-                        title={`Tudo em ordem, ${pronoun}`}
-                        description="Não há saídas registradas para este período. Quando houver uma obrigação, estarei pronto para catalogá-la."
-                        actionLabel="Registrar primeira saída"
+                        title={formatMessage(t('crud.list.expensesEmptyTitle'), { pronoun })}
+                        description={t('crud.list.expensesEmptyDesc')}
+                        actionLabel={t('crud.list.expensesEmptyAction')}
                         onAction={() => window.location.href = '/expenses/new'}
                       />
                     ) : (
                       <div className="px-4 py-12 text-center text-sm text-muted">
-                        Nenhum resultado para os filtros aplicados, {pronoun}.
+                        {formatMessage(t('crud.list.noFilterResults'), { pronoun })}
                       </div>
                     )}
                   </td>

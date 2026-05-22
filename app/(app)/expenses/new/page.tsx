@@ -9,37 +9,18 @@ import { createSupabaseClient } from '@/lib/supabaseClient'
 import { resolveActiveOrganizationIdForClient } from '@/lib/activeOrganizationClient'
 import { useActiveOrganizationRevision } from '@/lib/useActiveOrganizationRevision'
 import { useToast, CONNECTION_ERROR_MSG, isConnectionError } from '@/lib/toastContext'
+import { useI18n } from '@/lib/i18n'
+import { formatMessage } from '@/lib/i18nFormat'
+import {
+  buildDefaultCategories,
+  buildPaymentMethods,
+  type PaymentMethodKey,
+} from '@/lib/categoryI18n'
 import { calculateInstallmentDates, addMonths } from '@/lib/installments'
 import { Loader2, Calendar, Info } from 'lucide-react'
 import type { Database } from '@/types/supabase'
 
 type CreditCard = Database['public']['Tables']['credit_cards']['Row']
-
-const DEFAULT_CATEGORIES = [
-  { value: 'mercado', label: 'Mercado' },
-  { value: 'alimentacao', label: 'Alimentação' },
-  { value: 'compras', label: 'Compras online' },
-  { value: 'transporte', label: 'Transporte' },
-  { value: 'combustivel', label: 'Combustível' },
-  { value: 'veiculo', label: 'Veículo' },
-  { value: 'assinaturas', label: 'Assinaturas' },
-  { value: 'saude', label: 'Saúde' },
-  { value: 'educacao', label: 'Educação' },
-  { value: 'lazer', label: 'Lazer' },
-  { value: 'moradia', label: 'Moradia' },
-  { value: 'fatura_cartao', label: 'Fatura de cartão' },
-  { value: 'outros', label: 'Outros' },
-]
-
-const PAYMENT_METHODS = [
-  { value: 'pix', label: 'Pix' },
-  { value: 'debito', label: 'Débito' },
-  { value: 'credito', label: 'Crédito' },
-  { value: 'especie', label: 'Espécie / Dinheiro' },
-  { value: 'credito_parcelado', label: 'Crédito parcelado' },
-] as const
-
-type PaymentMethod = (typeof PAYMENT_METHODS)[number]['value']
 
 const KEYWORD_MAP: Record<string, string> = {
   uber: 'transporte',
@@ -111,8 +92,15 @@ export default function NewExpensePage() {
   const supabase = createSupabaseClient()
   const orgRevision = useActiveOrganizationRevision()
   const { toastError } = useToast()
+  const { t, locale } = useI18n()
 
-  const [categories, setCategories] = useState(DEFAULT_CATEGORIES)
+  const defaultCategories = useMemo(() => buildDefaultCategories(t), [t])
+  const paymentMethods = useMemo(() => buildPaymentMethods(t), [t])
+  const [extraCategories, setExtraCategories] = useState<{ value: string; label: string }[]>([])
+  const categories = useMemo(
+    () => [...defaultCategories, ...extraCategories],
+    [defaultCategories, extraCategories],
+  )
   const [creditCards, setCreditCards] = useState<CreditCard[]>([])
 
   useEffect(() => {
@@ -136,7 +124,7 @@ export default function NewExpensePage() {
           value: c.name,
           label: c.name,
         }))
-        setCategories([...DEFAULT_CATEGORIES, ...userCats])
+        setExtraCategories(userCats)
       }
       if (cardRes.data) setCreditCards(cardRes.data as CreditCard[])
     }
@@ -146,7 +134,7 @@ export default function NewExpensePage() {
   const [amount, setAmount] = useState(0)
   const [description, setDescription] = useState('')
   const [category, setCategory] = useState('outros')
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('debito')
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethodKey>('debito')
   const [installments, setInstallments] = useState(2)
   const [dueDate, setDueDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [paid, setPaid] = useState(false)
@@ -240,11 +228,11 @@ export default function NewExpensePage() {
     setError(null)
 
     const totalAmount = amount
-    if (totalAmount <= 0) { setError('Informe um valor maior que zero.'); return }
-    if (!description.trim()) { setError('Informe uma descrição.'); return }
-    if (!dueDate) { setError('Informe a data de vencimento.'); return }
+    if (totalAmount <= 0) { setError(t('crud.error.amount')); return }
+    if (!description.trim()) { setError(t('crud.error.description')); return }
+    if (!dueDate) { setError(t('crud.error.dueDate')); return }
     if (isParcelado && (installments < 2 || installments > 120)) {
-      setError('Parcelas devem ser entre 2 e 120.')
+      setError(t('crud.error.installments'))
       return
     }
 
@@ -254,7 +242,7 @@ export default function NewExpensePage() {
 
       if (file) {
         const { data: userData, error: authErr } = await supabase.auth.getUser()
-        if (authErr || !userData.user) throw new Error('Usuário não autenticado.')
+        if (authErr || !userData.user) throw new Error(t('crud.error.auth'))
 
         const ext = file.name.split('.').pop() || 'bin'
         const filePath = `${userData.user.id}/${Date.now()}-${crypto.randomUUID()}.${ext}`
@@ -262,7 +250,7 @@ export default function NewExpensePage() {
         const { error: uploadErr } = await supabase.storage
           .from('invoices')
           .upload(filePath, file, { upsert: false })
-        if (uploadErr) throw new Error(`Falha no upload: ${uploadErr.message}`)
+        if (uploadErr) throw new Error(formatMessage(t('crud.error.upload'), { detail: uploadErr.message }))
 
         const { data: urlData } = supabase.storage
           .from('invoices')
@@ -288,7 +276,7 @@ export default function NewExpensePage() {
       setTimeout(() => router.push('/expenses'), 800)
     } catch (err: unknown) {
       console.error(err)
-      const msg = err instanceof Error ? err.message : 'Erro ao salvar despesa.'
+      const msg = err instanceof Error ? err.message : t('crud.error.saveExpense')
       const displayMsg = isConnectionError(err) ? CONNECTION_ERROR_MSG : msg
       setError(displayMsg)
       toastError(displayMsg)
@@ -307,16 +295,16 @@ export default function NewExpensePage() {
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
           </svg>
-          Voltar
+          {t('crud.back')}
         </Link>
-        <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Registrar nova saída</h1>
+        <h1 className="text-xl font-semibold text-gray-900 dark:text-white">{t('crud.expense.newTitle')}</h1>
       </div>
 
       {success && (
         <div className="mb-4 rounded-lg border border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-300">
           {isParcelado
-            ? `${installments} parcelas registradas com sucesso! Redirecionando...`
-            : 'Saída registrada com sucesso! Redirecionando...'}
+            ? formatMessage(t('crud.expense.successInstallments'), { count: installments })
+            : t('crud.expense.success')}
         </div>
       )}
 
@@ -330,7 +318,7 @@ export default function NewExpensePage() {
         {/* Valor */}
         <div>
           <label htmlFor="amount" className="block text-sm font-medium text-gray-600 dark:text-manor-400 mb-1">
-            Valor (R$) <span className="text-red-400">*</span>
+            {t('crud.amount')} <span className="text-red-400">*</span>
           </label>
           <div className="relative">
             <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400 dark:text-manor-500 text-sm">R$</span>
@@ -345,10 +333,12 @@ export default function NewExpensePage() {
           </div>
           {isParcelado && amount > 0 && (
             <p className="mt-1 text-xs text-gray-400 dark:text-manor-600">
-              {installments}x de{' '}
-              {(amount / installments).toLocaleString('pt-BR', {
-                style: 'currency',
-                currency: 'BRL',
+              {formatMessage(t('crud.installmentTimes'), {
+                count: installments,
+                amount: (amount / installments).toLocaleString(locale === 'en' ? 'en-US' : 'pt-BR', {
+                  style: 'currency',
+                  currency: 'BRL',
+                }),
               })}
             </p>
           )}
@@ -357,14 +347,14 @@ export default function NewExpensePage() {
         {/* Descrição */}
         <div>
           <label htmlFor="description" className="block text-sm font-medium text-gray-600 dark:text-manor-400 mb-1">
-            Descrição <span className="text-red-400">*</span>
+            {t('crud.description')} <span className="text-red-400">*</span>
           </label>
           <input
             id="description"
             type="text"
             value={description}
             onChange={(e) => handleDescriptionChange(e.target.value)}
-            placeholder="Ex.: Supermercado, combustível..."
+            placeholder={t('crud.expense.placeholder')}
             className="block w-full rounded-lg border border-gray-300 dark:border-manor-700 bg-gray-50 dark:bg-manor-950 py-2 px-3 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-manor-500 focus:border-gold-500 focus:ring-1 focus:ring-gold-500"
           />
         </div>
@@ -373,7 +363,7 @@ export default function NewExpensePage() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label htmlFor="category" className="block text-sm font-medium text-gray-600 dark:text-manor-400 mb-1">
-              Categoria <span className="text-red-400">*</span>
+              {t('crud.category')} <span className="text-red-400">*</span>
             </label>
             <select
               id="category"
@@ -387,21 +377,21 @@ export default function NewExpensePage() {
             </select>
             {autoSuggested && (
               <p className="mt-1 flex items-center gap-1 text-xs text-gold-600 dark:text-gold-400 animate-fade-in">
-                <span className="inline-block animate-pulse">✨</span> Categoria sugerida pelo Alfred
+                <span className="inline-block animate-pulse">✨</span> {t('crud.categorySuggested')}
               </p>
             )}
           </div>
           <div>
             <label htmlFor="paymentMethod" className="block text-sm font-medium text-gray-600 dark:text-manor-400 mb-1">
-              Método de pagamento <span className="text-red-400">*</span>
+              {t('crud.paymentMethod')} <span className="text-red-400">*</span>
             </label>
             <select
               id="paymentMethod"
               value={paymentMethod}
-              onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
+              onChange={(e) => setPaymentMethod(e.target.value as PaymentMethodKey)}
               className="block w-full rounded-lg border border-gray-300 dark:border-manor-700 bg-gray-50 dark:bg-manor-950 py-2 px-3 text-sm text-gray-900 dark:text-white focus:border-gold-500 focus:ring-1 focus:ring-gold-500"
             >
-              {PAYMENT_METHODS.map((m) => (
+              {paymentMethods.map((m) => (
                 <option key={m.value} value={m.value}>{m.label}</option>
               ))}
             </select>
@@ -412,7 +402,7 @@ export default function NewExpensePage() {
         {isCredito && creditCards.length > 0 && (
           <div>
             <label htmlFor="creditCard" className="block text-sm font-medium text-gray-600 dark:text-manor-400 mb-1">
-              Cartão de crédito
+              {t('crud.creditCard')}
             </label>
             <select
               id="creditCard"
@@ -420,7 +410,7 @@ export default function NewExpensePage() {
               onChange={(e) => setCreditCardId(e.target.value)}
               className="block w-full rounded-lg border border-gray-300 dark:border-manor-700 bg-gray-50 dark:bg-manor-950 py-2 px-3 text-sm text-gray-900 dark:text-white focus:border-gold-500 focus:ring-1 focus:ring-gold-500"
             >
-              <option value="">Nenhum (não vincular)</option>
+              <option value="">{t('crud.noCardLink')}</option>
               {creditCards.map((c) => (
                 <option key={c.id} value={c.id}>{c.name}{c.brand ? ` · ${c.brand}` : ''}</option>
               ))}
@@ -431,10 +421,10 @@ export default function NewExpensePage() {
         {/* Parcelas (só aparece se crédito parcelado) */}
         {isParcelado && (
           <div className="rounded-lg border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/15 p-4 space-y-3">
-            <p className="text-sm font-medium text-amber-700 dark:text-amber-300">Parcelamento</p>
+            <p className="text-sm font-medium text-amber-700 dark:text-amber-300">{t('crud.installments')}</p>
             <div>
               <label htmlFor="installments" className="block text-sm font-medium text-gray-600 dark:text-manor-400 mb-1">
-                Quantidade de parcelas
+                {t('crud.installmentCount')}
               </label>
               <input
                 id="installments"
@@ -454,11 +444,11 @@ export default function NewExpensePage() {
           <div className="rounded-lg border border-border bg-background/60 overflow-hidden">
             <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border bg-background/40">
               <Calendar className="h-3.5 w-3.5 text-brand shrink-0" />
-              <p className="text-xs font-semibold text-main uppercase tracking-wider">Projeção das parcelas</p>
+              <p className="text-xs font-semibold text-main uppercase tracking-wider">{t('crud.installmentPreview')}</p>
               {creditCardId && creditCards.find((c) => c.id === creditCardId) && (
                 <span className="ml-auto inline-flex items-center gap-1 text-[10px] text-muted">
                   <Info className="h-3 w-3" />
-                  Calculado pelo ciclo do cartão
+                  {t('crud.cardCycleHint')}
                 </span>
               )}
             </div>
@@ -470,20 +460,20 @@ export default function NewExpensePage() {
                       {p.n}
                     </span>
                     <div>
-                      <p className="text-xs font-medium text-main">Fatura de {p.monthLabel}</p>
-                      <p className="text-[10px] text-muted">Vence em {p.date.split('-').reverse().join('/')}</p>
+                      <p className="text-xs font-medium text-main">{formatMessage(t('crud.invoiceOf'), { month: p.monthLabel })}</p>
+                      <p className="text-[10px] text-muted">{formatMessage(t('crud.dueOn'), { date: p.date.split('-').reverse().join('/') })}</p>
                     </div>
                   </div>
                   <span className="text-sm font-semibold text-main tabular-nums">
-                    {p.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    {p.amount.toLocaleString(locale === 'en' ? 'en-US' : 'pt-BR', { style: 'currency', currency: 'BRL' })}
                   </span>
                 </div>
               ))}
             </div>
             <div className="flex items-center justify-between px-4 py-2 bg-background/40 border-t border-border">
-              <span className="text-xs text-muted">Total</span>
+              <span className="text-xs text-muted">{t('crud.total')}</span>
               <span className="text-sm font-bold text-main tabular-nums">
-                {amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                {amount.toLocaleString(locale === 'en' ? 'en-US' : 'pt-BR', { style: 'currency', currency: 'BRL' })}
               </span>
             </div>
           </div>
@@ -492,7 +482,7 @@ export default function NewExpensePage() {
         {/* Data */}
         <div className="max-w-xs">
           <label htmlFor="dueDate" className="block text-sm font-medium text-gray-600 dark:text-manor-400 mb-1">
-            {isParcelado && creditCardId ? 'Data da compra' : 'Data de vencimento'} <span className="text-red-400">*</span>
+            {isParcelado && creditCardId ? t('crud.purchaseDate') : t('crud.dueDate')} <span className="text-red-400">*</span>
           </label>
           <input
             id="dueDate"
@@ -505,7 +495,7 @@ export default function NewExpensePage() {
             const card = creditCards.find((c) => c.id === creditCardId)
             return card ? (
               <p className="mt-1 text-xs text-gray-400 dark:text-manor-500">
-                Os vencimentos serão calculados pelo ciclo do cartão (fecha dia {card.closing_day}, vence dia {card.due_day})
+                {formatMessage(t('crud.cardCycleDue'), { closing: card.closing_day, due: card.due_day })}
               </p>
             ) : null
           })()}
@@ -514,7 +504,7 @@ export default function NewExpensePage() {
         {/* Upload de fatura */}
         <div>
           <label className="block text-sm font-medium text-gray-600 dark:text-manor-400 mb-1">
-            Comprovativo anexo <span className="text-gray-400 dark:text-manor-600 font-normal">(opcional)</span>
+            {t('crud.attachment')} <span className="text-gray-400 dark:text-manor-600 font-normal">{t('crud.optional')}</span>
           </label>
           <div className="flex items-center gap-3">
             <label className="flex-1 cursor-pointer">
@@ -527,7 +517,7 @@ export default function NewExpensePage() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
                 </svg>
                 <span className="truncate">
-                  {file ? file.name : 'Selecionar ficheiro (imagem ou PDF)'}
+                  {file ? file.name : t('crud.selectFile')}
                 </span>
               </div>
               <input
@@ -543,13 +533,13 @@ export default function NewExpensePage() {
                 onClick={() => setFile(null)}
                 className="text-xs text-red-600 dark:text-red-400 hover:text-red-300 shrink-0"
               >
-                Remover
+                {t('crud.remove')}
               </button>
             )}
           </div>
           {file && (
             <p className="mt-1 text-xs text-gray-400 dark:text-manor-600">
-              {(file.size / 1024).toFixed(0)} KB · {file.type || 'arquivo'}
+              {(file.size / 1024).toFixed(0)} KB · {file.type || t('crud.fileFallback')}
             </p>
           )}
         </div>
@@ -572,7 +562,7 @@ export default function NewExpensePage() {
             />
           </button>
           <label className="text-sm font-medium text-gray-600 dark:text-manor-400 select-none cursor-pointer" onClick={() => setPaid(!paid)}>
-            {isParcelado ? 'Primeira parcela já paga' : 'Já pago'}
+            {isParcelado ? t('crud.firstInstallmentPaid') : t('crud.alreadyPaid')}
           </label>
         </div>
 
@@ -583,13 +573,13 @@ export default function NewExpensePage() {
             disabled={saving}
             className="inline-flex items-center justify-center gap-2 rounded-lg bg-gold-600 dark:bg-gold-500 px-5 py-2.5 text-sm font-medium text-white dark:text-manor-950 hover:bg-gold-500 dark:hover:bg-gold-400 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:ring-offset-2 focus:ring-offset-manor-900 disabled:opacity-50 min-h-[44px]"
           >
-            {saving ? <><Loader2 className="h-4 w-4 animate-spin" /> Processando...</> : isParcelado ? `Registrar ${installments} parcelas` : 'Registrar saída'}
+            {saving ? <><Loader2 className="h-4 w-4 animate-spin" /> {t('crud.processing')}</> : isParcelado ? formatMessage(t('crud.expense.submitInstallments'), { count: installments }) : t('crud.expense.submit')}
           </button>
           <Link
             href="/expenses"
             className="rounded-lg border border-gray-300 dark:border-manor-700 px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-manor-400 hover:bg-gray-100 dark:hover:bg-manor-800"
           >
-            Cancelar
+            {t('crud.cancel')}
           </Link>
         </div>
       </form>

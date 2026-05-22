@@ -130,15 +130,16 @@ export function computeBuyingPower(params: {
 
 export type SubscriptionInflationAlert = {
   kind: 'inflation'
+  variant: 'avg' | 'catalog'
   subscriptionName: string
   increaseBrl: number
-  message: string
 }
 
 export type SubscriptionStaleAlert = {
   kind: 'stale'
+  variant: 'no_payment' | 'no_charges'
   subscriptionName: string
-  message: string
+  days?: number
 }
 
 export type SubscriptionAuditAlert = SubscriptionInflationAlert | SubscriptionStaleAlert
@@ -230,9 +231,9 @@ export function auditSubscriptions(
       if (increase >= 1 && currentMonthAmt >= avgPrev * 1.05) {
         alerts.push({
           kind: 'inflation',
+          variant: 'avg',
           subscriptionName: subName,
           increaseBrl: increase,
-          message: `Alerta de Inflação Silenciosa: Sua assinatura ${subName} subiu R$ ${increase.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}. Deseja que eu verifique o motivo?`,
         })
         done = true
       }
@@ -248,9 +249,9 @@ export function auditSubscriptions(
       if (increase >= 1) {
         alerts.push({
           kind: 'inflation',
+          variant: 'catalog',
           subscriptionName: subName,
           increaseBrl: increase,
-          message: `Alerta de Inflação Silenciosa: Sua assinatura ${subName} subiu R$ ${increase.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} face ao valor cadastrado. Deseja que eu verifique o motivo?`,
         })
         done = true
       }
@@ -268,8 +269,9 @@ export function auditSubscriptions(
         if (days > staleDays) {
           alerts.push({
             kind: 'stale',
+            variant: 'no_payment',
             subscriptionName: subName,
-            message: `Possível assinatura «${subName}» sem registo de pagamento recente (${Math.floor(days)} dias). Vale confirmar se ainda utiliza este serviço, Senhor.`,
+            days: Math.floor(days),
           })
         }
       } else {
@@ -278,8 +280,8 @@ export function auditSubscriptions(
         if (daysSinceCreate > 200) {
           alerts.push({
             kind: 'stale',
+            variant: 'no_charges',
             subscriptionName: subName,
-            message: `Assinatura «${subName}» ativa há muito tempo sem lançamentos associados no período analisado. Deseja rever ou registar o pagamento?`,
           })
         }
       }

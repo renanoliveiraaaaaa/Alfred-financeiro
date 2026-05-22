@@ -7,6 +7,8 @@ import { useActiveOrganizationRevision } from '@/lib/useActiveOrganizationRevisi
 import { createSupabaseClient } from '@/lib/supabaseClient'
 import MaskedValue from '@/components/MaskedValue'
 import { useToast, CONNECTION_ERROR_MSG, isConnectionError } from '@/lib/toastContext'
+import { useI18n } from '@/lib/i18n'
+import { formatMessage } from '@/lib/i18nFormat'
 import { Target, AlertTriangle, XCircle, TrendingUp } from 'lucide-react'
 import type { Database } from '@/types/supabase'
 
@@ -34,6 +36,7 @@ export default function BudgetsPanel() {
   const supabase = createSupabaseClient()
   const orgRevision = useActiveOrganizationRevision()
   const { toastError } = useToast()
+  const { t } = useI18n()
   const [items, setItems] = useState<BudgetItem[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -91,8 +94,6 @@ export default function BudgetsPanel() {
       spentByCategory[cat] = (spentByCategory[cat] || 0) + Number(e.amount || 0)
     })
 
-    // Filtro de orçamento no cliente: evita 400 do PostgREST se a coluna
-    // monthly_budget ainda não existir no projeto Supabase (migração não aplicada).
     const withBudget = categories.filter(
       (c) => c.monthly_budget != null && Number(c.monthly_budget) > 0
     )
@@ -105,7 +106,6 @@ export default function BudgetsPanel() {
         return { category: cat, spent, budget, percent }
       })
       .filter((i) => i.budget > 0)
-      // Ordenar: estourados primeiro, depois próximos do limite, depois ok
       .sort((a, b) => b.percent - a.percent)
 
     setItems(result)
@@ -142,19 +142,18 @@ export default function BudgetsPanel() {
             }`} />
           </div>
           <div>
-            <h2 className="text-sm font-semibold text-main">Orçamento Mensal</h2>
-            <p className="text-xs text-muted">Acompanhe o progresso por categoria</p>
+            <h2 className="text-sm font-semibold text-main">{t('widget.budgets.title')}</h2>
+            <p className="text-xs text-muted">{t('widget.budgets.subtitle')}</p>
           </div>
         </div>
         <Link
           href="/settings"
           className="text-xs font-medium text-brand hover:opacity-80 transition-colors"
         >
-          Configurar
+          {t('widget.budgets.configure')}
         </Link>
       </div>
 
-      {/* Banner de alertas */}
       {hasAlerts && (
         <div className={`rounded-lg px-3.5 py-3 space-y-1 ${
           exceeded.length > 0
@@ -166,8 +165,8 @@ export default function BudgetsPanel() {
               <XCircle className="h-3.5 w-3.5 text-red-600 dark:text-red-400 shrink-0" />
               <p className="text-xs font-medium text-red-800 dark:text-red-300">
                 {exceeded.length === 1
-                  ? `"${exceeded[0].category.name}" estourou o orçamento`
-                  : `${exceeded.length} categorias estouraram o orçamento`}
+                  ? formatMessage(t('widget.budgets.exceededOne'), { name: exceeded[0].category.name })
+                  : formatMessage(t('widget.budgets.exceededMany'), { count: exceeded.length })}
               </p>
             </div>
           )}
@@ -176,8 +175,8 @@ export default function BudgetsPanel() {
               <AlertTriangle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
               <p className="text-xs font-medium text-amber-800 dark:text-amber-300">
                 {nearLimit.length === 1
-                  ? `"${nearLimit[0].category.name}" está perto do limite`
-                  : `${nearLimit.length} categorias próximas do limite`}
+                  ? formatMessage(t('widget.budgets.nearOne'), { name: nearLimit[0].category.name })
+                  : formatMessage(t('widget.budgets.nearMany'), { count: nearLimit.length })}
               </p>
             </div>
           )}
@@ -233,7 +232,7 @@ export default function BudgetsPanel() {
               </div>
               {isExceeded && (
                 <p className="text-[11px] text-red-600 dark:text-red-400">
-                  Excedeu em{' '}
+                  {t('widget.budgets.exceededBy')}{' '}
                   <MaskedValue
                     value={Math.abs(remaining)}
                     className="font-semibold"
@@ -242,12 +241,12 @@ export default function BudgetsPanel() {
               )}
               {isNear && (
                 <p className="text-[11px] text-amber-600 dark:text-amber-400">
-                  Restam{' '}
+                  {t('widget.budgets.remaining')}{' '}
                   <MaskedValue
                     value={remaining}
                     className="font-semibold"
                   />{' '}
-                  disponíveis
+                  {t('widget.budgets.available')}
                 </p>
               )}
             </div>

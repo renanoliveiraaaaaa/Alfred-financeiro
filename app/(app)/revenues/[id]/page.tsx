@@ -9,6 +9,8 @@ import { Loader2, Trash2, ArrowLeft } from 'lucide-react'
 import { ConfirmDangerModal } from '@/components/ConfirmDangerModal'
 import { useToast, CONNECTION_ERROR_MSG, isConnectionError } from '@/lib/toastContext'
 import { useGreetingPronoun } from '@/lib/greeting'
+import { useI18n } from '@/lib/i18n'
+import { formatMessage } from '@/lib/i18nFormat'
 
 export default function EditRevenuePage() {
   const router = useRouter()
@@ -17,6 +19,7 @@ export default function EditRevenuePage() {
   const supabase = createSupabaseClient()
   const { toastError } = useToast()
   const pronoun = useGreetingPronoun()
+  const { t } = useI18n()
 
   const [fetching, setFetching] = useState(true)
   const [notFound, setNotFound] = useState(false)
@@ -53,7 +56,7 @@ export default function EditRevenuePage() {
       setExpectedDate(revenue.expected_date || '')
       setReceived(revenue.received ?? false)
     } catch (err: unknown) {
-      const msg = isConnectionError(err) ? CONNECTION_ERROR_MSG : 'Erro ao carregar receita.'
+      const msg = isConnectionError(err) ? CONNECTION_ERROR_MSG : t('crud.error.loadRevenue')
       setError(msg)
       toastError(msg)
     } finally {
@@ -67,9 +70,9 @@ export default function EditRevenuePage() {
     e.preventDefault()
     setError(null)
 
-    if (amount <= 0) { setError('Informe um valor maior que zero.'); return }
-    if (!description.trim()) { setError('Informe uma descrição.'); return }
-    if (!date) { setError('Informe a data efetiva.'); return }
+    if (amount <= 0) { setError(t('crud.error.amount')); return }
+    if (!description.trim()) { setError(t('crud.error.description')); return }
+    if (!date) { setError(t('crud.error.effectiveDate')); return }
 
     setSaving(true)
     try {
@@ -89,7 +92,7 @@ export default function EditRevenuePage() {
       setSuccess(true)
       setTimeout(() => router.push('/revenues'), 800)
     } catch (err: unknown) {
-      const msg = isConnectionError(err) ? CONNECTION_ERROR_MSG : (err instanceof Error ? err.message : 'Erro ao atualizar receita.')
+      const msg = isConnectionError(err) ? CONNECTION_ERROR_MSG : (err instanceof Error ? err.message : t('crud.error.updateRevenue'))
       setError(msg)
       toastError(msg)
     } finally {
@@ -105,7 +108,7 @@ export default function EditRevenuePage() {
       if (deleteErr) throw new Error(deleteErr.message)
       router.push('/revenues')
     } catch (err: unknown) {
-      const msg = isConnectionError(err) ? CONNECTION_ERROR_MSG : (err instanceof Error ? err.message : 'Erro ao excluir receita.')
+      const msg = isConnectionError(err) ? CONNECTION_ERROR_MSG : (err instanceof Error ? err.message : t('crud.error.deleteRevenue'))
       setError(msg)
       toastError(msg)
       setDeleting(false)
@@ -135,9 +138,9 @@ export default function EditRevenuePage() {
   if (notFound) {
     return (
       <div className="max-w-2xl text-center py-16">
-        <p className="text-muted mb-4">Registro não encontrado, {pronoun}.</p>
+        <p className="text-muted mb-4">{formatMessage(t('crud.notFound'), { pronoun })}</p>
         <Link href="/revenues" className="text-sm text-muted hover:text-main transition-colors">
-          Retornar aos registros
+          {t('crud.backToList')}
         </Link>
       </div>
     )
@@ -151,14 +154,14 @@ export default function EditRevenuePage() {
           className="inline-flex items-center gap-1 text-sm text-muted hover:text-main transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
-          Voltar
+          {t('crud.back')}
         </Link>
-        <h1 className="text-xl font-semibold text-main">Editar registro de entrada</h1>
+        <h1 className="text-xl font-semibold text-main">{t('crud.revenue.editTitle')}</h1>
       </div>
 
       {success && (
         <div className="mb-4 rounded-lg border border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-300">
-          Registro atualizado com sucesso! Redirecionando...
+          {t('crud.successUpdated')}
         </div>
       )}
 
@@ -172,7 +175,7 @@ export default function EditRevenuePage() {
         {/* Valor */}
         <div>
           <label htmlFor="amount" className="block text-sm font-medium text-muted mb-1">
-            Valor (R$) <span className="text-red-400">*</span>
+            {t('crud.amount')} <span className="text-red-400">*</span>
           </label>
           <div className="relative">
             <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted text-sm">R$</span>
@@ -190,14 +193,14 @@ export default function EditRevenuePage() {
         {/* Descrição */}
         <div>
           <label htmlFor="description" className="block text-sm font-medium text-muted mb-1">
-            Descrição <span className="text-red-400">*</span>
+            {t('crud.description')} <span className="text-red-400">*</span>
           </label>
           <input
             id="description"
             type="text"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="Ex.: Salário, honorários..."
+            placeholder={t('crud.revenue.placeholder')}
             className="block w-full rounded-lg border border-border bg-background py-2 px-3 text-sm text-main placeholder-muted focus:border-brand focus:ring-1 focus:ring-brand"
           />
         </div>
@@ -206,7 +209,7 @@ export default function EditRevenuePage() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label htmlFor="date" className="block text-sm font-medium text-muted mb-1">
-              Data efetiva <span className="text-red-400">*</span>
+              {t('crud.effectiveDate')} <span className="text-red-400">*</span>
             </label>
             <input
               id="date"
@@ -218,7 +221,7 @@ export default function EditRevenuePage() {
           </div>
           <div>
             <label htmlFor="expectedDate" className="block text-sm font-medium text-muted mb-1">
-              Data esperada <span className="text-muted font-normal">(opcional)</span>
+              {t('crud.expectedDate')} <span className="text-muted font-normal">{t('crud.optional')}</span>
             </label>
             <input
               id="expectedDate"
@@ -248,7 +251,7 @@ export default function EditRevenuePage() {
             />
           </button>
           <label className="text-sm font-medium text-muted select-none cursor-pointer" onClick={() => setReceived(!received)}>
-            Já recebido
+            {t('crud.received')}
           </label>
         </div>
 
@@ -263,17 +266,17 @@ export default function EditRevenuePage() {
               {saving ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Salvando...
+                  {t('crud.saving')}
                 </>
               ) : (
-                'Salvar alterações'
+                t('crud.save')
               )}
             </button>
             <Link
               href="/revenues"
             className="rounded-lg border border-border px-5 py-2.5 text-sm font-medium text-muted hover:bg-background transition-colors"
           >
-              Cancelar
+              {t('crud.cancel')}
             </Link>
           </div>
 
@@ -288,7 +291,7 @@ export default function EditRevenuePage() {
             ) : (
               <Trash2 className="h-4 w-4" />
             )}
-            Excluir
+            {t('crud.delete')}
           </button>
         </div>
       </form>

@@ -8,6 +8,8 @@ import { formatDate } from '@/lib/format'
 import MaskedValue from '@/components/MaskedValue'
 import { useToast, CONNECTION_ERROR_MSG, isConnectionError } from '@/lib/toastContext'
 import { useGreetingPronoun } from '@/lib/greeting'
+import { useI18n } from '@/lib/i18n'
+import { formatMessage } from '@/lib/i18nFormat'
 import { BellRing, CheckCircle2, Loader2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { Database } from '@/types/supabase'
@@ -26,6 +28,7 @@ export default function AttentionPanel() {
   const orgRevision = useActiveOrganizationRevision()
   const { toast, toastError } = useToast()
   const pronoun = useGreetingPronoun()
+  const { t } = useI18n()
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [loading, setLoading] = useState(true)
   const [markingId, setMarkingId] = useState<string | null>(null)
@@ -80,15 +83,20 @@ export default function AttentionPanel() {
         .eq('id', exp.id)
       if (error) throw error
       setExpenses((prev) => prev.filter((e) => e.id !== exp.id))
-      toast(`Despesa marcada como paga, ${pronoun}.`, 'success')
+      toast(formatMessage(t('widget.attention.paidToast'), { pronoun }), 'success')
     } catch (err: unknown) {
-      toastError(isConnectionError(err) ? CONNECTION_ERROR_MSG : (err instanceof Error ? err.message : 'Erro ao atualizar.'))
+      toastError(isConnectionError(err) ? CONNECTION_ERROR_MSG : (err instanceof Error ? err.message : t('crud.error.update')))
     } finally {
       setMarkingId(null)
     }
   }
 
   if (loading || expenses.length === 0) return null
+
+  const subtitle =
+    expenses.length === 1
+      ? t('widget.attention.subtitleOne')
+      : formatMessage(t('widget.attention.subtitleMany'), { count: expenses.length })
 
   return (
     <motion.div
@@ -102,11 +110,9 @@ export default function AttentionPanel() {
         </div>
         <div>
           <p className="text-sm font-semibold text-main">
-            Atenção, {pronoun} — vencimentos próximos
+            {formatMessage(t('widget.attention.title'), { pronoun })}
           </p>
-          <p className="text-xs text-brand/90">
-            {expenses.length} despesa{expenses.length > 1 ? 's' : ''} pendente{expenses.length > 1 ? 's' : ''} nos próximos dias
-          </p>
+          <p className="text-xs text-brand/90">{subtitle}</p>
         </div>
       </div>
 
@@ -130,9 +136,9 @@ export default function AttentionPanel() {
                   </p>
                   <p className={`text-xs mt-0.5 ${isOverdue ? 'text-red-600 dark:text-red-400 font-medium' : 'text-muted'}`}>
                     {exp.due_date ? formatDate(exp.due_date) : '—'}
-                    {isOverdue && ' · Em atraso'}
-                    {diff === 0 && !isOverdue && ' · Vence hoje'}
-                    {diff > 0 && diff <= 3 && ` · Em ${diff} dia${diff > 1 ? 's' : ''}`}
+                    {isOverdue && t('widget.attention.overdueSuffix')}
+                    {diff === 0 && !isOverdue && t('widget.attention.todaySuffix')}
+                    {diff > 0 && diff <= 3 && formatMessage(t('widget.attention.inDaysSuffix'), { n: diff })}
                   </p>
                 </div>
                 <MaskedValue
@@ -143,14 +149,14 @@ export default function AttentionPanel() {
                   onClick={() => handleMarkPaid(exp)}
                   disabled={markingId === exp.id}
                   className="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-emerald-600 dark:bg-emerald-500 text-white hover:bg-emerald-700 dark:hover:bg-emerald-600 disabled:opacity-50 transition-colors min-h-[36px] min-w-[36px] justify-center touch-manipulation"
-                  title="Marcar como pago"
+                  title={t('widget.attention.markPaidTitle')}
                 >
                   {markingId === exp.id ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   ) : (
                     <>
                       <CheckCircle2 className="h-3.5 w-3.5" />
-                      <span className="hidden sm:inline">Marcar como Pago</span>
+                      <span className="hidden sm:inline">{t('widget.attention.markPaid')}</span>
                     </>
                   )}
                 </button>

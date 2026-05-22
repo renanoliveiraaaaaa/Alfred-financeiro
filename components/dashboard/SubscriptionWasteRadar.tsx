@@ -3,12 +3,16 @@
 import Link from 'next/link'
 import { ScanSearch } from 'lucide-react'
 import type { SubscriptionAuditAlert } from '@/lib/lifestyleFinance'
+import { useI18n } from '@/lib/i18n'
+import { formatSubscriptionAlert } from '@/lib/subscriptionAlertI18n'
 
 type Props = {
   alerts: SubscriptionAuditAlert[]
 }
 
 export default function SubscriptionWasteRadar({ alerts }: Props) {
+  const { t, locale } = useI18n()
+
   if (alerts.length === 0) return null
 
   return (
@@ -21,10 +25,10 @@ export default function SubscriptionWasteRadar({ alerts }: Props) {
           </span>
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted">
-              Auditoria
+              {t('widget.radar.eyebrow')}
             </p>
-            <h3 className="text-base font-semibold tracking-tight text-main">Radar de Desperdício</h3>
-            <p className="text-xs text-muted mt-0.5">Assinaturas · últimos 3 meses</p>
+            <h3 className="text-base font-semibold tracking-tight text-main">{t('widget.radar.title')}</h3>
+            <p className="text-xs text-muted mt-0.5">{t('widget.radar.subtitle')}</p>
           </div>
         </div>
 
@@ -38,18 +42,18 @@ export default function SubscriptionWasteRadar({ alerts }: Props) {
                   : 'border-border bg-background/50 text-main'
               }`}
             >
-              {a.message}
+              {formatSubscriptionAlert(a, t, locale)}
             </li>
           ))}
         </ul>
 
         <p className="text-xs text-muted">
           <Link href="/subscriptions" className="text-brand font-medium hover:opacity-80 transition-opacity">
-            Rever assinaturas
+            {t('widget.radar.reviewSubs')}
           </Link>
           {' · '}
           <Link href="/expenses" className="text-brand font-medium hover:opacity-80 transition-opacity">
-            Lançamentos
+            {t('widget.radar.viewExpenses')}
           </Link>
         </p>
       </div>

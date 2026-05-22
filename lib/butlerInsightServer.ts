@@ -3,6 +3,8 @@ import { cookies } from 'next/headers'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { createSupabaseServerClient } from '@/lib/supabaseServer'
 import { formatGeminiCallError, getGeminiApiKey, getGeminiModelId } from '@/lib/geminiEnv'
+import ptApp from '@/locales/app-pt.json'
+import { formatSubscriptionAlert } from '@/lib/subscriptionAlertI18n'
 import {
   auditSubscriptions,
   computeBuyingPower,
@@ -339,12 +341,13 @@ export async function getButlerInsightData(): Promise<ButlerInsightData | null> 
     })
 
     const subAlerts = auditSubscriptions(subsRows, expWinRows, cur.year, cur.month)
+    const tPt = (key: string) => (ptApp as Record<string, string>)[key] ?? key
     const resumoAlertasAssinaturas =
       subAlerts.length === 0
         ? 'Nenhum alerta relevante no período.'
         : subAlerts
             .slice(0, 4)
-            .map((a) => a.message)
+            .map((a) => formatSubscriptionAlert(a, tPt, 'pt'))
             .join(' ')
 
     const limiteConforto =

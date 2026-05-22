@@ -10,6 +10,8 @@ import EmptyState from '@/components/EmptyState'
 import { ConfirmDangerModal } from '@/components/ConfirmDangerModal'
 import { useToast, CONNECTION_ERROR_MSG, isConnectionError } from '@/lib/toastContext'
 import { useGreetingPronoun } from '@/lib/greeting'
+import { useI18n } from '@/lib/i18n'
+import { formatMessage } from '@/lib/i18nFormat'
 import {
   allIdsInDuplicateClusters,
   allSuggestedDeleteIds,
@@ -40,6 +42,7 @@ export default function RevenuesPage() {
   const orgRevision = useActiveOrganizationRevision()
   const { toastError } = useToast()
   const pronoun = useGreetingPronoun()
+  const { t } = useI18n()
   const [revenues, setRevenues] = useState<Revenue[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -328,9 +331,9 @@ export default function RevenuesPage() {
         ) : revenues.length === 0 ? (
           <EmptyState
             icon={Wallet}
-            title="Nenhuma entrada registrada"
-            description={`Ainda não há rendimentos catalogados, ${pronoun}. Permita-me registrar o primeiro quando estiver pronto.`}
-            actionLabel="Registrar primeira entrada"
+            title={t('crud.list.revenuesEmptyTitle')}
+            description={formatMessage(t('crud.list.revenuesEmptyDesc'), { pronoun })}
+            actionLabel={t('crud.list.revenuesEmptyAction')}
             onAction={() => window.location.href = '/revenues/new'}
           />
         ) : (
@@ -449,9 +452,9 @@ export default function RevenuesPage() {
                   <td colSpan={7} className="p-0">
                     <EmptyState
                       icon={Wallet}
-                      title="Nenhuma entrada registrada"
-                      description={`Ainda não há rendimentos catalogados, ${pronoun}. Permita-me registrar o primeiro quando estiver pronto.`}
-                      actionLabel="Registrar primeira entrada"
+                      title={t('crud.list.revenuesEmptyTitle')}
+                      description={formatMessage(t('crud.list.revenuesEmptyDesc'), { pronoun })}
+                      actionLabel={t('crud.list.revenuesEmptyAction')}
                       onAction={() => window.location.href = '/revenues/new'}
                     />
                   </td>

@@ -1,0 +1,20 @@
+{
+  "category.mercado": "Groceries",
+  "category.alimentacao": "Food & dining",
+  "category.compras": "Online shopping",
+  "category.transporte": "Transport",
+  "category.combustivel": "Fuel",
+  "category.veiculo": "Vehicle",
+  "category.assinaturas": "Subscriptions",
+  "category.saude": "Health",
+  "category.educacao": "Education",
+  "category.lazer": "Leisure",
+  "category.moradia": "Housing",
+  "category.fatura_cartao": "Card statement",
+  "category.outros": "Other",
+  "payment.pix": "Pix",
+  "payment.debito": "Debit",
+  "payment.credito": "Credit",
+  "payment.especie": "Cash",
+  "payment.credito_parcelado": "Installments"
+}

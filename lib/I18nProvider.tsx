@@ -19,6 +19,10 @@ import ptErrors from "@/locales/errors-pt.json";
 import enErrors from "@/locales/errors-en.json";
 import ptSecurity from "@/locales/security-pt.json";
 import enSecurity from "@/locales/security-en.json";
+import ptCrud from "@/locales/crud-pt.json";
+import enCrud from "@/locales/crud-en.json";
+import ptCategories from "@/locales/categories-pt.json";
+import enCategories from "@/locales/categories-en.json";
 import ptApp from "@/locales/app-pt.json";
 import enApp from "@/locales/app-en.json";
 
@@ -35,6 +39,8 @@ const MESSAGES: Record<Locale, Record<string, string>> = {
     ...ptErrors,
     ...ptSecurity,
     ...ptApp,
+    ...ptCrud,
+    ...ptCategories,
   },
   en: {
     ...enBase,
@@ -46,6 +52,8 @@ const MESSAGES: Record<Locale, Record<string, string>> = {
     ...enErrors,
     ...enSecurity,
     ...enApp,
+    ...enCrud,
+    ...enCategories,
   },
 };
 

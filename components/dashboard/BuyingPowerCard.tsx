@@ -4,6 +4,7 @@ import { Sparkles, CreditCard, TrendingUp } from 'lucide-react'
 import MaskedValue from '@/components/MaskedValue'
 import type { BuyingPowerResult } from '@/lib/lifestyleFinance'
 import { useUserPreferences } from '@/lib/userPreferencesContext'
+import { useI18n } from '@/lib/i18n'
 
 type Props = {
   data: BuyingPowerResult
@@ -12,6 +13,7 @@ type Props = {
 
 export default function BuyingPowerCard({ data, monthLabel }: Props) {
   const { activeOrgType } = useUserPreferences()
+  const { t } = useI18n()
   const isBusiness = activeOrgType === 'business'
   const {
     dinheiroLivre,
@@ -44,19 +46,22 @@ export default function BuyingPowerCard({ data, monthLabel }: Props) {
             </span>
             <div className="min-w-0">
               <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted">
-                {isBusiness ? 'Margem operacional' : 'Estilo de vida'}
+                {isBusiness ? t('widget.buyingPower.eyebrowBusiness') : t('widget.buyingPower.eyebrowPersonal')}
               </p>
               <h3 className="text-base font-semibold tracking-tight text-main">
-                {isBusiness ? 'Margem Operacional Livre' : 'Disponível para Estilo de Vida'}
+                {isBusiness ? t('widget.buyingPower.titleBusiness') : t('widget.buyingPower.titlePersonal')}
               </h3>
-              <p className="text-xs text-muted mt-0.5">{isBusiness ? 'Base: faturamento − custos fixos − reservas · ' : 'Base: receitas − contas essenciais − metas · '}{monthLabel}</p>
+              <p className="text-xs text-muted mt-0.5">
+                {isBusiness ? t('widget.buyingPower.baseBusiness') : t('widget.buyingPower.basePersonal')}
+                {monthLabel}
+              </p>
             </div>
           </div>
           <Sparkles className="h-5 w-5 shrink-0 text-amber-400/90 opacity-80" aria-hidden />
         </div>
 
         <div>
-          <p className="text-xs text-muted">Dinheiro livre estimado</p>
+          <p className="text-xs text-muted">{t('widget.buyingPower.freeMoney')}</p>
           <MaskedValue
             value={dinheiroLivre}
             className={`mt-1 block text-2xl font-semibold tabular-nums tracking-tight ${
@@ -67,19 +72,19 @@ export default function BuyingPowerCard({ data, monthLabel }: Props) {
 
         <dl className="grid grid-cols-1 gap-2 text-xs sm:grid-cols-3">
           <div className="rounded-lg border border-border/60 bg-background/40 px-3 py-2">
-            <dt className="text-muted">{isBusiness ? 'Custos fixos' : 'Essenciais / contas'}</dt>
+            <dt className="text-muted">{isBusiness ? t('widget.buyingPower.fixedBusiness') : t('widget.buyingPower.fixedPersonal')}</dt>
             <dd className="font-medium tabular-nums text-main">
               <MaskedValue value={fixedCommitted} />
             </dd>
           </div>
           <div className="rounded-lg border border-border/60 bg-background/40 px-3 py-2">
-            <dt className="text-muted">{isBusiness ? 'Reservas (mês)' : 'Metas (mês)'}</dt>
+            <dt className="text-muted">{isBusiness ? t('widget.buyingPower.goalsBusiness') : t('widget.buyingPower.goalsPersonal')}</dt>
             <dd className="font-medium tabular-nums text-main">
               <MaskedValue value={monthlyInvestCommitment} />
             </dd>
           </div>
           <div className="rounded-lg border border-border/60 bg-background/40 px-3 py-2">
-            <dt className="text-muted">{isBusiness ? 'Variáveis / outros' : 'Lazer + outros'}</dt>
+            <dt className="text-muted">{isBusiness ? t('widget.buyingPower.variableBusiness') : t('widget.buyingPower.variablePersonal')}</dt>
             <dd className="font-medium tabular-nums text-main">
               <MaskedValue value={lifestyleSpend} />
             </dd>
@@ -88,7 +93,7 @@ export default function BuyingPowerCard({ data, monthLabel }: Props) {
 
         <div className="space-y-2">
           <div className="flex items-center justify-between text-xs text-muted">
-            <span>{isBusiness ? 'Custos variáveis vs. margem livre' : 'Uso de lazer/outros vs. dinheiro livre'}</span>
+            <span>{isBusiness ? t('widget.buyingPower.barBusiness') : t('widget.buyingPower.barPersonal')}</span>
             {lifestyleShareOfFree != null && dinheiroLivre > 0 ? (
               <span className="tabular-nums text-main font-medium">{barPct}%</span>
             ) : null}
@@ -101,11 +106,11 @@ export default function BuyingPowerCard({ data, monthLabel }: Props) {
           </div>
           {comfortWarning ? (
             <p className="text-xs leading-relaxed text-amber-700 dark:text-amber-300/95">
-              {isBusiness ? 'Senhor, os custos variáveis estão consumindo a margem operacional prevista.' : 'Senhor, seu limite de conforto para este mês está próximo do fim.'}
+              {isBusiness ? t('widget.buyingPower.warningBusiness') : t('widget.buyingPower.warningPersonal')}
             </p>
           ) : (
             <p className="text-xs text-muted">
-              {isBusiness ? 'Margem operacional dentro do previsto para o período, Senhor.' : 'Mantém reserva para lazer dentro do que previu para o mês, Senhor.'}
+              {isBusiness ? t('widget.buyingPower.okBusiness') : t('widget.buyingPower.okPersonal')}
             </p>
           )}
         </div>

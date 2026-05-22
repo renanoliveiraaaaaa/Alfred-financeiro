@@ -1,0 +1,20 @@
+{
+  "category.mercado": "Mercado",
+  "category.alimentacao": "Alimentação",
+  "category.compras": "Compras online",
+  "category.transporte": "Transporte",
+  "category.combustivel": "Combustível",
+  "category.veiculo": "Veículo",
+  "category.assinaturas": "Assinaturas",
+  "category.saude": "Saúde",
+  "category.educacao": "Educação",
+  "category.lazer": "Lazer",
+  "category.moradia": "Moradia",
+  "category.fatura_cartao": "Fatura de cartão",
+  "category.outros": "Outros",
+  "payment.pix": "Pix",
+  "payment.debito": "Débito",
+  "payment.credito": "Crédito",
+  "payment.especie": "Espécie / Dinheiro",
+  "payment.credito_parcelado": "Crédito parcelado"
+}
