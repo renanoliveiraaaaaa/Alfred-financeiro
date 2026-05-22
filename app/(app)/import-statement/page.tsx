@@ -319,7 +319,7 @@ export default function ImportStatementPage() {
           </h1>
           <p className="text-sm text-muted mt-1">
             {pronoun
-              ? t('import.subtitleWithPronoun', { pronoun })
+              ? t('import.subtitleWithPronoun').replace('{pronoun}', pronoun)
               : t('import.subtitle')}
           </p>
         </div>

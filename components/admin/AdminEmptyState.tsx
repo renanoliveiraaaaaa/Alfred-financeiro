@@ -1,3 +1,5 @@
+'use client'
+
 import { UserX } from 'lucide-react'
 import { useEffect, useRef } from 'react'
 

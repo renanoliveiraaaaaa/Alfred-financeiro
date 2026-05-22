@@ -4,5 +4,19 @@
   "nav.revenues": "Revenues",
   "nav.goals": "Goals",
   "nav.profile": "Profile",
-  "nav.more": "More"
+  "nav.more": "More",
+  "nav.creditCards": "Credit cards",
+  "nav.incomeSources": "Income sources",
+  "nav.settings": "Settings",
+  "nav.businessRevenues": "Revenues",
+  "nav.businessExpenses": "Expenses",
+  "nav.businessSubscriptions": "Recurring costs",
+  "nav.businessIncomeSources": "Revenue sources",
+  "nav.businessGoals": "Reserves",
+  "nav.projections": "Budget",
+  "nav.reports": "Reports",
+  "nav.importStatement": "Import statement",
+  "nav.importHistory": "History",
+  "nav.planning": "Planning",
+  "nav.statements": "Statements"
 }

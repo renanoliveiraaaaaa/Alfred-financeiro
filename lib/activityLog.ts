@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Database } from '@/types/supabase'
+import type { Database, Json } from '@/types/supabase'
 
 export type ActivityAction =
   | 'login'
@@ -21,20 +21,23 @@ type LogParams = {
   organizationId?: string | null
 }
 
+type ActivityInsert = Database['public']['Tables']['activity_logs']['Insert']
+
 export async function logActivity(
-  supabase: SupabaseClient<Database>,
+  supabase: SupabaseClient,
   userId: string,
   params: LogParams,
 ): Promise<void> {
   try {
-    await supabase.from('activity_logs').insert({
+    const row: ActivityInsert = {
       user_id: userId,
       organization_id: params.organizationId ?? null,
       action: params.action,
       entity_type: params.entityType ?? null,
       entity_id: params.entityId ?? null,
-      metadata: params.metadata ?? {},
-    })
+      metadata: (params.metadata ?? {}) as Json,
+    }
+    await supabase.from('activity_logs').insert(row as never)
   } catch {
     /* best effort */
   }
@@ -43,7 +46,7 @@ export async function logActivity(
 export type ActivityLogRow = Database['public']['Tables']['activity_logs']['Row']
 
 export async function fetchRecentActivity(
-  supabase: SupabaseClient<Database>,
+  supabase: SupabaseClient,
   userId: string,
   limit = 20,
 ): Promise<ActivityLogRow[]> {
@@ -55,7 +58,7 @@ export async function fetchRecentActivity(
     .limit(limit)
 
   if (error) return []
-  return data ?? []
+  return (data ?? []) as ActivityLogRow[]
 }
 
 export const ACTIVITY_LABELS: Record<ActivityAction, { pt: string; en: string }> = {

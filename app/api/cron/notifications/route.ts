@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import type { Database } from '@/types/supabase'
 import { sendEmail, buildWeeklyReportHtml, buildDueReminderHtml } from '@/lib/email'
 
 export async function GET(request: Request) {
@@ -16,7 +15,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Missing Supabase configuration' }, { status: 500 })
   }
 
-  const supabase = createClient<Database>(supabaseUrl, serviceRoleKey, {
+  const supabase = createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false },
   })
 
@@ -29,10 +28,16 @@ export async function GET(request: Request) {
 
   const isMonday = today.getDay() === 1
 
+  type NotifyProfile = {
+    id: string
+    full_name: string | null
+    weekly_report: boolean
+    locale: 'pt' | 'en'
+  }
+
   const { data: profiles, error: profErr } = await supabase
     .from('profiles')
     .select('id, full_name, weekly_report, locale')
-    .not('id', 'is', null)
 
   if (profErr) {
     return NextResponse.json({ error: profErr.message }, { status: 500 })
@@ -42,7 +47,7 @@ export async function GET(request: Request) {
   let remindersSent = 0
   const errors: string[] = []
 
-  for (const profile of profiles ?? []) {
+  for (const profile of (profiles ?? []) as NotifyProfile[]) {
     const locale = (profile.locale === 'en' ? 'en' : 'pt') as 'pt' | 'en'
     const name = profile.full_name?.split(' ')[0] || 'Cliente'
 

@@ -108,18 +108,19 @@ export default function LandingAuthForm({
         <form className="space-y-5" onSubmit={onSubmit}>
           {error && (
             <div className="animate-fade-in rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
-              {error}
+              {t(error) !== error ? t(error) : error}
             </div>
           )}
 
           {!isLogin && signupEmailPending && (
             <div className="animate-fade-in space-y-3 rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-4 py-4 text-sm text-emerald-100">
-              <p className="font-medium">Conta criada com sucesso</p>
-              <p className="leading-relaxed text-emerald-200/90">
-                Enviamos um link de confirmação para{' '}
-                <span className="font-medium text-white">{email}</span>. Abra o e-mail e clique no link
-                para ativar a conta; em seguida poderá entrar com e-mail e senha.
-              </p>
+              <p className="font-medium">{t('auth.successTitle')}</p>
+              <p
+                className="leading-relaxed text-emerald-200/90"
+                dangerouslySetInnerHTML={{
+                  __html: t('auth.successDesc').replace('{email}', email),
+                }}
+              />
               <button
                 type="button"
                 onClick={onGoToLoginAfterSignup}
@@ -169,7 +170,7 @@ export default function LandingAuthForm({
                 className={inputClass}
                 placeholder="seu@email.com"
                 value={email}
-                {t('auth.login')}
+                onChange={(e) => onEmailChange(e.target.value)}
               />
             </div>
           ) : null}
@@ -180,29 +181,31 @@ export default function LandingAuthForm({
                 {lastUser && !showEmailForm ? 'Digite sua senha' : 'Senha'}
               </label>
               <input
-                {t('auth.register')}
+                id="password"
                 name="password"
                 type="password"
                 autoComplete={isLogin ? 'current-password' : 'new-password'}
                 required
                 className={inputClass}
                 placeholder="••••••••"
-                  {t(error) !== error ? t(error) : error}
+                value={password}
                 onChange={(e) => onPasswordChange(e.target.value)}
               />
             </div>
           )}
 
-                  <p className="font-medium">{t('auth.successTitle')}</p>
+          {!isLogin && !signupEmailPending && (
             <div className="transition-all">
-                    <span className="font-medium text-white">{email}</span>. {t('auth.successDesc')}
+              <label htmlFor="gender" className="mb-1 block text-xs font-medium uppercase tracking-wider text-slate-500">
+                Gênero <span className="text-red-400">*</span>
+              </label>
               <select
                 id="gender"
                 name="gender"
                 required
                 value={gender}
                 onChange={(e) => onGenderChange(e.target.value as 'M' | 'F' | 'O')}
-                    {t('auth.backToLogin')}
+                className={selectClass}
               >
                 <option value="O">Prefiro não informar / Outro</option>
                 <option value="M">Masculino</option>

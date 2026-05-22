@@ -23,7 +23,7 @@ export interface Database {
           hide_balance: boolean
           weekly_report: boolean
           locale: 'pt' | 'en'
-          custom_theme: Record<string, unknown> | null
+          custom_theme: Json | null
           role: 'user' | 'admin'
           plan_status?: 'trial' | 'active' | 'expired'
           trial_ends_at?: string | null
@@ -40,7 +40,7 @@ export interface Database {
           hide_balance?: boolean
           weekly_report?: boolean
           locale?: 'pt' | 'en'
-          custom_theme?: Record<string, unknown> | null
+          custom_theme?: Json | null
           role?: 'user' | 'admin'
           plan_status?: 'trial' | 'active' | 'expired'
           trial_ends_at?: string | null
@@ -57,7 +57,7 @@ export interface Database {
           hide_balance?: boolean
           weekly_report?: boolean
           locale?: 'pt' | 'en'
-          custom_theme?: Record<string, unknown> | null
+          custom_theme?: Json | null
           role?: 'user' | 'admin'
           plan_status?: 'trial' | 'active' | 'expired'
           trial_ends_at?: string | null
@@ -74,7 +74,7 @@ export interface Database {
           action: string
           entity_type: string | null
           entity_id: string | null
-          metadata: Record<string, unknown>
+          metadata: Json
           created_at: string
         }
         Insert: {
@@ -84,7 +84,7 @@ export interface Database {
           action: string
           entity_type?: string | null
           entity_id?: string | null
-          metadata?: Record<string, unknown>
+          metadata?: Json
           created_at?: string
         }
         Update: {
@@ -94,9 +94,10 @@ export interface Database {
           action?: string
           entity_type?: string | null
           entity_id?: string | null
-          metadata?: Record<string, unknown>
+          metadata?: Json
           created_at?: string
         }
+        Relationships: []
       }
       organizations: {
         Row: {

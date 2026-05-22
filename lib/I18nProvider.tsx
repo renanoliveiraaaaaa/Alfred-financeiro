@@ -3,33 +3,50 @@
 import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { I18nContext, defaultLocale, locales, type Locale } from "./i18n";
 
+import ptBase from "@/locales/pt.json";
+import enBase from "@/locales/en.json";
+import ptToast from "@/locales/toast-pt.json";
+import enToast from "@/locales/toast-en.json";
+import ptAuth from "@/locales/auth-pt.json";
+import enAuth from "@/locales/auth-en.json";
+import ptImport from "@/locales/import-pt.json";
+import enImport from "@/locales/import-en.json";
+import ptModal from "@/locales/modal-pt.json";
+import enModal from "@/locales/modal-en.json";
+import ptOnboarding from "@/locales/onboarding-pt.json";
+import enOnboarding from "@/locales/onboarding-en.json";
+import ptErrors from "@/locales/errors-pt.json";
+import enErrors from "@/locales/errors-en.json";
+import ptSecurity from "@/locales/security-pt.json";
+import enSecurity from "@/locales/security-en.json";
+
 export const LOCALE_STORAGE_KEY = "alfred_locale";
 
-function loadMessages(locale: Locale) {
-  try {
-    const bundles = [
-      `../locales/${locale}.json`,
-      `../locales/toast-${locale}.json`,
-      `../locales/auth-${locale}.json`,
-      `../locales/import-${locale}.json`,
-      `../locales/modal-${locale}.json`,
-      `../locales/onboarding-${locale}.json`,
-      `../locales/errors-${locale}.json`,
-      `../locales/security-${locale}.json`,
-    ];
-    let merged: Record<string, string> = {};
-    for (const path of bundles) {
-      try {
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
-        merged = { ...merged, ...require(path) };
-      } catch {
-        /* optional bundle */
-      }
-    }
-    return merged;
-  } catch {
-    return {};
-  }
+const MESSAGES: Record<Locale, Record<string, string>> = {
+  pt: {
+    ...ptBase,
+    ...ptToast,
+    ...ptAuth,
+    ...ptImport,
+    ...ptModal,
+    ...ptOnboarding,
+    ...ptErrors,
+    ...ptSecurity,
+  },
+  en: {
+    ...enBase,
+    ...enToast,
+    ...enAuth,
+    ...enImport,
+    ...enModal,
+    ...enOnboarding,
+    ...enErrors,
+    ...enSecurity,
+  },
+};
+
+function loadMessages(locale: Locale): Record<string, string> {
+  return MESSAGES[locale] ?? MESSAGES.pt;
 }
 
 function detectBrowserLocale(): Locale {
@@ -48,7 +65,6 @@ export default function I18nProvider({ children }: { children: React.ReactNode }
   const [messages, setMessages] = useState<Record<string, string>>(() =>
     loadMessages(defaultLocale),
   );
-  const [ready, setReady] = useState(false);
 
   const applyLocale = useCallback((next: Locale) => {
     if (!locales.includes(next)) return;
@@ -73,7 +89,6 @@ export default function I18nProvider({ children }: { children: React.ReactNode }
       /* ignore */
     }
     applyLocale(initial);
-    setReady(true);
   }, [applyLocale]);
 
   const t = useMemo(
@@ -82,8 +97,8 @@ export default function I18nProvider({ children }: { children: React.ReactNode }
   );
 
   const value = useMemo(
-    () => ({ locale, setLocale: applyLocale, t, ready }),
-    [locale, applyLocale, t, ready],
+    () => ({ locale, setLocale: applyLocale, t, ready: true }),
+    [locale, applyLocale, t],
   );
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
