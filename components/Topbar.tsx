@@ -1,54 +1,57 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useTheme } from 'next-themes'
 import { createSupabaseClient } from '@/lib/supabaseClient'
 import { usePrivacy } from '@/lib/privacyContext'
-import { LogOut, Sun, Moon, Eye, EyeOff, Loader2, DoorOpen, Plus, Building2 } from 'lucide-react'
+import { LogOut, Sun, Moon, Eye, EyeOff, Plus, Building2 } from 'lucide-react'
 import LanguageSwitcher from '@/components/LanguageSwitcher'
+import OrganizationSwitcher from '@/components/OrganizationSwitcher'
+import LogoutModal from '@/components/LogoutModal'
 import { useGreetingPronoun } from '@/lib/greeting'
 import QuickAddModal from '@/components/QuickAddModal'
 import { useUserPreferences } from '@/lib/userPreferencesContext'
+import { useI18n } from '@/lib/i18n'
 
-const PAGE_TITLES: Record<string, string> = {
-  '/dashboard': 'Visão geral',
-  '/revenues': 'Entradas',
-  '/expenses': 'Saídas',
-  '/credit-cards': 'Cartões de crédito',
-  '/subscriptions': 'Assinaturas',
-  '/income-sources': 'Fontes de renda',
-  '/goals': 'Cofres',
-  '/projections': 'Orçamento',
-  '/reports': 'Relatórios',
-  '/import-statement': 'Importar extrato',
-  '/import-history': 'Histórico de importações',
-  '/settings': 'Cadastros',
-  '/profile': 'Perfil',
+const PAGE_KEYS: Record<string, string> = {
+  '/dashboard': 'page.dashboard',
+  '/revenues': 'page.revenues',
+  '/expenses': 'page.expenses',
+  '/credit-cards': 'page.creditCards',
+  '/subscriptions': 'page.subscriptions',
+  '/income-sources': 'page.incomeSources',
+  '/goals': 'page.goals',
+  '/projections': 'page.projections',
+  '/reports': 'page.reports',
+  '/import-statement': 'page.importStatement',
+  '/import-history': 'page.importHistory',
+  '/settings': 'page.settings',
+  '/profile': 'page.profile',
 }
 
-const BUSINESS_PAGE_TITLES: Record<string, string> = {
-  '/revenues': 'Receitas',
-  '/expenses': 'Despesas',
-  '/subscriptions': 'Custos Recorrentes',
-  '/income-sources': 'Fontes de Receita',
-  '/goals': 'Reservas',
+const BUSINESS_PAGE_KEYS: Record<string, string> = {
+  '/revenues': 'page.businessRevenues',
+  '/expenses': 'page.businessExpenses',
+  '/subscriptions': 'page.businessSubscriptions',
+  '/income-sources': 'page.businessIncomeSources',
+  '/goals': 'page.businessGoals',
 }
 
-function getPageTitle(pathname: string, isBusiness: boolean): string {
+function getPageTitle(pathname: string, isBusiness: boolean, t: (key: string) => string): string {
   const base = '/' + pathname.split('/')[1]
-  if (isBusiness && BUSINESS_PAGE_TITLES[base]) return BUSINESS_PAGE_TITLES[base]
-  if (PAGE_TITLES[pathname]) return PAGE_TITLES[pathname]
-  return PAGE_TITLES[base] ?? ''
+  if (isBusiness && BUSINESS_PAGE_KEYS[base]) return t(BUSINESS_PAGE_KEYS[base])
+  const key = PAGE_KEYS[pathname] ?? PAGE_KEYS[base]
+  return key ? t(key) : ''
 }
 
 export default function Topbar() {
+  const { t } = useI18n()
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createSupabaseClient()
-  const { theme, setTheme, resolvedTheme } = useTheme()
+  const { setTheme, resolvedTheme } = useTheme()
   const { isPrivacyMode, togglePrivacyMode } = usePrivacy()
   const { activeOrgType } = useUserPreferences()
   const isBusiness = activeOrgType === 'business'
@@ -89,7 +92,7 @@ export default function Topbar() {
 
   const initials = displayName ? displayName[0].toUpperCase() : '?'
   const isDark = resolvedTheme === 'dark'
-  const pageTitle = getPageTitle(pathname, isBusiness)
+  const pageTitle = getPageTitle(pathname, isBusiness, t)
 
   const trialDaysLeft =
     planStatus === 'trial' && trialEndsAt
@@ -100,10 +103,10 @@ export default function Topbar() {
     trialDaysLeft === null
       ? null
       : trialDaysLeft < 1
-        ? 'Último dia'
+        ? t('trial.lastDay')
         : trialDaysLeft === 1
-          ? '1 dia restante'
-          : `${trialDaysLeft} dias restantes`
+          ? t('trial.oneDay')
+          : t('trial.daysLeft').replace('{n}', String(trialDaysLeft))
 
   const showTrialBadge =
     trialBadgeLabel !== null && trialDaysLeft !== null && trialDaysLeft >= 0 && trialDaysLeft <= 7
@@ -116,176 +119,135 @@ export default function Topbar() {
   }
 
   return (
-    <header className="sticky top-0 z-40 bg-surface/80 backdrop-blur-md border-b border-border glass-topbar">
-      <div className="min-h-14 flex items-center justify-between px-4 sm:px-5 gap-3 py-1.5 transition-colors">
-
-        {/* ── Left: marca + secção (sempre visível, estilo app nativo) ── */}
-        <div className="min-w-0 flex-1">
-          <Link
-            href="/dashboard"
-            className="inline-flex flex-col gap-0.5 min-w-0 group"
-            title="Ir para a visão geral"
-          >
-            <span className="text-base font-bold tracking-tight text-main leading-none group-hover:text-brand transition-colors flex items-center gap-1.5">
-              Alfred
-              {isBusiness && (
-                <span className="inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-semibold bg-blue-500/15 text-blue-600 dark:text-blue-400 ring-1 ring-inset ring-blue-500/20">
-                  <Building2 className="h-2.5 w-2.5" />
-                  Business
-                </span>
-              )}
-            </span>
-            {pageTitle ? (
-              <span className="text-[11px] sm:text-xs font-medium text-muted truncate max-w-[65vw] sm:max-w-none">
-                {pageTitle}
+    <>
+      <header className="sticky top-0 z-40 bg-surface/80 backdrop-blur-md border-b border-border glass-topbar">
+        {showTrialBadge && (
+          <div className="px-4 py-1.5 text-center text-xs font-medium bg-amber-500/10 text-amber-700 dark:text-amber-300 border-b border-amber-500/20">
+            {t('trial.banner').replace('{label}', trialBadgeLabel!)}
+          </div>
+        )}
+        <div className="min-h-14 flex items-center justify-between px-4 sm:px-5 gap-2 py-1.5 transition-colors">
+          <div className="min-w-0 flex-1 flex items-center gap-2">
+            <Link
+              href="/dashboard"
+              className="inline-flex flex-col gap-0.5 min-w-0 group shrink"
+              title={t('topbar.goDashboard')}
+            >
+              <span className="text-base font-bold tracking-tight text-main leading-none group-hover:text-brand transition-colors flex items-center gap-1.5">
+                Alfred
+                {isBusiness && (
+                  <span className="inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-semibold bg-blue-500/15 text-blue-600 dark:text-blue-400 ring-1 ring-inset ring-blue-500/20">
+                    <Building2 className="h-2.5 w-2.5" />
+                    {t('topbar.business')}
+                  </span>
+                )}
               </span>
-            ) : (
-              <span className="text-[11px] sm:text-xs font-medium text-muted">Financeiro</span>
-            )}
-          </Link>
-        </div>
-
-        {/* ── Right: actions ── */}
-        <div className="flex items-center gap-1 shrink-0">
-
-          {/* Trial badge */}
-          {showTrialBadge && (
-            <span className="hidden sm:inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400 ring-1 ring-inset ring-amber-500/20 mr-1">
-              {trialBadgeLabel}
-            </span>
-          )}
-
-          {/* Language Switcher */}
-          <div className="max-lg:hidden">
-            <LanguageSwitcher />
+              {pageTitle ? (
+                <span className="text-[11px] sm:text-xs font-medium text-muted truncate max-w-[45vw] sm:max-w-none">
+                  {pageTitle}
+                </span>
+              ) : (
+                <span className="text-[11px] sm:text-xs font-medium text-muted">{t('page.financeiro')}</span>
+              )}
+            </Link>
+            <div className="lg:hidden shrink-0">
+              <OrganizationSwitcher variant="compact" />
+            </div>
           </div>
 
-          {/* Quick add */}
-          <button
-            onClick={() => setQuickAddOpen(true)}
-            title="Novo lançamento rápido"
-            className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-semibold bg-brand text-white hover:bg-brand/90 active:scale-95 transition-all"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Lançar</span>
-          </button>
+          <div className="flex items-center gap-1 shrink-0">
+            {showTrialBadge && (
+              <span className="inline-flex items-center px-1.5 sm:px-2 py-1 rounded-md text-[10px] sm:text-xs font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400 ring-1 ring-inset ring-amber-500/20 mr-0.5">
+                {trialBadgeLabel}
+              </span>
+            )}
 
-          <div className="max-lg:hidden w-px h-5 bg-border mx-1.5" />
+            <div className="max-lg:hidden">
+              <LanguageSwitcher />
+            </div>
 
-          {/* Theme toggle — oculto no mobile (está no BottomNav "Mais") */}
-          {mounted && (
             <button
-              onClick={() => {
-                document.documentElement.classList.add('theme-transition')
-                setTheme(isDark ? 'light' : 'dark')
-                setTimeout(
-                  () => document.documentElement.classList.remove('theme-transition'),
-                  500,
-                )
-              }}
-              title={isDark ? 'Modo claro' : 'Modo escuro'}
-              className="max-lg:hidden inline-flex items-center justify-center h-8 w-8 rounded-lg text-muted hover:text-main hover:bg-background transition-colors"
+              onClick={() => setQuickAddOpen(true)}
+              title={t('topbar.quickAddTitle')}
+              className="inline-flex items-center gap-1.5 h-8 px-2.5 sm:px-3 rounded-lg text-xs font-semibold bg-brand text-white hover:bg-brand/90 active:scale-95 transition-all min-h-[44px] sm:min-h-8"
             >
-              {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              <Plus className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">{t('topbar.quickAdd')}</span>
             </button>
-          )}
 
-          {/* Privacy toggle — oculto no mobile */}
-          <button
-            onClick={togglePrivacyMode}
-            title={isPrivacyMode ? 'Mostrar valores' : 'Ocultar valores'}
-            className={`max-lg:hidden inline-flex items-center justify-center h-8 w-8 rounded-lg transition-colors ${
-              isPrivacyMode
-                ? 'bg-brand/15 text-brand'
-                : 'text-muted hover:text-main hover:bg-background'
-            }`}
-          >
-            {isPrivacyMode ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-          </button>
+            <div className="max-lg:hidden w-px h-5 bg-border mx-1.5" />
 
-          <div className="max-lg:hidden w-px h-5 bg-border mx-1.5" />
+            {mounted && (
+              <button
+                onClick={() => {
+                  document.documentElement.classList.add('theme-transition')
+                  setTheme(isDark ? 'light' : 'dark')
+                  setTimeout(
+                    () => document.documentElement.classList.remove('theme-transition'),
+                    500,
+                  )
+                }}
+                title={isDark ? t('topbar.themeLight') : t('topbar.themeDark')}
+                className="max-lg:hidden inline-flex items-center justify-center h-8 w-8 rounded-lg text-muted hover:text-main hover:bg-background transition-colors"
+              >
+                {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              </button>
+            )}
 
-          {/* Profile avatar — oculto no mobile */}
-          <Link
-            href="/profile"
-            title={`Perfil — ${displayName || pronoun}`}
-            className="max-lg:hidden flex items-center gap-2 group"
-          >
-            <div className="hidden sm:block text-right leading-none">
-              <p className="text-xs font-medium text-main group-hover:text-brand transition-colors">
-                {displayName || pronoun}
-              </p>
-            </div>
-            <div className="h-8 w-8 rounded-full border border-border overflow-hidden bg-background flex items-center justify-center shrink-0 group-hover:border-brand/50 transition-colors">
-              {avatarUrl ? (
-                <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
-              ) : (
-                <span className="text-xs font-bold text-brand">{initials}</span>
-              )}
-            </div>
-          </Link>
+            <button
+              onClick={togglePrivacyMode}
+              title={isPrivacyMode ? t('topbar.showValues') : t('topbar.hideValues')}
+              className={`max-lg:hidden inline-flex items-center justify-center h-8 w-8 rounded-lg transition-colors ${
+                isPrivacyMode
+                  ? 'bg-brand/15 text-brand'
+                  : 'text-muted hover:text-main hover:bg-background'
+              }`}
+            >
+              {isPrivacyMode ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
 
-          {/* Logout — oculto no mobile (está no BottomNav "Mais") */}
-          <button
-            onClick={() => setShowLogoutModal(true)}
-            title="Encerrar sessão"
-            className="max-lg:hidden inline-flex items-center justify-center h-8 w-8 rounded-lg text-muted hover:text-red-500 hover:bg-red-500/10 transition-colors"
-          >
-            <LogOut className="h-3.5 w-3.5" />
-          </button>
+            <div className="max-lg:hidden w-px h-5 bg-border mx-1.5" />
+
+            <Link
+              href="/profile"
+              title={`${t('topbar.profileTitle')} — ${displayName || pronoun}`}
+              className="max-lg:hidden flex items-center gap-2 group"
+            >
+              <div className="hidden sm:block text-right leading-none">
+                <p className="text-xs font-medium text-main group-hover:text-brand transition-colors">
+                  {displayName || pronoun}
+                </p>
+              </div>
+              <div className="h-8 w-8 rounded-full border border-border overflow-hidden bg-background flex items-center justify-center shrink-0 group-hover:border-brand/50 transition-colors">
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  <span className="text-xs font-bold text-brand">{initials}</span>
+                )}
+              </div>
+            </Link>
+
+            <button
+              onClick={() => setShowLogoutModal(true)}
+              title={t('topbar.logoutTitle')}
+              className="max-lg:hidden inline-flex items-center justify-center h-8 w-8 rounded-lg text-muted hover:text-red-500 hover:bg-red-500/10 transition-colors"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+            </button>
+          </div>
         </div>
-      </div>
+      </header>
 
       <QuickAddModal open={quickAddOpen} onClose={() => setQuickAddOpen(false)} />
 
-      {/* ── Logout confirmation modal ── */}
-      {showLogoutModal &&
-        typeof document !== 'undefined' &&
-        createPortal(
-          <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4 animate-backdrop-enter">
-            <div className="w-full max-w-sm rounded-xl border border-border bg-surface shadow-2xl p-6 space-y-4 animate-modal-enter">
-              <div className="flex items-center gap-3">
-                <div className="h-11 w-11 rounded-full bg-brand/15 flex items-center justify-center shrink-0">
-                  <DoorOpen className="h-5 w-5 text-brand" />
-                </div>
-                <div>
-                  <h2 className="text-base font-semibold text-main">Deixando a Mansão?</h2>
-                  <p className="text-xs text-muted mt-0.5">Sua sessão será encerrada.</p>
-                </div>
-              </div>
-
-              <p className="text-sm text-muted leading-relaxed">
-                Deseja realmente sair, {displayName || 'patrão'}? Estarei aqui aguardando o seu
-                retorno para cuidar das finanças.
-              </p>
-
-              <div className="flex justify-end gap-2 pt-1">
-                <button
-                  onClick={() => setShowLogoutModal(false)}
-                  disabled={loggingOut}
-                  className="px-4 py-2 rounded-lg text-sm font-medium border border-border text-muted hover:bg-background disabled:opacity-50 transition-colors"
-                >
-                  Permanecer
-                </button>
-                <button
-                  onClick={handleLogout}
-                  disabled={loggingOut}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 transition-colors"
-                >
-                  {loggingOut ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Saindo…
-                    </>
-                  ) : (
-                    'Sair'
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>,
-          document.body,
-        )}
-    </header>
+      <LogoutModal
+        open={showLogoutModal}
+        onClose={() => setShowLogoutModal(false)}
+        onConfirm={handleLogout}
+        loggingOut={loggingOut}
+        displayName={displayName}
+        variant="desktop"
+      />
+    </>
   )
 }

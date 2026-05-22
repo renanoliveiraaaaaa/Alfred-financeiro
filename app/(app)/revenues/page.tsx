@@ -29,6 +29,7 @@ import {
 } from 'lucide-react'
 import { formatDateBR, formatCurrencyBR } from '@/lib/exportCsv'
 import ExportMenu from '@/components/ExportMenu'
+import Pagination, { PAGE_SIZE } from '@/components/Pagination'
 import { resolveActiveOrganizationIdForClient } from '@/lib/activeOrganizationClient'
 import { useActiveOrganizationRevision } from '@/lib/useActiveOrganizationRevision'
 
@@ -49,6 +50,21 @@ export default function RevenuesPage() {
     ids: string[]
     loading: boolean
   }>({ open: false, ids: [], loading: false })
+  const [page, setPage] = useState(1)
+
+  const totalPages = Math.max(1, Math.ceil(revenues.length / PAGE_SIZE))
+  const paginatedRevenues = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE
+    return revenues.slice(start, start + PAGE_SIZE)
+  }, [revenues, page])
+
+  useEffect(() => {
+    setPage(1)
+  }, [orgRevision])
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages)
+  }, [page, totalPages])
 
   const duplicateClusters = useMemo(
     () => clusterDuplicatesByFingerprint(revenues, (r) => revenueDuplicateFingerprint(r)),
@@ -318,7 +334,7 @@ export default function RevenuesPage() {
             onAction={() => window.location.href = '/revenues/new'}
           />
         ) : (
-          revenues.map((r) => {
+          paginatedRevenues.map((r) => {
             const isToggling = togglingIds.has(r.id)
             const isSelected = selectedIds.has(r.id)
             const isDup = duplicateHintIds.has(r.id)
@@ -441,7 +457,7 @@ export default function RevenuesPage() {
                   </td>
                 </tr>
               ) : (
-                revenues.map((r) => {
+                paginatedRevenues.map((r) => {
                   const isToggling = togglingIds.has(r.id)
                   const isSelected = selectedIds.has(r.id)
                   const isDup = duplicateHintIds.has(r.id)
@@ -526,6 +542,8 @@ export default function RevenuesPage() {
           </table>
         </div>
       </div>
+
+      <Pagination page={page} totalPages={totalPages} onPageChange={setPage} className="px-1" />
 
       <ConfirmDangerModal
         open={dangerModal.open}

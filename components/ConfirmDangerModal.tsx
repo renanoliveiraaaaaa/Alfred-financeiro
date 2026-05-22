@@ -43,18 +43,18 @@ function ConfirmDangerModal({
       <div
         ref={panelRef}
         tabIndex={-1}
-        className="w-full max-w-md sm:rounded-xl rounded-t-xl border-0 sm:border border-gray-200 dark:border-manor-800 bg-white dark:bg-manor-900 shadow-2xl p-6 space-y-4 animate-modal-enter mt-auto sm:mt-0 outline-none"
+        className="w-full max-w-md sm:rounded-xl rounded-t-xl border-0 sm:border border-border bg-surface shadow-2xl p-6 space-y-4 animate-modal-enter mt-auto sm:mt-0 outline-none"
       >
         <div className="flex items-center gap-3">
           <div className="h-11 w-11 rounded-full bg-red-100 dark:bg-red-500/15 flex items-center justify-center shrink-0">
             <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" aria-hidden />
           </div>
-          <h2 id="danger-modal-title" className="text-lg font-semibold text-gray-900 dark:text-white">
+          <h2 id="danger-modal-title" className="text-lg font-semibold text-main">
             {title ?? t('modal.danger.title')}
           </h2>
         </div>
 
-        <p className="text-sm text-gray-600 dark:text-manor-300 leading-relaxed">
+        <p className="text-sm text-muted leading-relaxed">
           {description ?? t('modal.danger.description')}
         </p>
 
@@ -63,7 +63,7 @@ function ConfirmDangerModal({
             type="button"
             onClick={onCancel}
             disabled={loading}
-            className="min-h-[44px] w-full sm:w-auto px-4 py-2.5 rounded-lg text-sm font-medium border border-gray-300 dark:border-manor-700 text-gray-600 dark:text-manor-400 hover:bg-gray-100 dark:hover:bg-manor-800 disabled:opacity-50 transition-colors touch-manipulation"
+            className="min-h-[44px] w-full sm:w-auto px-4 py-2.5 rounded-lg text-sm font-medium border border-border text-muted hover:bg-background disabled:opacity-50 transition-colors touch-manipulation"
           >
             {t('modal.danger.cancel')}
           </button>

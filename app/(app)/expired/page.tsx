@@ -2,10 +2,14 @@
 
 import Link from 'next/link'
 import { createSupabaseClient } from '@/lib/supabaseClient'
-import { Clock, LogOut } from 'lucide-react'
+import { Clock, LogOut, Mail } from 'lucide-react'
+import { useI18n } from '@/lib/i18n'
+
+const CONTACT_EMAIL = 'contato@alfredfinanceiro.com.br'
 
 export default function ExpiredPage() {
   const supabase = createSupabaseClient()
+  const { t } = useI18n()
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
@@ -20,27 +24,30 @@ export default function ExpiredPage() {
         </div>
 
         <div>
-          <h1 className="text-xl font-semibold text-main">
-            O seu período de teste expirou
-          </h1>
-          <p className="mt-3 text-sm text-muted leading-relaxed">
-            Como estamos numa fase Beta fechada, por favor contacte o administrador para estender o seu acesso.
-          </p>
+          <h1 className="text-xl font-semibold text-main">{t('expired.title')}</h1>
+          <p className="mt-3 text-sm text-muted leading-relaxed">{t('expired.body')}</p>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
+        <div className="flex flex-col gap-3 justify-center pt-2">
+          <a
+            href={`mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent('Solicitação de acesso — Alfred Financeiro')}`}
+            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium bg-brand text-white hover:opacity-90 transition-colors min-h-[44px]"
+          >
+            <Mail className="h-4 w-4" />
+            {t('expired.contact')}
+          </a>
           <button
             onClick={handleLogout}
-            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium border border-border text-muted hover:bg-background transition-colors"
+            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium border border-border text-muted hover:bg-background transition-colors min-h-[44px]"
           >
             <LogOut className="h-4 w-4" />
-            Encerrar sessão
+            {t('expired.logout')}
           </button>
           <Link
             href="/"
-            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium bg-brand text-white hover:opacity-90 transition-colors"
+            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium text-brand hover:underline min-h-[44px]"
           >
-            Voltar ao início
+            {t('expired.home')}
           </Link>
         </div>
       </div>

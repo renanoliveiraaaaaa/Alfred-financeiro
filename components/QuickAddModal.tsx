@@ -1,13 +1,15 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { X, Loader2, ArrowDownLeft, ArrowUpRight, Check } from 'lucide-react'
 import { createExpense, type CreateExpenseInput } from '@/lib/actions/expenses'
 import { createRevenue } from '@/lib/actions/revenues'
 import CurrencyInput from '@/components/CurrencyInput'
 import { useToast, CONNECTION_ERROR_MSG, isConnectionError } from '@/lib/toastContext'
+import { ConfirmDangerModal } from '@/components/ConfirmDangerModal'
+import ModalShell from '@/components/ModalShell'
+import { useI18n } from '@/lib/i18n'
 import { useGreetingPronoun } from '@/lib/greeting'
 import { useUserPreferences } from '@/lib/userPreferencesContext'
 
@@ -21,6 +23,7 @@ type Props = {
 export default function QuickAddModal({ open, onClose }: Props) {
   const router = useRouter()
   const { toastError } = useToast()
+  const { t } = useI18n()
   const pronoun = useGreetingPronoun()
   const { activeOrgType } = useUserPreferences()
   const isBusiness = activeOrgType === 'business'
@@ -36,6 +39,9 @@ export default function QuickAddModal({ open, onClose }: Props) {
   const [paymentMethod, setPaymentMethod] = useState('debito')
   const [paid, setPaid] = useState(false)
   const [received, setReceived] = useState(false)
+  const [showDiscard, setShowDiscard] = useState(false)
+
+  const isDirty = amount > 0 || description.trim().length > 0
 
   const reset = useCallback(() => {
     setAmount(0)
@@ -52,6 +58,14 @@ export default function QuickAddModal({ open, onClose }: Props) {
   const handleClose = () => {
     reset()
     onClose()
+  }
+
+  const requestClose = () => {
+    if (isDirty && !success && !saving) {
+      setShowDiscard(true)
+      return
+    }
+    handleClose()
   }
 
   const switchTab = (t: Tab) => {
@@ -120,19 +134,22 @@ export default function QuickAddModal({ open, onClose }: Props) {
   }
 
   const modal = (
-    <div className="fixed inset-0 z-[999] flex flex-col sm:items-start sm:justify-center sm:pt-24 bg-black/50 px-0 sm:px-4 animate-backdrop-enter overflow-y-auto" onClick={handleClose}>
-      <div
-        className="w-full min-h-full sm:min-h-0 sm:max-w-md sm:rounded-xl sm:my-4 border-0 sm:border border-border bg-surface shadow-2xl animate-modal-enter flex flex-col"
-        onClick={(e) => e.stopPropagation()}
+    <>
+      <ModalShell
+        open={open}
+        onClose={requestClose}
+        closeOnBackdrop={!saving && !success}
+        closeOnEscape={!saving}
+        titleId="quick-add-title"
+        backdropClassName="fixed inset-0 z-[999] flex flex-col sm:items-start sm:justify-center sm:pt-24 bg-black/50 px-0 sm:px-4 animate-backdrop-enter overflow-y-auto"
+        panelClassName="w-full min-h-full sm:min-h-0 sm:max-w-md sm:rounded-xl sm:my-4 border-0 sm:border border-border bg-surface shadow-2xl animate-modal-enter flex flex-col outline-none"
       >
-        {/* Header */}
         <div className="flex items-center justify-between px-5 pt-5 pb-3 shrink-0">
-          <h2 className="text-base font-semibold text-main">Novo lançamento</h2>
+          <h2 id="quick-add-title" className="text-base font-semibold text-main">{t('quickAdd.title')}</h2>
           <button
-            onClick={handleClose}
+            onClick={requestClose}
             className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-muted hover:text-main hover:bg-background transition-colors touch-manipulation"
-            aria-label="Fechar"
-            tabIndex={0}
+            aria-label={t('quickAdd.close')}
           >
             <X className="h-5 w-5" aria-hidden />
           </button>
@@ -147,10 +164,9 @@ export default function QuickAddModal({ open, onClose }: Props) {
                 ? 'bg-surface text-main shadow-sm'
                 : 'text-muted hover:text-main'
             }`}
-            aria-label={isBusiness ? 'Custo / Despesa' : 'Despesa'}
-            tabIndex={0}
+            aria-label={isBusiness ? t('quickAdd.expenseBusiness') : t('quickAdd.expense')}
           >
-            <ArrowDownLeft className="h-3.5 w-3.5" aria-hidden /> {isBusiness ? 'Custo / Despesa' : 'Despesa'}
+            <ArrowDownLeft className="h-3.5 w-3.5" aria-hidden /> {isBusiness ? t('quickAdd.expenseBusiness') : t('quickAdd.expense')}
           </button>
           <button
             onClick={() => switchTab('revenue')}
@@ -159,10 +175,9 @@ export default function QuickAddModal({ open, onClose }: Props) {
                 ? 'bg-surface text-main shadow-sm'
                 : 'text-muted hover:text-main'
             }`}
-            aria-label={isBusiness ? 'Faturamento' : 'Receita'}
-            tabIndex={0}
+            aria-label={isBusiness ? t('quickAdd.revenueBusiness') : t('quickAdd.revenue')}
           >
-            <ArrowUpRight className="h-3.5 w-3.5" aria-hidden /> {isBusiness ? 'Faturamento' : 'Receita'}
+            <ArrowUpRight className="h-3.5 w-3.5" aria-hidden /> {isBusiness ? t('quickAdd.revenueBusiness') : t('quickAdd.revenue')}
           </button>
         </div>
 
@@ -176,13 +191,13 @@ export default function QuickAddModal({ open, onClose }: Props) {
 
           {success && (
             <div className="rounded-lg border border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 px-3 py-2.5 text-xs text-emerald-700 dark:text-emerald-300 flex items-center gap-2">
-              <Check className="h-3.5 w-3.5" /> Lançamento registrado, {pronoun}.
+              <Check className="h-3.5 w-3.5" /> {t('quickAdd.success').replace('{pronoun}', pronoun)}
             </div>
           )}
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className={cls.label}>Valor (R$)</label>
+              <label className={cls.label}>{t('quickAdd.amount')}</label>
               <div className="relative">
                 <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted text-sm">R$</span>
                 <CurrencyInput
@@ -196,18 +211,24 @@ export default function QuickAddModal({ open, onClose }: Props) {
               </div>
             </div>
             <div>
-              <label className={cls.label}>Data</label>
+              <label className={cls.label}>{t('quickAdd.date')}</label>
               <input type="date" className={cls.input} value={date} onChange={(e) => setDate(e.target.value)} required />
             </div>
           </div>
 
           <div>
-            <label className={cls.label}>Descrição</label>
+            <label className={cls.label}>{t('quickAdd.description')}</label>
             <input
               className={cls.input}
-              placeholder={tab === 'expense'
-                ? (isBusiness ? 'Ex.: Fornecedor, Aluguel escritório, AWS...' : 'Ex.: Almoço, Uber, Conta de luz...')
-                : (isBusiness ? 'Ex.: NF #1234, Venda produto, Serviço prestado...' : 'Ex.: Salário, Freelance, Rendimento...')}
+              placeholder={
+                tab === 'expense'
+                  ? isBusiness
+                    ? t('quickAdd.placeholderExpenseBusiness')
+                    : t('quickAdd.placeholderExpense')
+                  : isBusiness
+                    ? t('quickAdd.placeholderRevenueBusiness')
+                    : t('quickAdd.placeholderRevenue')
+              }
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               required
@@ -217,7 +238,7 @@ export default function QuickAddModal({ open, onClose }: Props) {
           {tab === 'expense' && (
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className={cls.label}>Categoria</label>
+                <label className={cls.label}>{t('quickAdd.category')}</label>
                 <select className={cls.input} value={category} onChange={(e) => setCategory(e.target.value)}>
                   <option value="mercado">Mercado</option>
                   <option value="alimentacao">Alimentação</option>
@@ -235,7 +256,7 @@ export default function QuickAddModal({ open, onClose }: Props) {
                 </select>
               </div>
               <div>
-                <label className={cls.label}>Pagamento</label>
+                <label className={cls.label}>{t('quickAdd.payment')}</label>
                 <select className={cls.input} value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
                   <option value="pix">Pix</option>
                   <option value="debito">Débito</option>
@@ -261,7 +282,7 @@ export default function QuickAddModal({ open, onClose }: Props) {
               />
             </span>
             <span className="text-xs text-muted">
-              {tab === 'expense' ? (paid ? 'Quitado' : 'Em aberto') : (received ? 'Recebido' : 'Pendente')}
+              {tab === 'expense' ? (paid ? t('quickAdd.paid') : t('quickAdd.unpaid')) : (received ? t('quickAdd.received') : t('quickAdd.pending'))}
             </span>
           </label>
 
@@ -269,27 +290,37 @@ export default function QuickAddModal({ open, onClose }: Props) {
           <div className="flex gap-3 pt-1">
             <button
               type="button"
-              onClick={handleClose}
+              onClick={requestClose}
               className="flex-1 min-h-[44px] inline-flex items-center justify-center px-4 py-2.5 rounded-lg text-sm font-medium border border-border text-muted hover:bg-background transition-colors touch-manipulation"
-              aria-label="Cancelar"
-              tabIndex={0}
+              aria-label={t('quickAdd.cancel')}
             >
-              Cancelar
+              {t('quickAdd.cancel')}
             </button>
             <button
               type="submit"
               disabled={saving || success}
               className="flex-1 min-h-[44px] inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium bg-brand text-white hover:opacity-90 disabled:opacity-50 transition-colors touch-manipulation"
-              aria-label="Registrar"
-              tabIndex={0}
+              aria-label={t('quickAdd.submit')}
             >
-              {saving ? <><Loader2 className="h-4 w-4 animate-spin" aria-hidden /> Registrando...</> : success ? <><Check className="h-4 w-4" aria-hidden /> Registrado</> : 'Registrar'}
+              {saving ? <><Loader2 className="h-4 w-4 animate-spin" aria-hidden /> {t('quickAdd.saving')}</> : success ? <><Check className="h-4 w-4" aria-hidden /> {t('quickAdd.saved')}</> : t('quickAdd.submit')}
             </button>
           </div>
         </form>
-      </div>
-    </div>
+      </ModalShell>
+
+      <ConfirmDangerModal
+        open={showDiscard}
+        title={t('quickAdd.discardTitle')}
+        description={t('quickAdd.discardBody')}
+        confirmLabel={t('quickAdd.discardConfirm')}
+        onConfirm={() => {
+          setShowDiscard(false)
+          handleClose()
+        }}
+        onCancel={() => setShowDiscard(false)}
+      />
+    </>
   )
 
-  return typeof document !== 'undefined' ? createPortal(modal, document.body) : null
+  return modal
 }

@@ -72,16 +72,25 @@ function ToastElement({
   )
 }
 
+function resolveToastMessage(message: string, t: (key: string) => string): string {
+  const translated = t(message)
+  return translated !== message ? translated : message
+}
+
 export function ToastProvider({ children }: { children: ReactNode }) {
+  const { t } = useI18n()
   const [state, setState] = useState<ToastState>(null)
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => setMounted(true), [])
 
-  const toast = useCallback((message: string, type: ToastType = 'error') => {
-    setState({ message, type })
-    setTimeout(() => setState(null), TOAST_DURATION)
-  }, [])
+  const toast = useCallback(
+    (message: string, type: ToastType = 'error') => {
+      setState({ message: resolveToastMessage(message, t), type })
+      setTimeout(() => setState(null), TOAST_DURATION)
+    },
+    [t],
+  )
 
   const toastError = useCallback((message: string) => toast(message, 'error'), [toast])
 

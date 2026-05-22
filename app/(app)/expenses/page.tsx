@@ -25,6 +25,7 @@ import {
 } from 'lucide-react'
 import { formatDateBR, formatCurrencyBR } from '@/lib/exportCsv'
 import ExportMenu from '@/components/ExportMenu'
+import Pagination, { PAGE_SIZE } from '@/components/Pagination'
 import {
   allIdsInDuplicateClusters,
   allSuggestedDeleteIds,
@@ -78,6 +79,7 @@ export default function ExpensesPage() {
 
   const [searchQuery, setSearchQuery] = useState('')
   const [filterCategory, setFilterCategory] = useState('all')
+  const [page, setPage] = useState(1)
   const [filterStatus, setFilterStatus] = useState<'all' | 'paid' | 'open'>('all')
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -193,6 +195,20 @@ export default function ExpensesPage() {
 
     return result
   }, [expenses, searchQuery, filterCategory, filterStatus])
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  const paginatedFiltered = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE
+    return filtered.slice(start, start + PAGE_SIZE)
+  }, [filtered, page])
+
+  useEffect(() => {
+    setPage(1)
+  }, [searchQuery, filterCategory, filterStatus, orgRevision])
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages)
+  }, [page, totalPages])
 
   const uniqueCategories = useMemo(() => {
     const cats = new Set(expenses.map((e) => e.category))
@@ -502,7 +518,7 @@ export default function ExpensesPage() {
             </div>
           )
         ) : (
-          filtered.map((e) => {
+          paginatedFiltered.map((e) => {
             const isToggling = togglingIds.has(e.id)
             const isSelected = selectedIds.has(e.id)
             const isDup = duplicateHintIds.has(e.id)
@@ -658,7 +674,7 @@ export default function ExpensesPage() {
                   </td>
                 </tr>
               ) : (
-                filtered.map((e) => {
+                paginatedFiltered.map((e) => {
                   const isToggling = togglingIds.has(e.id)
                   const isSelected = selectedIds.has(e.id)
                   const isDup = duplicateHintIds.has(e.id)
@@ -781,6 +797,8 @@ export default function ExpensesPage() {
           </table>
         </div>
       </div>
+
+      <Pagination page={page} totalPages={totalPages} onPageChange={setPage} className="px-1" />
 
       {/* Danger modal for batch delete */}
       <ConfirmDangerModal

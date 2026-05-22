@@ -18,5 +18,6 @@
   "nav.importStatement": "Importar extrato",
   "nav.importHistory": "Histórico",
   "nav.planning": "Planejamento",
-  "nav.statements": "Extratos"
+  "nav.statements": "Extratos",
+  "nav.adminPanel": "Painel Admin"
 }

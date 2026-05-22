@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabaseServer'
 import { parseStatement, detectFormat, detectBankFromOfxContent, SupportedBank } from '@/lib/parsers'
+import { rateLimit } from '@/lib/rateLimit'
 
 /**
  * POST /api/parse-statement
@@ -20,6 +21,17 @@ export async function POST(request: NextRequest) {
     } = await supabaseAuth.auth.getUser()
     if (authError || !user) {
       return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 })
+    }
+
+    const rl = rateLimit(`parse-statement:${user.id}`, 30, 60_000)
+    if (!rl.ok) {
+      return NextResponse.json(
+        { error: 'Muitas requisições. Aguarde um momento e tente novamente.' },
+        {
+          status: 429,
+          headers: rl.retryAfterSec ? { 'Retry-After': String(rl.retryAfterSec) } : {},
+        },
+      )
     }
 
     const formData = await request.formData()

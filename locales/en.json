@@ -18,5 +18,6 @@
   "nav.importStatement": "Import statement",
   "nav.importHistory": "History",
   "nav.planning": "Planning",
-  "nav.statements": "Statements"
+  "nav.statements": "Statements",
+  "nav.adminPanel": "Admin Panel"
 }

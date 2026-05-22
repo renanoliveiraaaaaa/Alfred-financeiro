@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from 'react'
 import { ChevronDown, Download, FileSpreadsheet } from 'lucide-react'
 import { downloadCsv, downloadExcel, type ExportSheet } from '@/lib/exportCsv'
 import { useI18n } from '@/lib/i18n'
+import { createSupabaseClient } from '@/lib/supabaseClient'
+import { logActivity } from '@/lib/activityLog'
 
 type Props = {
   filename: string
@@ -14,10 +16,21 @@ type Props = {
 
 export default function ExportMenu({ filename, sheets, disabled = false, className = '' }: Props) {
   const { t } = useI18n()
+  const supabase = createSupabaseClient()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
   const hasData = sheets.some((s) => s.rows.length > 0)
+
+  const trackExport = async (format: 'csv' | 'xlsx') => {
+    const { data } = await supabase.auth.getUser()
+    if (data.user) {
+      await logActivity(supabase, data.user.id, {
+        action: 'export_data',
+        metadata: { filename, format, sheets: sheets.length },
+      })
+    }
+  }
 
   useEffect(() => {
     if (!open) return
@@ -32,11 +45,13 @@ export default function ExportMenu({ filename, sheets, disabled = false, classNa
     const primary = sheets.find((s) => s.rows.length > 0)
     if (!primary) return
     downloadCsv(primary.rows, `${filename}.csv`)
+    void trackExport('csv')
     setOpen(false)
   }
 
   const handleExcel = () => {
     downloadExcel(sheets, filename)
+    void trackExport('xlsx')
     setOpen(false)
   }
 

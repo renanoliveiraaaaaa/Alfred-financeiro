@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Database, Json } from '@/types/supabase'
+import type { Database } from '@/types/supabase'
+import { logActivityAction } from '@/lib/actions/activityLog'
 
 export type ActivityAction =
   | 'login'
@@ -21,23 +22,19 @@ type LogParams = {
   organizationId?: string | null
 }
 
-type ActivityInsert = Database['public']['Tables']['activity_logs']['Insert']
-
 export async function logActivity(
-  supabase: SupabaseClient,
-  userId: string,
+  _supabase: SupabaseClient,
+  _userId: string,
   params: LogParams,
 ): Promise<void> {
   try {
-    const row: ActivityInsert = {
-      user_id: userId,
-      organization_id: params.organizationId ?? null,
+    await logActivityAction({
       action: params.action,
-      entity_type: params.entityType ?? null,
-      entity_id: params.entityId ?? null,
-      metadata: (params.metadata ?? {}) as Json,
-    }
-    await supabase.from('activity_logs').insert(row as never)
+      entityType: params.entityType ?? null,
+      entityId: params.entityId ?? null,
+      metadata: params.metadata,
+      organizationId: params.organizationId,
+    })
   } catch {
     /* best effort */
   }

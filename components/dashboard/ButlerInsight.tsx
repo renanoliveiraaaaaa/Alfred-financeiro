@@ -1,11 +1,16 @@
-import { Sparkles, FileDown } from 'lucide-react'
+'use client'
+
+import { Sparkles, BarChart3 } from 'lucide-react'
+import Link from 'next/link'
 import type { ButlerInsightData } from '@/lib/butlerInsightServer'
+import { useI18n } from '@/lib/i18n'
 
 type Props = {
   data: ButlerInsightData
 }
 
 export default function ButlerInsight({ data }: Props) {
+  const { t } = useI18n()
   const accent =
     data.trend === 'up'
       ? 'from-slate-900 via-slate-800 to-amber-950/90'
@@ -28,10 +33,10 @@ export default function ButlerInsight({ data }: Props) {
             </span>
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/50">
-                {data.context === 'business' ? 'Análise empresarial' : 'Economia doméstica'}
+                {data.context === 'business' ? t('butler.business') : t('butler.personal')}
               </p>
               <h2 className="text-lg font-semibold tracking-tight text-white sm:text-xl">
-                Conselho do Alfred
+                {t('butler.title')}
               </h2>
             </div>
           </div>
@@ -39,15 +44,13 @@ export default function ButlerInsight({ data }: Props) {
         </div>
 
         <div className="flex shrink-0 flex-col gap-2 sm:items-end">
-          <button
-            type="button"
-            className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-xs font-medium text-white/90 backdrop-blur-sm transition-colors hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-50"
-            disabled
-            title="Disponível em breve"
+          <Link
+            href="/reports"
+            className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-xs font-medium text-white/90 backdrop-blur-sm transition-colors hover:bg-white/15 min-h-[44px]"
           >
-            <FileDown className="h-3.5 w-3.5 opacity-90" aria-hidden />
-            Gerar relatório completo (PDF)
-          </button>
+            <BarChart3 className="h-3.5 w-3.5 opacity-90" aria-hidden />
+            {t('butler.viewReports')}
+          </Link>
         </div>
       </div>
     </section>

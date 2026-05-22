@@ -1,10 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { createPortal } from 'react-dom'
+import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, ArrowRight, Check, TrendingUp, Receipt, Target, LayoutDashboard, X } from 'lucide-react'
 import { createSupabaseClient } from '@/lib/supabaseClient'
+import { useI18n } from '@/lib/i18n'
+import ModalShell from '@/components/ModalShell'
 import {
   fetchOnboardingProgress,
   markWelcomeSeen,
@@ -19,36 +20,21 @@ type Props = {
   onComplete?: () => void
 }
 
-const TUTORIAL_SLIDES = [
-  {
-    title: 'Bem-vindo ao Alfred Financeiro',
-    body: 'Seu assistente para organizar entradas, saídas, metas e patrimônio em um só lugar — com clareza e discrição.',
-    icon: '🎩',
-  },
-  {
-    title: 'Categorias prontas para você',
-    body: 'Alimentação, Transporte, Moradia, Saúde, Lazer, Educação, Assinaturas e Outros já foram preparadas. Personalize em Cadastros quando quiser.',
-    icon: '📂',
-  },
-  {
-    title: 'Lançamento rápido',
-    body: 'Use o botão Novo na barra superior para registrar receitas ou despesas em segundos, direto do celular.',
-    icon: '⚡',
-  },
-  {
-    title: 'Seu roteiro inicial',
-    body: 'Siga os passos abaixo para deixar o painel completo. Você pode retomá-los a qualquer momento no Início.',
-    icon: '✓',
-  },
+const SLIDE_KEYS = [
+  { titleKey: 'onboarding.welcome.title', bodyKey: 'onboarding.welcome.body', icon: '🎩' },
+  { titleKey: 'onboarding.categories.title', bodyKey: 'onboarding.categories.body', icon: '📂' },
+  { titleKey: 'onboarding.quickadd.title', bodyKey: 'onboarding.quickadd.body', icon: '⚡' },
+  { titleKey: 'onboarding.checklist.title', bodyKey: 'onboarding.checklist.body', icon: '✓' },
 ] as const
 
 export default function WelcomeModal({ open, onClose, pronoun, onComplete }: Props) {
+  const { t } = useI18n()
   const [slide, setSlide] = useState(0)
   const [steps, setSteps] = useState<OnboardingStep[]>([])
   const [loadingSteps, setLoadingSteps] = useState(true)
 
-  const isLastSlide = slide === TUTORIAL_SLIDES.length - 1
-  const totalSlides = TUTORIAL_SLIDES.length
+  const isLastSlide = slide === SLIDE_KEYS.length - 1
+  const totalSlides = SLIDE_KEYS.length
 
   useEffect(() => {
     if (!open) {
@@ -60,12 +46,12 @@ export default function WelcomeModal({ open, onClose, pronoun, onComplete }: Pro
     const load = async () => {
       setLoadingSteps(true)
       const supabase = createSupabaseClient()
-      const data = await fetchOnboardingProgress(supabase)
+      const data = await fetchOnboardingProgress(supabase, t)
       setSteps(data)
       setLoadingSteps(false)
     }
     load()
-  }, [open])
+  }, [open, t])
 
   const handleClose = () => {
     onComplete?.()
@@ -75,19 +61,19 @@ export default function WelcomeModal({ open, onClose, pronoun, onComplete }: Pro
   if (!open) return null
 
   const completedCount = steps.filter((s) => s.done).length
-  const current = TUTORIAL_SLIDES[slide]
+  const current = SLIDE_KEYS[slide]
 
   const modal = (
-    <div
-      className="fixed inset-0 z-[999] flex flex-col sm:items-center sm:justify-center bg-black/60 backdrop-blur-sm px-0 sm:px-4 py-4 sm:py-0 overflow-y-auto animate-backdrop-enter"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="welcome-modal-title"
+    <ModalShell
+      open={open}
+      onClose={handleClose}
+      titleId="welcome-modal-title"
+      backdropClassName="fixed inset-0 z-[999] flex flex-col sm:items-center sm:justify-center bg-black/60 backdrop-blur-sm px-0 sm:px-4 py-4 sm:py-0 overflow-y-auto animate-backdrop-enter"
+      panelClassName="w-full max-w-md sm:rounded-xl rounded-t-xl border-0 sm:border border-border bg-surface shadow-2xl overflow-hidden animate-modal-enter mt-auto sm:mt-0 max-h-[90vh] sm:max-h-none flex flex-col glass-card outline-none"
     >
-      <div className="w-full max-w-md sm:rounded-xl rounded-t-xl border-0 sm:border border-border bg-surface shadow-2xl overflow-hidden animate-modal-enter mt-auto sm:mt-0 max-h-[90vh] sm:max-h-none flex flex-col glass-card">
         {/* Indicador de slides */}
         <div className="flex gap-1.5 px-6 pt-4">
-          {TUTORIAL_SLIDES.map((_, i) => (
+          {SLIDE_KEYS.map((_, i) => (
             <button
               key={i}
               type="button"
@@ -95,7 +81,7 @@ export default function WelcomeModal({ open, onClose, pronoun, onComplete }: Pro
               className={`h-1 flex-1 rounded-full transition-colors ${
                 i === slide ? 'bg-brand' : i < slide ? 'bg-brand/40' : 'bg-border'
               }`}
-              aria-label={`Etapa ${i + 1} de ${totalSlides}`}
+              aria-label={t('onboarding.slideStep').replace('{n}', String(i + 1)).replace('{total}', String(totalSlides))}
             />
           ))}
         </div>
@@ -109,11 +95,16 @@ export default function WelcomeModal({ open, onClose, pronoun, onComplete }: Pro
               <div>
                 <h2 id="welcome-modal-title" className="text-lg font-semibold text-main">
                   {slide === 0
-                    ? `Bem-vindo à Mansão${pronoun ? `, ${pronoun}` : ''}`
-                    : current.title}
+                    ? t('onboarding.welcomeGreeting').replace(
+                        '{suffix}',
+                        pronoun ? `, ${pronoun}` : '',
+                      )
+                    : t(current.titleKey)}
                 </h2>
                 <p className="text-xs text-muted mt-0.5">
-                  Passo {slide + 1} de {totalSlides}
+                  {t('onboarding.stepOf')
+                    .replace('{current}', String(slide + 1))
+                    .replace('{total}', String(totalSlides))}
                 </p>
               </div>
             </div>
@@ -121,19 +112,19 @@ export default function WelcomeModal({ open, onClose, pronoun, onComplete }: Pro
               type="button"
               onClick={handleClose}
               className="p-2 rounded-lg text-muted hover:text-main hover:bg-background transition-colors"
-              aria-label="Fechar"
+              aria-label={t('onboarding.close')}
             >
               <X className="h-5 w-5" />
             </button>
           </div>
 
-          <p className="text-sm text-muted leading-relaxed">{current.body}</p>
+          <p className="text-sm text-muted leading-relaxed">{t(current.bodyKey)}</p>
 
           {/* Checklist no último slide */}
           {isLastSlide && (
             <div className="mt-2 space-y-3">
               <div className="flex items-center justify-between text-xs text-muted">
-                <span>Checklist de primeiros passos</span>
+                <span>{t('onboarding.checklist.label')}</span>
                 {!loadingSteps && (
                   <span>{completedCount}/{steps.length}</span>
                 )}
@@ -169,7 +160,7 @@ export default function WelcomeModal({ open, onClose, pronoun, onComplete }: Pro
                           onClick={handleClose}
                           className="text-xs font-medium text-brand hover:underline"
                         >
-                          Ir
+                          {t('onboarding.checklistGo')}
                         </Link>
                       )}
                     </li>
@@ -182,14 +173,14 @@ export default function WelcomeModal({ open, onClose, pronoun, onComplete }: Pro
                   onClick={handleClose}
                   className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium bg-emerald-600 text-white hover:opacity-90"
                 >
-                  <TrendingUp className="h-3.5 w-3.5" /> Nova entrada
+                  <TrendingUp className="h-3.5 w-3.5" /> {t('onboarding.newRevenue')}
                 </Link>
                 <Link
                   href="/expenses/new"
                   onClick={handleClose}
                   className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium border border-border text-main hover:bg-background"
                 >
-                  <Receipt className="h-3.5 w-3.5" /> Nova saída
+                  <Receipt className="h-3.5 w-3.5" /> {t('onboarding.newExpense')}
                 </Link>
               </div>
             </div>
@@ -203,12 +194,12 @@ export default function WelcomeModal({ open, onClose, pronoun, onComplete }: Pro
                   {c}
                 </span>
               ))}
-              <span className="rounded-full border border-border px-2.5 py-1 bg-background">+4</span>
+              <span className="rounded-full border border-border px-2.5 py-1 bg-background">{t('onboarding.categoriesPreview')}</span>
             </div>
           )}
           {slide === 2 && (
             <div className="rounded-lg border border-dashed border-brand/40 bg-brand/5 px-4 py-3 text-xs text-muted">
-              Dica: no celular, o campo de valor abre o teclado numérico automaticamente.
+              {t('onboarding.mobileTip')}
             </div>
           )}
         </div>
@@ -221,10 +212,10 @@ export default function WelcomeModal({ open, onClose, pronoun, onComplete }: Pro
           >
             {slide > 0 ? (
               <>
-                <ArrowLeft className="h-4 w-4" /> Anterior
+                <ArrowLeft className="h-4 w-4" /> {t('onboarding.prev')}
               </>
             ) : (
-              'Pular'
+              t('onboarding.skip')
             )}
           </button>
           {!isLastSlide ? (
@@ -233,7 +224,7 @@ export default function WelcomeModal({ open, onClose, pronoun, onComplete }: Pro
               onClick={() => setSlide(slide + 1)}
               className="inline-flex items-center gap-1.5 min-h-[44px] px-4 rounded-lg text-sm font-medium bg-brand text-white hover:opacity-90 transition-opacity touch-manipulation"
             >
-              Próximo <ArrowRight className="h-4 w-4" />
+              {t('onboarding.next')} <ArrowRight className="h-4 w-4" />
             </button>
           ) : (
             <button
@@ -243,21 +234,20 @@ export default function WelcomeModal({ open, onClose, pronoun, onComplete }: Pro
             >
               {onboardingComplete(steps) ? (
                 <>
-                  <LayoutDashboard className="h-4 w-4" /> Começar
+                  <LayoutDashboard className="h-4 w-4" /> {t('onboarding.start')}
                 </>
               ) : (
                 <>
-                  <Target className="h-4 w-4" /> Entendido
+                  <Target className="h-4 w-4" /> {t('onboarding.done')}
                 </>
               )}
             </button>
           )}
         </div>
-      </div>
-    </div>
+    </ModalShell>
   )
 
-  return typeof document !== 'undefined' ? createPortal(modal, document.body) : null
+  return modal
 }
 
 export { shouldShowWelcomeModal } from '@/lib/onboarding'

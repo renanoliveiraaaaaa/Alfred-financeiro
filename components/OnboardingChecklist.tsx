@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Check, ChevronDown, ChevronUp, ListChecks, X } from 'lucide-react'
 import { createSupabaseClient } from '@/lib/supabaseClient'
+import { useI18n } from '@/lib/i18n'
 import {
   dismissChecklist,
   fetchOnboardingProgress,
@@ -18,6 +19,7 @@ type Props = {
 }
 
 export default function OnboardingChecklist({ refreshKey = 0 }: Props) {
+  const { t } = useI18n()
   const supabase = createSupabaseClient()
   const [steps, setSteps] = useState<OnboardingStep[]>([])
   const [loading, setLoading] = useState(true)
@@ -27,14 +29,14 @@ export default function OnboardingChecklist({ refreshKey = 0 }: Props) {
   const load = useCallback(async () => {
     setLoading(true)
     setDismissed(isChecklistDismissed())
-    const data = await fetchOnboardingProgress(supabase)
+    const data = await fetchOnboardingProgress(supabase, t)
     setSteps(data)
     if (onboardingComplete(data)) {
       dismissChecklist()
       setDismissed(true)
     }
     setLoading(false)
-  }, [supabase])
+  }, [supabase, t])
 
   useEffect(() => {
     load()
@@ -54,7 +56,7 @@ export default function OnboardingChecklist({ refreshKey = 0 }: Props) {
             <ListChecks className="h-4 w-4 text-brand" />
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-main">Primeiros passos</p>
+            <p className="text-sm font-semibold text-main">{t('onboarding.firstSteps')}</p>
             <p className="text-xs text-muted truncate">
               {completed} de {total} concluídos · {pct}%
             </p>
@@ -66,7 +68,7 @@ export default function OnboardingChecklist({ refreshKey = 0 }: Props) {
             onClick={() => setCollapsed((c) => !c)}
             className="p-2 rounded-lg text-muted hover:text-main hover:bg-background transition-colors"
             aria-expanded={!collapsed}
-            aria-label={collapsed ? 'Expandir checklist' : 'Recolher checklist'}
+            aria-label={collapsed ? t('onboarding.firstSteps') : t('onboarding.hide')}
           >
             {collapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
           </button>
@@ -77,7 +79,7 @@ export default function OnboardingChecklist({ refreshKey = 0 }: Props) {
               setDismissed(true)
             }}
             className="p-2 rounded-lg text-muted hover:text-main hover:bg-background transition-colors"
-            aria-label="Ocultar checklist"
+            aria-label={t('onboarding.hide')}
           >
             <X className="h-4 w-4" />
           </button>

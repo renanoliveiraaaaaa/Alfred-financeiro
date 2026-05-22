@@ -19,6 +19,8 @@ import ptErrors from "@/locales/errors-pt.json";
 import enErrors from "@/locales/errors-en.json";
 import ptSecurity from "@/locales/security-pt.json";
 import enSecurity from "@/locales/security-en.json";
+import ptApp from "@/locales/app-pt.json";
+import enApp from "@/locales/app-en.json";
 
 export const LOCALE_STORAGE_KEY = "alfred_locale";
 
@@ -32,6 +34,7 @@ const MESSAGES: Record<Locale, Record<string, string>> = {
     ...ptOnboarding,
     ...ptErrors,
     ...ptSecurity,
+    ...ptApp,
   },
   en: {
     ...enBase,
@@ -42,6 +45,7 @@ const MESSAGES: Record<Locale, Record<string, string>> = {
     ...enOnboarding,
     ...enErrors,
     ...enSecurity,
+    ...enApp,
   },
 };
 

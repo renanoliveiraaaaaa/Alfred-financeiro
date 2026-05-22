@@ -16,38 +16,62 @@ export type OnboardingStep = {
   done: boolean
 }
 
-export const ONBOARDING_STEPS_META: Omit<OnboardingStep, 'done'>[] = [
+const ONBOARDING_STEP_DEFS: {
+  key: OnboardingStepKey
+  labelKey: string
+  descKey: string
+  href: string
+}[] = [
   {
     key: 'profile',
-    label: 'Complete seu perfil',
-    description: 'Nome e preferências de tratamento em Perfil.',
+    labelKey: 'onboarding.step.profile.label',
+    descKey: 'onboarding.step.profile.desc',
     href: '/profile',
   },
   {
     key: 'revenue',
-    label: 'Registre sua primeira entrada',
-    description: 'Salário, honorários ou qualquer receita recorrente.',
+    labelKey: 'onboarding.step.revenue.label',
+    descKey: 'onboarding.step.revenue.desc',
     href: '/revenues/new',
   },
   {
     key: 'expense',
-    label: 'Registre sua primeira saída',
-    description: 'Mercado, assinaturas ou contas do mês.',
+    labelKey: 'onboarding.step.expense.label',
+    descKey: 'onboarding.step.expense.desc',
     href: '/expenses/new',
   },
   {
     key: 'projection',
-    label: 'Defina metas do mês',
-    description: 'Orçamento de entradas e saídas em Planejamento.',
+    labelKey: 'onboarding.step.projection.label',
+    descKey: 'onboarding.step.projection.desc',
     href: '/projections',
   },
   {
     key: 'dashboard',
-    label: 'Explore o painel',
-    description: 'Acompanhe saldo, alertas e movimentações.',
+    labelKey: 'onboarding.step.dashboard.label',
+    descKey: 'onboarding.step.dashboard.desc',
     href: '/dashboard',
   },
 ]
+
+/** @deprecated Use getOnboardingStepsMeta(t) for localized labels */
+export const ONBOARDING_STEPS_META: Omit<OnboardingStep, 'done'>[] = ONBOARDING_STEP_DEFS.map(
+  (s) => ({
+    key: s.key,
+    label: s.labelKey,
+    description: s.descKey,
+    href: s.href,
+  }),
+)
+
+export function getOnboardingStepsMeta(t: (key: string) => string): Omit<OnboardingStep, 'done'>[] {
+  return ONBOARDING_STEP_DEFS.map((s) => ({
+    key: s.key,
+    label: t(s.labelKey),
+    description: t(s.descKey),
+    href: s.href,
+  }))
+}
 
 export const WELCOME_SEEN_KEY = 'alfred_welcome_seen'
 export const CHECKLIST_DISMISSED_KEY = 'alfred_onboarding_checklist_dismissed'
@@ -96,11 +120,18 @@ export function resetChecklistDismissed(): void {
 
 export async function fetchOnboardingProgress(
   supabase: ReturnType<typeof createSupabaseClient>,
+  t?: (key: string) => string,
 ): Promise<OnboardingStep[]> {
+  const meta = t ? getOnboardingStepsMeta(t) : ONBOARDING_STEPS_META.map((s) => ({
+    ...s,
+    label: s.label,
+    description: s.description,
+  }))
+
   const { data: userData } = await supabase.auth.getUser()
   const userId = userData?.user?.id
   if (!userId) {
-    return ONBOARDING_STEPS_META.map((s) => ({ ...s, done: false }))
+    return meta.map((s) => ({ ...s, done: false }))
   }
 
   let profileDone = false
@@ -138,7 +169,7 @@ export async function fetchOnboardingProgress(
 
   const dashboardDone = profileDone && revenueDone && expenseDone
 
-  return ONBOARDING_STEPS_META.map((step) => {
+  return meta.map((step) => {
     let done = false
     if (step.key === 'profile') done = profileDone
     if (step.key === 'revenue') done = revenueDone
