@@ -56,6 +56,32 @@ export const DASHBOARD_SECTION_META: Record<
   },
 }
 
+const SECTION_I18N_KEYS: Record<DashboardSectionId, { labelKey: string; descKey: string }> = {
+  attention: { labelKey: 'dashboard.section.attention.label', descKey: 'dashboard.section.attention.desc' },
+  alerts_income: { labelKey: 'dashboard.section.alerts_income.label', descKey: 'dashboard.section.alerts_income.desc' },
+  alerts_subs: { labelKey: 'dashboard.section.alerts_subs.label', descKey: 'dashboard.section.alerts_subs.desc' },
+  summary: { labelKey: 'dashboard.section.summary.label', descKey: 'dashboard.section.summary.desc' },
+  buying_power: { labelKey: 'dashboard.section.buying_power.label', descKey: 'dashboard.section.buying_power.desc' },
+  subscription_radar: { labelKey: 'dashboard.section.subscription_radar.label', descKey: 'dashboard.section.subscription_radar.desc' },
+  budgets: { labelKey: 'dashboard.section.budgets.label', descKey: 'dashboard.section.budgets.desc' },
+  movements: { labelKey: 'dashboard.section.movements.label', descKey: 'dashboard.section.movements.desc' },
+  unpaid: { labelKey: 'dashboard.section.unpaid.label', descKey: 'dashboard.section.unpaid.desc' },
+}
+
+export function getDashboardSectionMeta(
+  t: (key: string) => string,
+): Record<DashboardSectionId, { label: string; description: string }> {
+  return Object.fromEntries(
+    (Object.keys(SECTION_I18N_KEYS) as DashboardSectionId[]).map((id) => [
+      id,
+      {
+        label: t(SECTION_I18N_KEYS[id].labelKey),
+        description: t(SECTION_I18N_KEYS[id].descKey),
+      },
+    ]),
+  ) as Record<DashboardSectionId, { label: string; description: string }>
+}
+
 export const DEFAULT_DASHBOARD_LAYOUT: DashboardSectionConfig[] = [
   { id: 'attention', visible: true },
   { id: 'alerts_income', visible: true },

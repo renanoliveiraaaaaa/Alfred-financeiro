@@ -26,25 +26,21 @@ Use este arquivo como base para criar issues no GitHub depois (`gh issue create`
 | 16 | Rate limit parse-statement | 30 req/min |
 | 17 | prefers-reduced-motion | `globals.css` |
 | 18 | BottomNav labels business | Tabs principais |
+| 19 | **i18n dashboard** | `DashboardPageClient` + ~50 keys em `app-*.json` |
+| 20 | **useCachedQuery dashboard** | `lib/dashboardData.ts`, TTL 60s por org+mês |
+| 21 | **ModalShell modais** | Customize, ImportReview, CardStatementImport |
 
 ---
 
 ## 🔴 Alta prioridade (criar issues)
 
-### Issue: i18n dashboard e CRUD completo
+### Issue: i18n CRUD completo
 - **Labels:** `i18n`, `enhancement`
-- **Escopo:** `DashboardPageClient`, páginas new/edit, `AttentionPanel`, `EmptyState` defaults, categorias
+- **Escopo:** páginas new/edit, `AttentionPanel`, `BudgetsPanel`, `EmptyState` defaults, categorias
 - **Critério:** zero strings PT hardcoded com locale EN ativo
 
-### Issue: Adotar useCachedQuery no dashboard
-- **Labels:** `performance`
-- **Escopo:** cache por `orgId+month` em `DashboardPageClient`
-- **Critério:** trocar mês sem flash de loading se TTL válido
-
-### Issue: Padronizar todos os modais com ModalShell
-- **Labels:** `a11y`, `refactor`
-- **Escopo:** `ImportReviewModal`, `DashboardCustomizeModal`, `WelcomeModal`, org create
-- **Critério:** focus trap + Escape + tokens em 100% dos modais
+### Issue: i18n widgets dashboard secundários
+- **Escopo:** `BuyingPowerCard`, `SubscriptionWasteRadar`, `AttentionPanel`, `BudgetsPanel`
 
 ---
 

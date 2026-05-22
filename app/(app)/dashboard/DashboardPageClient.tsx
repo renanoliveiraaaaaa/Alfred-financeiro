@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useMemo, useRef, useCallback, type ReactNode } from 'react'
+import { useEffect, useState, useMemo, useCallback, type ReactNode } from 'react'
 import Link from 'next/link'
 import { resolveActiveOrganizationIdForClient } from '@/lib/activeOrganizationClient'
 import { useActiveOrganizationRevision } from '@/lib/useActiveOrganizationRevision'
@@ -39,20 +39,24 @@ import {
   type DashboardSectionId,
   type DashboardSectionConfig,
 } from '@/lib/dashboardLayout'
+import { useI18n } from '@/lib/i18n'
+import { useCachedQuery } from '@/lib/useCachedQuery'
+import {
+  applyDashboardPayload,
+  fetchDashboardData,
+  type DashboardMovement,
+} from '@/lib/dashboardData'
 
-type Revenue = Database['public']['Tables']['revenues']['Row']
 type Expense = Database['public']['Tables']['expenses']['Row']
 type Subscription = Database['public']['Tables']['subscriptions']['Row']
 type IncomeSource = Database['public']['Tables']['income_sources']['Row']
 type Goal = Database['public']['Tables']['goals']['Row']
 
-type Movement = {
-  id: string
-  type: 'revenue' | 'expense'
-  description: string
-  amount: number
-  date: string
-  status: string
+const STATUS_I18N: Record<DashboardMovement['statusKey'], string> = {
+  received: 'dashboard.status.received',
+  pending: 'dashboard.status.pending',
+  paid: 'dashboard.status.paid',
+  open: 'dashboard.status.open',
 }
 
 function diffDays(dateStr: string): number {
@@ -62,16 +66,16 @@ function diffDays(dateStr: string): number {
   return Math.round((target.getTime() - today.getTime()) / 86_400_000)
 }
 
-function dueBadge(dateStr: string | null) {
+function dueBadge(dateStr: string | null, t: (key: string) => string) {
   if (!dateStr) return { label: '—', cls: 'bg-border text-muted' }
   const diff = diffDays(dateStr)
   if (diff < 0)
-    return { label: 'Em atraso', cls: 'bg-red-100 dark:bg-red-500/15 text-red-700 dark:text-red-400 ring-1 ring-inset ring-red-200 dark:ring-red-500/30' }
+    return { label: t('dashboard.due.overdue'), cls: 'bg-red-100 dark:bg-red-500/15 text-red-700 dark:text-red-400 ring-1 ring-inset ring-red-200 dark:ring-red-500/30' }
   if (diff === 0)
-    return { label: 'Vence hoje', cls: 'bg-brand/15 text-brand ring-1 ring-inset ring-brand/30' }
+    return { label: t('dashboard.due.today'), cls: 'bg-brand/15 text-brand ring-1 ring-inset ring-brand/30' }
   if (diff <= 3)
     return {
-      label: `Vence em ${diff} dia${diff > 1 ? 's' : ''}`,
+      label: t('dashboard.due.inDays').replace('{n}', String(diff)),
       cls: 'bg-brand/10 text-brand ring-1 ring-inset ring-brand/20',
     }
   return { label: formatDate(dateStr), cls: 'bg-border text-muted ring-1 ring-inset ring-border' }
@@ -81,10 +85,12 @@ export default function DashboardPageClient({ children }: { children?: ReactNode
   const supabase = createSupabaseClient()
   const orgRevision = useActiveOrganizationRevision()
   const { toastError } = useToast()
+  const { t } = useI18n()
   const { gender } = useUserPreferences()
   const pronoun = useGreetingPronoun()
 
-  const [loading, setLoading] = useState(true)
+  const [initReady, setInitReady] = useState(false)
+  const [initialLoading, setInitialLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [userEmail, setUserEmail] = useState('')
   const [profileName, setProfileName] = useState('')
@@ -93,7 +99,7 @@ export default function DashboardPageClient({ children }: { children?: ReactNode
   const [totalExpenses, setTotalExpenses] = useState(0)
   const [projectedExpenses, setProjectedExpenses] = useState(0)
 
-  const [movements, setMovements] = useState<Movement[]>([])
+  const [movements, setMovements] = useState<DashboardMovement[]>([])
   const [unpaid, setUnpaid] = useState<Expense[]>([])
   const [dueSubs, setDueSubs] = useState<Subscription[]>([])
   const [processingSubId, setProcessingSubId] = useState<string | null>(null)
@@ -109,8 +115,19 @@ export default function DashboardPageClient({ children }: { children?: ReactNode
   const [allActiveSubscriptions, setAllActiveSubscriptions] = useState<Subscription[]>([])
 
   const [viewMonth, setViewMonth] = useState(getCurrentCalendarMonth)
-  const [monthBusy, setMonthBusy] = useState(false)
-  const isInitialLoad = useRef(true)
+
+  const cacheKey =
+    initReady && userId
+      ? `dashboard:${userId}:${orgRevision}:${viewMonth.year}-${viewMonth.month}`
+      : null
+
+  const {
+    data: dashData,
+    loading: dashLoading,
+    error: dashError,
+  } = useCachedQuery(cacheKey, () => fetchDashboardData(supabase, viewMonth), { ttl: 60_000 })
+
+  const monthBusy = initReady && !initialLoading && dashLoading
 
   const monthLabel = useMemo(
     () => getMonthYearLabel(viewMonth.year, viewMonth.month),
@@ -161,24 +178,16 @@ export default function DashboardPageClient({ children }: { children?: ReactNode
   )
 
   useEffect(() => {
-    const load = async () => {
-      if (isInitialLoad.current) {
-        setLoading(true)
-      } else {
-        setMonthBusy(true)
-      }
-      setError(null)
+    const init = async () => {
       try {
         const { data: userData } = await supabase.auth.getUser()
         setUserEmail(userData.user?.email ?? '')
         if (userData.user?.id) {
           setUserId(userData.user.id)
-          if (isInitialLoad.current) {
-            setDashboardLayout(loadDashboardLayout(userData.user.id))
-          }
+          setDashboardLayout(loadDashboardLayout(userData.user.id))
         }
 
-        if (userData.user && isInitialLoad.current) {
+        if (userData.user) {
           const { data: prof } = await supabase
             .from('profiles')
             .select('full_name')
@@ -191,149 +200,45 @@ export default function DashboardPageClient({ children }: { children?: ReactNode
             setShowWelcomeModal(true)
           }
         }
-
-        if (!userData.user) {
-          setTotalRevenues(0)
-          setTotalExpenses(0)
-          setMovements([])
-          setUnpaid([])
-          setDueSubs([])
-          setDueIncomeSources([])
-          setGoals([])
-          setExpensesThreeMonthWindow([])
-          setAllActiveSubscriptions([])
-          return
-        }
-
-        const activeOrgId = await resolveActiveOrganizationIdForClient(supabase, userData.user.id)
-        if (!activeOrgId) {
-          throw new Error('Não foi possível determinar a organização ativa. Tente recarregar a página.')
-        }
-
-        const { start: monthStart, end: monthEnd } = getCalendarMonthRange(viewMonth.year, viewMonth.month)
-        const today = new Date().toISOString().slice(0, 10)
-        const win3 = threeMonthWindowEnd(viewMonth.year, viewMonth.month)
-
-        const [
-          revRes,
-          expRes,
-          projRes,
-          unpaidRes,
-          subsAllRes,
-          incomeRes,
-          goalsRes,
-          expWinRes,
-        ] = await Promise.all([
-          supabase
-            .from('revenues')
-            .select('*')
-            .eq('organization_id', activeOrgId)
-            .gte('date', monthStart)
-            .lte('date', monthEnd)
-            .order('date', { ascending: false }),
-          supabase
-            .from('expenses')
-            .select('*')
-            .eq('organization_id', activeOrgId)
-            .gte('due_date', monthStart)
-            .lte('due_date', monthEnd)
-            .order('due_date', { ascending: false }),
-          supabase
-            .from('projections')
-            .select('projected_expenses')
-            .eq('organization_id', activeOrgId)
-            .eq('month', monthStart)
-            .maybeSingle(),
-          supabase
-            .from('expenses')
-            .select('*')
-            .eq('organization_id', activeOrgId)
-            .eq('paid', false)
-            .order('due_date', { ascending: true })
-            .limit(10),
-          supabase
-            .from('subscriptions')
-            .select('*')
-            .eq('user_id', userData.user.id)
-            .eq('organization_id', activeOrgId)
-            .eq('active', true)
-            .order('next_billing_date', { ascending: true }),
-          supabase
-            .from('income_sources')
-            .select('*')
-            .eq('organization_id', activeOrgId)
-            .eq('active', true)
-            .lte('next_receipt_date', today)
-            .order('next_receipt_date', { ascending: true }),
-          supabase.from('goals').select('*').eq('user_id', userData.user.id).eq('organization_id', activeOrgId),
-          supabase
-            .from('expenses')
-            .select('*')
-            .eq('organization_id', activeOrgId)
-            .gte('due_date', win3.start)
-            .lte('due_date', win3.end),
-        ])
-
-        if (revRes.error) throw revRes.error
-        if (expRes.error) throw expRes.error
-        if (projRes.error) throw projRes.error
-        if (subsAllRes.error) throw subsAllRes.error
-
-        const revenues = (revRes.data ?? []) as Revenue[]
-        const expenses = (expRes.data ?? []) as Expense[]
-
-        const tRev = revenues.reduce((s, r) => s + Number(r.amount || 0), 0)
-        const tExp = expenses.reduce((s, e) => s + Number(e.amount || 0), 0)
-        setTotalRevenues(tRev)
-        setTotalExpenses(tExp)
-        setProjectedExpenses(Number(projRes.data?.projected_expenses || 0))
-        setUnpaid((unpaidRes.data ?? []) as Expense[])
-
-        const subsAll = (subsAllRes.data ?? []) as Subscription[]
-        setAllActiveSubscriptions(subsAll)
-        setDueSubs(
-          subsAll
-            .filter((s) => s.next_billing_date <= today)
-            .sort((a, b) => a.next_billing_date.localeCompare(b.next_billing_date)),
-        )
-
-        setDueIncomeSources((incomeRes.data ?? []) as IncomeSource[])
-        setGoals(goalsRes.error ? [] : ((goalsRes.data ?? []) as Goal[]))
-        setExpensesThreeMonthWindow(
-          expWinRes.error ? [] : ((expWinRes.data ?? []) as Expense[]),
-        )
-
-        const revMoves: Movement[] = revenues.map((r) => ({
-          id: r.id,
-          type: 'revenue',
-          description: r.description,
-          amount: Number(r.amount || 0),
-          date: r.date,
-          status: r.received ? 'Recebida' : 'Pendente',
-        }))
-        const expMoves: Movement[] = expenses.map((e) => ({
-          id: e.id,
-          type: 'expense',
-          description: e.description,
-          amount: Number(e.amount || 0),
-          date: e.due_date || e.created_at?.slice(0, 10) || '',
-          status: e.paid ? 'Quitada' : 'Em aberto',
-        }))
-        setMovements([...revMoves, ...expMoves].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 40))
-      } catch (err: any) {
-        console.error(err)
-        setError(err?.message || 'Falha ao carregar dados do patrimônio.')
       } finally {
-        if (isInitialLoad.current) {
-          setLoading(false)
-          isInitialLoad.current = false
-        } else {
-          setMonthBusy(false)
-        }
+        setInitReady(true)
       }
     }
-    load()
-  }, [supabase, viewMonth.year, viewMonth.month, orgRevision])
+    init()
+  }, [supabase])
+
+  useEffect(() => {
+    if (!dashData) return
+    applyDashboardPayload(dashData, {
+      setTotalRevenues,
+      setTotalExpenses,
+      setProjectedExpenses,
+      setMovements,
+      setUnpaid,
+      setDueSubs,
+      setDueIncomeSources,
+      setGoals,
+      setExpensesThreeMonthWindow,
+      setAllActiveSubscriptions,
+    })
+    setInitialLoading(false)
+  }, [dashData])
+
+  useEffect(() => {
+    if (!dashError) {
+      setError(null)
+      return
+    }
+    const msg =
+      dashError === 'dashboard.error.noOrg'
+        ? t('dashboard.error.noOrg')
+        : t(dashError) !== dashError
+          ? t(dashError)
+          : t('dashboard.error.load')
+    setError(msg)
+  }, [dashError, t])
+
+  const loading = initialLoading
 
   const firstName = useMemo(() => {
     if (profileName) return profileName.split(' ')[0]
@@ -350,7 +255,7 @@ export default function DashboardPageClient({ children }: { children?: ReactNode
 
       const organizationId = await resolveActiveOrganizationIdForClient(supabase, userData.user.id)
       if (!organizationId) {
-        toastError('Não foi possível determinar a organização ativa.')
+        toastError(t('dashboard.error.noOrg'))
         return
       }
 
@@ -381,7 +286,7 @@ export default function DashboardPageClient({ children }: { children?: ReactNode
       setTotalExpenses((prev) => prev + Number(sub.amount))
     } catch (err: unknown) {
       console.error(err)
-      toastError(isConnectionError(err) ? CONNECTION_ERROR_MSG : (err instanceof Error ? err.message : 'Erro ao registrar.'))
+      toastError(isConnectionError(err) ? CONNECTION_ERROR_MSG : (err instanceof Error ? err.message : t('dashboard.error.register')))
     } finally {
       setProcessingSubId(null)
     }
@@ -395,7 +300,7 @@ export default function DashboardPageClient({ children }: { children?: ReactNode
 
       const organizationId = await resolveActiveOrganizationIdForClient(supabase, userData.user.id)
       if (!organizationId) {
-        toastError('Não foi possível determinar a organização ativa.')
+        toastError(t('dashboard.error.noOrg'))
         return
       }
 
@@ -429,7 +334,7 @@ export default function DashboardPageClient({ children }: { children?: ReactNode
       setTotalRevenues((prev) => prev + Number(source.amount))
     } catch (err: unknown) {
       console.error(err)
-      toastError(isConnectionError(err) ? CONNECTION_ERROR_MSG : (err instanceof Error ? err.message : 'Erro ao confirmar.'))
+      toastError(isConnectionError(err) ? CONNECTION_ERROR_MSG : (err instanceof Error ? err.message : t('dashboard.error.confirm')))
     } finally {
       setProcessingIncomeId(null)
     }
@@ -472,14 +377,17 @@ export default function DashboardPageClient({ children }: { children?: ReactNode
             <div key={id} className={`${c.card} p-4 space-y-3 border-emerald-200 dark:border-emerald-500/20 bg-emerald-50/50 dark:bg-emerald-500/5`}>
               <div className="flex items-center gap-2">
                 <span className="text-lg">💰</span>
-                <p className="text-sm font-semibold text-main">Boas notícias{getGreetingSuffix(gender)}</p>
+                <p className="text-sm font-semibold text-main">{t('dashboard.alerts.goodNews')}{getGreetingSuffix(gender)}</p>
               </div>
               <ul className={c.divider}>
                 {dueIncomeSources.map((src) => (
                   <li key={src.id} className="py-2.5 flex items-center gap-3">
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-main">
-                        O seu pagamento de <strong>{src.name}</strong> (<MaskedValue value={Number(src.amount)} className="font-semibold" />) está agendado para hoje. Deseja confirmar a entrada no cofre?
+                        {t('dashboard.alerts.incomeLead')}{' '}
+                        <strong>{src.name}</strong>{' '}
+                        (<MaskedValue value={Number(src.amount)} className="font-semibold" />){' '}
+                        {t('dashboard.alerts.incomeTrail')}
                       </p>
                     </div>
                     <button
@@ -488,7 +396,7 @@ export default function DashboardPageClient({ children }: { children?: ReactNode
                       className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-600 dark:bg-emerald-500 text-white hover:bg-emerald-700 dark:hover:bg-emerald-600 disabled:opacity-50 transition-colors"
                     >
                       {processingIncomeId === src.id ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
-                      Confirmar
+                      {t('dashboard.alerts.confirm')}
                     </button>
                   </li>
                 ))}
@@ -501,14 +409,17 @@ export default function DashboardPageClient({ children }: { children?: ReactNode
             <div key={id} className={`${c.card} p-4 space-y-3`}>
               <div className="flex items-center gap-2">
                 <RefreshCw className="h-4 w-4 text-brand" />
-                <p className="text-sm font-semibold text-main">Renovações pendentes</p>
+                <p className="text-sm font-semibold text-main">{t('dashboard.alerts.subsTitle')}</p>
               </div>
               <ul className={c.divider}>
                 {dueSubs.map((sub) => (
                   <li key={sub.id} className="py-2.5 flex items-center gap-3">
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-main">
-                        Senhor, a sua assinatura de <strong>{sub.name}</strong> (<MaskedValue value={Number(sub.amount)} className="font-semibold" />) foi renovada.
+                        {t('dashboard.alerts.subLead')}{' '}
+                        <strong>{sub.name}</strong>{' '}
+                        (<MaskedValue value={Number(sub.amount)} className="font-semibold" />){' '}
+                        {t('dashboard.alerts.subTrail')}
                       </p>
                     </div>
                     <button
@@ -517,7 +428,7 @@ export default function DashboardPageClient({ children }: { children?: ReactNode
                       className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-brand text-white hover:opacity-90 disabled:opacity-50 transition-colors"
                     >
                       {processingSubId === sub.id ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
-                      Registrar saída
+                      {t('dashboard.alerts.registerExpense')}
                     </button>
                   </li>
                 ))}
@@ -531,19 +442,19 @@ export default function DashboardPageClient({ children }: { children?: ReactNode
               className={`grid gap-4 sm:grid-cols-2 lg:grid-cols-4 relative transition-opacity ${monthOpacity}`}
             >
               <div className={`${c.card} p-4 glass-interactive`}>
-                <p className={c.label}>Saldo do mês</p>
+                <p className={c.label}>{t('dashboard.summary.balance')}</p>
                 <MaskedValue value={balance} className={`mt-1.5 text-2xl font-semibold ${balance >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`} />
               </div>
               <div className={`${c.card} p-4 glass-interactive`}>
-                <p className={c.label}>Entradas</p>
+                <p className={c.label}>{t('dashboard.summary.revenues')}</p>
                 <MaskedValue value={totalRevenues} className="mt-1.5 text-2xl font-semibold text-emerald-600 dark:text-emerald-400" />
               </div>
               <div className={`${c.card} p-4 glass-interactive`}>
-                <p className={c.label}>Saídas</p>
+                <p className={c.label}>{t('dashboard.summary.expenses')}</p>
                 <MaskedValue value={totalExpenses} className="mt-1.5 text-2xl font-semibold text-red-600 dark:text-red-400" />
               </div>
               <div className={`${c.card} p-4 glass-interactive`}>
-                <p className={c.label}>Orçamento</p>
+                <p className={c.label}>{t('dashboard.summary.budget')}</p>
                 {projectedExpenses > 0 ? (
                   <>
                     <p className={`mt-1.5 text-2xl font-semibold ${
@@ -562,7 +473,7 @@ export default function DashboardPageClient({ children }: { children?: ReactNode
                   </>
                 ) : (
                   <p className="mt-1.5 text-sm text-muted">
-                    <Link href="/projections" className="text-brand hover:opacity-80 transition-colors">Definir metas</Link>
+                    <Link href="/projections" className="text-brand hover:opacity-80 transition-colors">{t('dashboard.summary.setGoals')}</Link>
                   </p>
                 )}
               </div>
@@ -586,17 +497,18 @@ export default function DashboardPageClient({ children }: { children?: ReactNode
           return (
             <div key={id} className={`${c.card} ${monthOpacity}`}>
               <div className={`${c.borderB} px-5 py-4 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between`}>
-                <h2 className={c.h2}>Movimentações — {monthLabel}</h2>
+                <h2 className={c.h2}>{t('dashboard.movements.title').replace('{month}', monthLabel)}</h2>
                 <div className="flex gap-3">
-                  <Link href="/revenues" className="text-xs text-brand hover:opacity-80 transition-colors">Entradas</Link>
-                  <Link href="/expenses" className="text-xs text-brand hover:opacity-80 transition-colors">Saídas</Link>
+                  <Link href="/revenues" className="text-xs text-brand hover:opacity-80 transition-colors">{t('dashboard.movements.revenuesLink')}</Link>
+                  <Link href="/expenses" className="text-xs text-brand hover:opacity-80 transition-colors">{t('dashboard.movements.expensesLink')}</Link>
                 </div>
               </div>
               <div className="px-5 py-2">
                 {movements.length === 0 ? (
                   <p className="py-8 text-center text-sm text-muted">
-                    Nenhuma entrada ou saída com data em {monthLabel}
-                    {getGreetingSuffix(gender)}. Use as setas acima para ver outros meses.
+                    {t('dashboard.movements.empty')
+                      .replace('{month}', monthLabel)
+                      .replace('{suffix}', getGreetingSuffix(gender))}
                   </p>
                 ) : (
                   <ul className={`${c.divider} max-h-[min(28rem,55vh)] overflow-y-auto overscroll-contain`}>
@@ -611,7 +523,7 @@ export default function DashboardPageClient({ children }: { children?: ReactNode
                         </span>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-main truncate">{m.description}</p>
-                          <p className="text-xs text-muted">{formatDate(m.date)} · {m.status}</p>
+                          <p className="text-xs text-muted">{formatDate(m.date)} · {t(STATUS_I18N[m.statusKey])}</p>
                         </div>
                         <MaskedValue
                           value={m.amount}
@@ -630,7 +542,7 @@ export default function DashboardPageClient({ children }: { children?: ReactNode
           return (
             <div key={id} className={`${c.card} ${monthOpacity}`}>
               <div className={`${c.borderB} px-5 py-4 flex items-center justify-between`}>
-                <h2 className={c.h2}>Compromissos pendentes</h2>
+                <h2 className={c.h2}>{t('dashboard.unpaid.title')}</h2>
                 {unpaid.length > 0 && (
                   <span className="inline-flex items-center rounded-full bg-red-100 dark:bg-red-500/15 px-2 py-0.5 text-xs font-medium text-red-700 dark:text-red-400">
                     {unpaid.length}
@@ -640,12 +552,12 @@ export default function DashboardPageClient({ children }: { children?: ReactNode
               <div className="px-5 py-2">
                 {unpaid.length === 0 ? (
                   <p className="py-8 text-center text-sm text-muted">
-                    Todas as obrigações estão em dia{getGreetingSuffix(gender)}. Excelente gestão.
+                    {t('dashboard.unpaid.empty').replace('{suffix}', getGreetingSuffix(gender))}
                   </p>
                 ) : (
                   <ul className={c.divider}>
                     {unpaid.map((e) => {
-                      const badge = dueBadge(e.due_date)
+                      const badge = dueBadge(e.due_date, t)
                       return (
                         <li key={e.id} className="py-3 space-y-1.5">
                           <div className="flex items-start justify-between gap-2">
@@ -686,6 +598,7 @@ export default function DashboardPageClient({ children }: { children?: ReactNode
       processingIncomeId,
       processingSubId,
       c,
+      t,
     ],
   )
 
@@ -804,7 +717,7 @@ export default function DashboardPageClient({ children }: { children?: ReactNode
           <h1 className={c.h1}>
             {getGreetingWithName(getGreeting(), firstName || '', gender)}!
           </h1>
-          <p className={`${c.sub} mt-0.5`}>Visão geral do patrimônio — período selecionado abaixo</p>
+          <p className={`${c.sub} mt-0.5`}>{t('dashboard.subtitle')}</p>
         </div>
         <button
           type="button"
@@ -812,7 +725,7 @@ export default function DashboardPageClient({ children }: { children?: ReactNode
           className="inline-flex items-center gap-2 self-start rounded-lg border border-border px-3 py-2 text-sm font-medium text-muted hover:text-main hover:bg-surface transition-colors"
         >
           <LayoutDashboard className="h-4 w-4" />
-          Personalizar painel
+          {t('dashboard.customize')}
         </button>
       </div>
 
@@ -824,7 +737,7 @@ export default function DashboardPageClient({ children }: { children?: ReactNode
             onClick={goPrevMonth}
             disabled={!canGoPrev || monthBusy}
             className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-border bg-background text-main hover:bg-border/40 disabled:opacity-40 disabled:pointer-events-none transition-colors touch-manipulation"
-            aria-label="Mês anterior"
+            aria-label={t('dashboard.prevMonth')}
           >
             <ChevronLeft className="h-5 w-5" />
           </button>
@@ -834,7 +747,7 @@ export default function DashboardPageClient({ children }: { children?: ReactNode
               {monthLabel}
             </span>
             <span className="text-xs text-muted hidden sm:inline sm:mt-0.5">
-              Entradas e saídas com data neste mês
+              {t('dashboard.monthHint')}
             </span>
           </div>
           <button
@@ -842,7 +755,7 @@ export default function DashboardPageClient({ children }: { children?: ReactNode
             onClick={goNextMonth}
             disabled={!canGoNext || monthBusy}
             className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-border bg-background text-main hover:bg-border/40 disabled:opacity-40 disabled:pointer-events-none transition-colors touch-manipulation"
-            aria-label="Próximo mês"
+            aria-label={t('dashboard.nextMonth')}
           >
             <ChevronRight className="h-5 w-5" />
           </button>
@@ -855,13 +768,13 @@ export default function DashboardPageClient({ children }: { children?: ReactNode
               disabled={monthBusy}
               className="inline-flex items-center justify-center rounded-lg border border-brand/40 bg-brand/10 px-3 py-2 text-xs font-medium text-brand hover:bg-brand/20 disabled:opacity-50 transition-colors touch-manipulation min-h-[44px]"
             >
-              Ir para mês atual
+              {t('dashboard.goCurrentMonth')}
             </button>
           )}
           {monthBusy && (
             <span className="inline-flex items-center gap-1.5 text-xs text-muted">
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              Atualizando…
+              {t('dashboard.updating')}
             </span>
           )}
         </div>

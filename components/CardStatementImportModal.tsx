@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useRef, useCallback } from 'react'
-import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
+import ModalShell from '@/components/ModalShell'
+import { useI18n } from '@/lib/i18n'
 import {
   X, Upload, Loader2, CheckCircle2, AlertCircle, FileText,
   CreditCard, ChevronDown, ChevronUp, Check, Minus,
@@ -55,6 +56,7 @@ function fmtCurrency(n: number) {
 
 export default function CardStatementImportModal({ open, onClose, existingCards, onSuccess }: Props) {
   const { toast, toastError } = useToast()
+  const { t } = useI18n()
   const router = useRouter()
 
   const [step, setStep] = useState<Step>('upload')
@@ -214,13 +216,16 @@ export default function CardStatementImportModal({ open, onClose, existingCards,
 
   if (!open) return null
 
-  const content = (
-    <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
-      style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}
-      onClick={(e) => { if (e.target === e.currentTarget) handleClose() }}
+  return (
+    <ModalShell
+      open={open}
+      onClose={handleClose}
+      closeOnBackdrop={step !== 'confirming' && step !== 'parsing'}
+      closeOnEscape={step !== 'confirming' && step !== 'parsing'}
+      titleId="card-import-title"
+      backdropClassName="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-backdrop-enter"
+      panelClassName="relative w-full max-w-2xl max-h-[90vh] bg-surface border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-modal-enter outline-none"
     >
-      <div className="relative w-full max-w-2xl max-h-[90vh] bg-surface border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-modal-enter">
 
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
@@ -229,7 +234,7 @@ export default function CardStatementImportModal({ open, onClose, existingCards,
               <FileText className="h-4.5 w-4.5 text-brand" />
             </div>
             <div>
-              <h2 className="text-sm font-semibold text-main">Importar fatura em PDF</h2>
+              <h2 id="card-import-title" className="text-sm font-semibold text-main">Importar fatura em PDF</h2>
               <p className="text-xs text-muted">
                 {step === 'upload' && 'Selecione o PDF da fatura do cartão'}
                 {step === 'parsing' && parsePhase === 'extract' && 'A extrair texto do PDF no seu dispositivo…'}
@@ -519,7 +524,7 @@ export default function CardStatementImportModal({ open, onClose, existingCards,
                 <CheckCircle2 className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-main">Fatura importada!</h3>
+                <h3 className="text-lg font-bold text-main">{t('import.card.doneTitle')}</h3>
                 <p className="text-sm text-muted mt-1">
                   {doneStats.imported} transações importadas
                   {doneStats.projected > 0 && ` · ${doneStats.projected} parcelas futuras projetadas`}
@@ -531,13 +536,13 @@ export default function CardStatementImportModal({ open, onClose, existingCards,
                   className="rounded-lg bg-brand px-5 py-2.5 text-sm font-medium text-white hover:opacity-90 transition-opacity"
                 >
                   <CreditCard className="inline h-4 w-4 mr-1.5 -mt-0.5" />
-                  Ver cartão
+                  {t('import.card.viewCard')}
                 </button>
                 <button
                   onClick={handleClose}
                   className="rounded-lg border border-border px-5 py-2.5 text-sm font-medium text-muted hover:bg-hover transition-colors"
                 >
-                  Fechar
+                  {t('common.close')}
                 </button>
               </div>
             </div>
@@ -570,7 +575,7 @@ export default function CardStatementImportModal({ open, onClose, existingCards,
                   className="inline-flex items-center gap-2 rounded-lg bg-brand px-5 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-40 transition-opacity"
                 >
                   <Loader2 className={`h-4 w-4 ${step === 'parsing' ? 'animate-spin' : 'hidden'}`} />
-                  Analisar PDF
+                  {t('import.card.analyzePdf')}
                 </button>
               )}
               {(step === 'review' || step === 'confirming') && (
@@ -586,10 +591,6 @@ export default function CardStatementImportModal({ open, onClose, existingCards,
             </div>
           </div>
         )}
-      </div>
-    </div>
+    </ModalShell>
   )
-
-  if (typeof window === 'undefined') return null
-  return createPortal(content, document.body)
 }

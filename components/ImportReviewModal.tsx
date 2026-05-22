@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useMemo, useCallback, useLayoutEffect } from 'react'
-import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
+import ModalShell from '@/components/ModalShell'
+import { useI18n } from '@/lib/i18n'
 import {
   X,
   Loader2,
@@ -129,6 +130,7 @@ type SavedStats = {
 export default function ImportReviewModal({ open, onClose, transactions, bank, fileName }: Props) {
   const router = useRouter()
   const { toast, toastError } = useToast()
+  const { t } = useI18n()
   const pronoun = useGreetingPronoun()
 
   /** useState só roda na 1ª montagem; o modal costuma montar com transactions=[] antes do parse — precisamos sincronizar quando abrir com dados */
@@ -254,11 +256,7 @@ export default function ImportReviewModal({ open, onClose, transactions, bank, f
   }
 
   const handleNavigateTo = (path: '/expenses' | '/revenues') => {
-    const label = path === '/expenses' ? 'despesas' : 'receitas'
-    toast(
-      `Importação concluída! ${savedStats?.total ?? 0} transações adicionadas — acesse ${label} para conferir.`,
-      'success',
-    )
+    toast(t('import.postSuccess').replace('{count}', String(savedStats?.total ?? 0)), 'success')
     onClose()
     router.push(path)
     router.refresh()
@@ -271,15 +269,16 @@ export default function ImportReviewModal({ open, onClose, transactions, bank, f
     select: 'block w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-sm text-main focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand transition-colors',
   }
 
-  const modal = (
-    <div
-      className="fixed inset-0 z-[999] flex flex-col bg-black/60 animate-backdrop-enter overflow-hidden"
-      onClick={saved ? undefined : onClose}
+  return (
+    <ModalShell
+      open={open}
+      onClose={onClose}
+      closeOnBackdrop={!saved && !saving}
+      closeOnEscape={!saved && !saving}
+      titleId="import-review-title"
+      backdropClassName="fixed inset-0 z-[999] flex flex-col bg-black/60 animate-backdrop-enter overflow-hidden"
+      panelClassName="flex flex-col w-full h-full max-w-6xl mx-auto bg-surface border-x border-border shadow-2xl outline-none"
     >
-      <div
-        className="flex flex-col w-full h-full max-w-6xl mx-auto bg-surface border-x border-border shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
         {/* ── Success screen ── */}
         {saved && savedStats ? (
           <div className="flex flex-col items-center justify-center flex-1 px-6 py-12 text-center gap-6">
@@ -293,11 +292,11 @@ export default function ImportReviewModal({ open, onClose, transactions, bank, f
 
             <div className="space-y-1.5">
               <h2 className="text-2xl font-semibold text-main">
-                Importação concluída!
+                {t('import.review.successTitle')}
               </h2>
               <p className="text-sm text-muted">
-                {pronoun ? `Pronto, ${pronoun}. ` : ''}
-                {savedStats.total} transações foram salvas com sucesso.
+                {pronoun ? t('import.review.successPronoun').replace('{pronoun}', pronoun) : ''}
+                {t('import.review.successBody').replace('{count}', String(savedStats.total))}
               </p>
             </div>
 
@@ -308,7 +307,7 @@ export default function ImportReviewModal({ open, onClose, transactions, bank, f
                   <Receipt className="h-5 w-5 text-red-400" />
                   <span className="text-xl font-bold text-main">{savedStats.expenses}</span>
                   <span className="text-xs text-muted">
-                    {savedStats.expenses === 1 ? 'despesa' : 'despesas'}
+                    {savedStats.expenses === 1 ? t('import.review.expenseOne') : t('import.review.expenseMany')}
                   </span>
                 </div>
               )}
@@ -317,7 +316,7 @@ export default function ImportReviewModal({ open, onClose, transactions, bank, f
                   <TrendingUp className="h-5 w-5 text-emerald-400" />
                   <span className="text-xl font-bold text-main">{savedStats.revenues}</span>
                   <span className="text-xs text-muted">
-                    {savedStats.revenues === 1 ? 'entrada' : 'entradas'}
+                    {savedStats.revenues === 1 ? t('import.review.revenueOne') : t('import.review.revenueMany')}
                   </span>
                 </div>
               )}
@@ -331,7 +330,7 @@ export default function ImportReviewModal({ open, onClose, transactions, bank, f
                   className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium bg-brand text-white hover:opacity-90 transition-colors"
                 >
                   <Receipt className="h-4 w-4" />
-                  Ver despesas
+                  {t('import.viewExpenses')}
                 </button>
               )}
               {savedStats.revenues > 0 && (
@@ -340,7 +339,7 @@ export default function ImportReviewModal({ open, onClose, transactions, bank, f
                   className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium border border-border text-main hover:bg-background transition-colors"
                 >
                   <TrendingUp className="h-4 w-4" />
-                  Ver entradas
+                  {t('import.viewRevenues')}
                 </button>
               )}
             </div>
@@ -350,7 +349,7 @@ export default function ImportReviewModal({ open, onClose, transactions, bank, f
               className="inline-flex items-center gap-1.5 text-xs text-muted hover:text-main transition-colors mt-2"
             >
               <FileUp className="h-3.5 w-3.5" />
-              Importar outro extrato
+              {t('import.review.importAnother')}
             </button>
           </div>
         ) : (
@@ -358,17 +357,19 @@ export default function ImportReviewModal({ open, onClose, transactions, bank, f
             {/* ── Header ── */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
               <div>
-                <h2 className="text-base font-semibold text-main">Revisão de Extrato</h2>
+                <h2 id="import-review-title" className="text-base font-semibold text-main">{t('import.review.title')}</h2>
                 <p className="text-xs text-muted mt-0.5">
                   {pronoun
-                    ? `Prezado(a) ${pronoun}, encontrei ${transactions.length} transações para revisar.`
-                    : `Encontrei ${transactions.length} transações para revisar.`}
+                    ? t('import.review.subtitlePronoun')
+                        .replace('{pronoun}', pronoun)
+                        .replace('{count}', String(transactions.length))
+                    : t('import.review.subtitle').replace('{count}', String(transactions.length))}
                 </p>
               </div>
               <button
                 onClick={onClose}
                 className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-muted hover:text-main hover:bg-background transition-colors"
-                aria-label="Fechar"
+                aria-label={t('common.close')}
               >
                 <X className="h-5 w-5" />
               </button>
@@ -485,7 +486,7 @@ export default function ImportReviewModal({ open, onClose, transactions, bank, f
                     className="flex-1 sm:flex-none min-h-[40px] inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium border border-border text-muted hover:bg-background disabled:opacity-40 transition-colors"
                   >
                     {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-                    Confirmar {monthLabel(activeMonth)}
+                    {t('import.review.confirmMonth').replace('{month}', monthLabel(activeMonth))}
                   </button>
                   <button
                     onClick={handleConfirmAll}
@@ -493,18 +494,15 @@ export default function ImportReviewModal({ open, onClose, transactions, bank, f
                     className="flex-1 sm:flex-none min-h-[40px] inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium bg-brand text-white hover:opacity-90 disabled:opacity-40 transition-colors"
                   >
                     {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
-                    Confirmar todos
+                    {t('import.review.confirmAll')}
                   </button>
                 </div>
               </div>
             </div>
           </>
         )}
-      </div>
-    </div>
+    </ModalShell>
   )
-
-  return typeof document !== 'undefined' ? createPortal(modal, document.body) : null
 }
 
 // ─── Transaction row sub-component ────────────────────────────────────────────
