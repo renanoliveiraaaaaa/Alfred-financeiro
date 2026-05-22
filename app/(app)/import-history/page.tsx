@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { createSupabaseClient } from '@/lib/supabaseClient'
 import { formatDateBR } from '@/lib/exportCsv'
-import ConfirmDangerModal from '@/components/ConfirmDangerModal'
+import { ConfirmDangerModal } from '@/components/ConfirmDangerModal'
 import EmptyState from '@/components/EmptyState'
 import { useToast, CONNECTION_ERROR_MSG, isConnectionError } from '@/lib/toastContext'
 import { useGreetingPronoun } from '@/lib/greeting'

@@ -1,51 +1,125 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
-import { TrendingUp, Receipt, X } from 'lucide-react'
-
-const STORAGE_KEY = 'alfred_welcome_seen'
+import { ArrowLeft, ArrowRight, Check, TrendingUp, Receipt, Target, LayoutDashboard, X } from 'lucide-react'
+import { createSupabaseClient } from '@/lib/supabaseClient'
+import {
+  fetchOnboardingProgress,
+  markWelcomeSeen,
+  onboardingComplete,
+  type OnboardingStep,
+} from '@/lib/onboarding'
 
 type Props = {
   open: boolean
   onClose: () => void
   pronoun?: string
+  onComplete?: () => void
 }
 
-export default function WelcomeModal({ open, onClose, pronoun = 'senhor' }: Props) {
+const TUTORIAL_SLIDES = [
+  {
+    title: 'Bem-vindo ao Alfred Financeiro',
+    body: 'Seu assistente para organizar entradas, saídas, metas e patrimônio em um só lugar — com clareza e discrição.',
+    icon: '🎩',
+  },
+  {
+    title: 'Categorias prontas para você',
+    body: 'Alimentação, Transporte, Moradia, Saúde, Lazer, Educação, Assinaturas e Outros já foram preparadas. Personalize em Cadastros quando quiser.',
+    icon: '📂',
+  },
+  {
+    title: 'Lançamento rápido',
+    body: 'Use o botão Novo na barra superior para registrar receitas ou despesas em segundos, direto do celular.',
+    icon: '⚡',
+  },
+  {
+    title: 'Seu roteiro inicial',
+    body: 'Siga os passos abaixo para deixar o painel completo. Você pode retomá-los a qualquer momento no Início.',
+    icon: '✓',
+  },
+] as const
+
+export default function WelcomeModal({ open, onClose, pronoun, onComplete }: Props) {
+  const [slide, setSlide] = useState(0)
+  const [steps, setSteps] = useState<OnboardingStep[]>([])
+  const [loadingSteps, setLoadingSteps] = useState(true)
+
+  const isLastSlide = slide === TUTORIAL_SLIDES.length - 1
+  const totalSlides = TUTORIAL_SLIDES.length
+
   useEffect(() => {
-    if (open) {
-      try {
-        localStorage.setItem(STORAGE_KEY, 'true')
-      } catch {
-        // localStorage pode estar indisponível
-      }
+    if (!open) {
+      setSlide(0)
+      return
     }
+    markWelcomeSeen()
+
+    const load = async () => {
+      setLoadingSteps(true)
+      const supabase = createSupabaseClient()
+      const data = await fetchOnboardingProgress(supabase)
+      setSteps(data)
+      setLoadingSteps(false)
+    }
+    load()
   }, [open])
+
+  const handleClose = () => {
+    onComplete?.()
+    onClose()
+  }
 
   if (!open) return null
 
+  const completedCount = steps.filter((s) => s.done).length
+  const current = TUTORIAL_SLIDES[slide]
+
   const modal = (
-    <div className="fixed inset-0 z-[999] flex flex-col sm:items-center sm:justify-center bg-black/60 backdrop-blur-sm px-0 sm:px-4 py-4 sm:py-0 overflow-y-auto animate-backdrop-enter">
+    <div
+      className="fixed inset-0 z-[999] flex flex-col sm:items-center sm:justify-center bg-black/60 backdrop-blur-sm px-0 sm:px-4 py-4 sm:py-0 overflow-y-auto animate-backdrop-enter"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="welcome-modal-title"
+    >
       <div className="w-full max-w-md sm:rounded-xl rounded-t-xl border-0 sm:border border-border bg-surface shadow-2xl overflow-hidden animate-modal-enter mt-auto sm:mt-0 max-h-[90vh] sm:max-h-none flex flex-col glass-card">
+        {/* Indicador de slides */}
+        <div className="flex gap-1.5 px-6 pt-4">
+          {TUTORIAL_SLIDES.map((_, i) => (
+            <button
+              key={i}
+              type="button"
+              onClick={() => setSlide(i)}
+              className={`h-1 flex-1 rounded-full transition-colors ${
+                i === slide ? 'bg-brand' : i < slide ? 'bg-brand/40' : 'bg-border'
+              }`}
+              aria-label={`Etapa ${i + 1} de ${totalSlides}`}
+            />
+          ))}
+        </div>
+
         <div className="p-6 space-y-4 overflow-y-auto flex-1">
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="h-12 w-12 rounded-full bg-brand/15 flex items-center justify-center shrink-0">
-                <span className="text-2xl">🎩</span>
+              <div className="h-12 w-12 rounded-full bg-brand/15 flex items-center justify-center shrink-0 text-2xl">
+                {current.icon}
               </div>
               <div>
-                <h2 className="text-lg font-semibold text-main">
-                  Bem-vindo à Mansão{pronoun ? `, ${pronoun}` : ''}
+                <h2 id="welcome-modal-title" className="text-lg font-semibold text-main">
+                  {slide === 0
+                    ? `Bem-vindo à Mansão${pronoun ? `, ${pronoun}` : ''}`
+                    : current.title}
                 </h2>
-                <p className="text-sm text-muted mt-0.5">
-                  À sua disposição
+                <p className="text-xs text-muted mt-0.5">
+                  Passo {slide + 1} de {totalSlides}
                 </p>
               </div>
             </div>
             <button
-              onClick={onClose}
+              type="button"
+              onClick={handleClose}
               className="p-2 rounded-lg text-muted hover:text-main hover:bg-background transition-colors"
               aria-label="Fechar"
             >
@@ -53,67 +127,131 @@ export default function WelcomeModal({ open, onClose, pronoun = 'senhor' }: Prop
             </button>
           </div>
 
-          <p className="text-sm text-muted leading-relaxed">
-            Preparei um conjunto de categorias básicas para organizar suas finanças: Alimentação, Transporte, Moradia, Saúde, Lazer, Educação, Assinaturas e Outros. Você pode personalizá-las em <strong>Cadastros</strong> quando desejar.
-          </p>
+          <p className="text-sm text-muted leading-relaxed">{current.body}</p>
 
-          <div className="mt-4">
-            <h3 className="text-sm font-semibold text-main mb-2">Primeiros passos sugeridos:</h3>
-            <ul className="space-y-2">
-              <li className="flex items-center gap-2">
-                <span className="inline-block h-4 w-4 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xs font-bold">1</span>
-                <span>Complete seu <strong>perfil</strong> (nome, tema, preferências)</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="inline-block h-4 w-4 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xs font-bold">2</span>
-                <span>Adicione sua <strong>primeira receita</strong> ou <strong>despesa</strong></span>
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="inline-block h-4 w-4 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xs font-bold">3</span>
-                <span>Explore o <strong>dashboard</strong> e gráficos</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="inline-block h-4 w-4 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xs font-bold">4</span>
-                <span>Personalize categorias e assinaturas em <strong>Cadastros</strong></span>
-              </li>
-            </ul>
-          </div>
+          {/* Checklist no último slide */}
+          {isLastSlide && (
+            <div className="mt-2 space-y-3">
+              <div className="flex items-center justify-between text-xs text-muted">
+                <span>Checklist de primeiros passos</span>
+                {!loadingSteps && (
+                  <span>{completedCount}/{steps.length}</span>
+                )}
+              </div>
+              {loadingSteps ? (
+                <div className="space-y-2">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="h-10 rounded-lg bg-border animate-pulse" />
+                  ))}
+                </div>
+              ) : (
+                <ul className="space-y-2">
+                  {steps.map((step) => (
+                    <li
+                      key={step.key}
+                      className="flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2"
+                    >
+                      <span
+                        className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${
+                          step.done
+                            ? 'bg-emerald-500 border-emerald-500 text-white'
+                            : 'border-border text-brand'
+                        }`}
+                      >
+                        {step.done ? <Check className="h-3 w-3" /> : null}
+                      </span>
+                      <span className={`text-sm flex-1 ${step.done ? 'text-muted line-through' : 'text-main'}`}>
+                        {step.label}
+                      </span>
+                      {!step.done && (
+                        <Link
+                          href={step.href}
+                          onClick={handleClose}
+                          className="text-xs font-medium text-brand hover:underline"
+                        >
+                          Ir
+                        </Link>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <div className="flex flex-wrap gap-2 pt-1">
+                <Link
+                  href="/revenues/new"
+                  onClick={handleClose}
+                  className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium bg-emerald-600 text-white hover:opacity-90"
+                >
+                  <TrendingUp className="h-3.5 w-3.5" /> Nova entrada
+                </Link>
+                <Link
+                  href="/expenses/new"
+                  onClick={handleClose}
+                  className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium border border-border text-main hover:bg-background"
+                >
+                  <Receipt className="h-3.5 w-3.5" /> Nova saída
+                </Link>
+              </div>
+            </div>
+          )}
 
-          <div className="flex flex-col sm:flex-row gap-3 pt-4">
-            <Link
-              href="/profile"
-              onClick={onClose}
-              className="min-h-[44px] inline-flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-medium bg-blue-600 dark:bg-blue-500 text-white hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors touch-manipulation"
-            >
-              <span className="font-bold">👤</span>
-              Completar perfil
-            </Link>
-            <Link
-              href="/revenues/new"
-              onClick={onClose}
-              className="min-h-[44px] inline-flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-medium bg-emerald-600 dark:bg-emerald-500 text-white hover:bg-emerald-700 dark:hover:bg-emerald-600 transition-colors touch-manipulation"
-            >
-              <TrendingUp className="h-4 w-4" />
-              Registrar receita
-            </Link>
-            <Link
-              href="/expenses/new"
-              onClick={onClose}
-              className="min-h-[44px] inline-flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-medium border border-border text-main hover:bg-background transition-colors touch-manipulation"
-            >
-              <Receipt className="h-4 w-4" />
-              Registrar despesa
-            </Link>
-          </div>
+          {/* Ícones ilustrativos nos slides intermediários */}
+          {slide === 1 && (
+            <div className="flex flex-wrap gap-2 text-xs text-muted">
+              {['Alimentação', 'Transporte', 'Moradia', 'Saúde'].map((c) => (
+                <span key={c} className="rounded-full border border-border px-2.5 py-1 bg-background">
+                  {c}
+                </span>
+              ))}
+              <span className="rounded-full border border-border px-2.5 py-1 bg-background">+4</span>
+            </div>
+          )}
+          {slide === 2 && (
+            <div className="rounded-lg border border-dashed border-brand/40 bg-brand/5 px-4 py-3 text-xs text-muted">
+              Dica: no celular, o campo de valor abre o teclado numérico automaticamente.
+            </div>
+          )}
         </div>
 
-        <div className="px-6 py-3 bg-background border-t border-border shrink-0">
+        <div className="px-6 py-3 bg-background border-t border-border shrink-0 flex items-center justify-between gap-3">
           <button
-            onClick={onClose}
-            className="w-full min-h-[44px] text-sm font-medium text-brand hover:opacity-80 transition-colors touch-manipulation"
+            type="button"
+            onClick={() => (slide > 0 ? setSlide(slide - 1) : handleClose())}
+            className="inline-flex items-center gap-1.5 min-h-[44px] px-3 text-sm font-medium text-muted hover:text-main transition-colors touch-manipulation"
           >
-            Entendido, obrigado
+            {slide > 0 ? (
+              <>
+                <ArrowLeft className="h-4 w-4" /> Anterior
+              </>
+            ) : (
+              'Pular'
+            )}
           </button>
+          {!isLastSlide ? (
+            <button
+              type="button"
+              onClick={() => setSlide(slide + 1)}
+              className="inline-flex items-center gap-1.5 min-h-[44px] px-4 rounded-lg text-sm font-medium bg-brand text-white hover:opacity-90 transition-opacity touch-manipulation"
+            >
+              Próximo <ArrowRight className="h-4 w-4" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleClose}
+              className="inline-flex items-center gap-1.5 min-h-[44px] px-4 rounded-lg text-sm font-medium bg-brand text-white hover:opacity-90 transition-opacity touch-manipulation"
+            >
+              {onboardingComplete(steps) ? (
+                <>
+                  <LayoutDashboard className="h-4 w-4" /> Começar
+                </>
+              ) : (
+                <>
+                  <Target className="h-4 w-4" /> Entendido
+                </>
+              )}
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -122,11 +260,4 @@ export default function WelcomeModal({ open, onClose, pronoun = 'senhor' }: Prop
   return typeof document !== 'undefined' ? createPortal(modal, document.body) : null
 }
 
-export function shouldShowWelcomeModal(): boolean {
-  if (typeof window === 'undefined') return false
-  try {
-    return localStorage.getItem(STORAGE_KEY) !== 'true'
-  } catch {
-    return true
-  }
-}
+export { shouldShowWelcomeModal } from '@/lib/onboarding'

@@ -1,30 +1,32 @@
 'use client'
 
 import { useEffect, useState, useMemo } from 'react'
+import dynamic from 'next/dynamic'
 import { useTheme } from 'next-themes'
 import { createSupabaseClient } from '@/lib/supabaseClient'
 import { resolveActiveOrganizationIdForClient } from '@/lib/activeOrganizationClient'
 import { useActiveOrganizationRevision } from '@/lib/useActiveOrganizationRevision'
 import { useGreetingPronoun } from '@/lib/greeting'
 import { formatCurrency } from '@/lib/format'
+import { formatDateBR, formatCurrencyBR } from '@/lib/exportCsv'
+import ExportMenu from '@/components/ExportMenu'
 import MaskedValue from '@/components/MaskedValue'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import type { Database } from '@/types/supabase'
-import {
-  Chart as ChartJS,
-  ArcElement,
-  Tooltip,
-  Legend,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  PointElement,
-  LineElement,
-  Filler,
-} from 'chart.js'
-import { Doughnut, Bar, Line } from 'react-chartjs-2'
 
-ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, PointElement, LineElement, Filler)
+const ReportsChartsSection = dynamic(
+  () => import('@/components/reports/ReportsChartsSection'),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="grid gap-6 md:grid-cols-2">
+        {[1, 2].map((i) => (
+          <div key={i} className="rounded-xl border border-border bg-surface p-6 animate-pulse h-72" />
+        ))}
+      </div>
+    ),
+  },
+)
 
 type Revenue = Database['public']['Tables']['revenues']['Row']
 type Expense = Database['public']['Tables']['expenses']['Row']
@@ -203,6 +205,73 @@ export default function ReportsPage() {
   const hasCategoryData = Object.keys(categoryTotals).length > 0
   const hasYearData = yearRevenues.length > 0 || yearExpenses.length > 0
 
+  const exportSheets = useMemo(() => {
+    const now = new Date()
+    const monthLabel = now.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
+
+    const resumo = [
+      { Indicador: 'Período mensal', Valor: monthLabel },
+      { Indicador: 'Entradas (mês)', Valor: formatCurrencyBR(totalRevenues) },
+      { Indicador: 'Saídas (mês)', Valor: formatCurrencyBR(totalExpenses) },
+      { Indicador: 'Balanço (mês)', Valor: formatCurrencyBR(totalRevenues - totalExpenses) },
+      { Indicador: 'Ano', Valor: String(year) },
+      { Indicador: 'Entradas (ano)', Valor: formatCurrencyBR(yearTotalRev) },
+      { Indicador: 'Saídas (ano)', Valor: formatCurrencyBR(yearTotalExp) },
+      { Indicador: 'Balanço (ano)', Valor: formatCurrencyBR(yearBalance) },
+    ]
+
+    const receitasAno = yearRevenues.map((r) => ({
+      Data: formatDateBR(r.date),
+      Descrição: r.description,
+      'Valor (R$)': formatCurrencyBR(Number(r.amount || 0)),
+      Status: r.received ? 'Recebido' : 'Pendente',
+    }))
+
+    const despesasAno = yearExpenses.map((e) => ({
+      'Data vencimento': formatDateBR(e.due_date),
+      Descrição: e.description,
+      Categoria: CATEGORY_LABELS[e.category] ?? e.category,
+      'Valor (R$)': formatCurrencyBR(Number(e.amount || 0)),
+      Status: e.paid ? 'Pago' : 'Em aberto',
+    }))
+
+    const categorias = Object.entries(categoryTotals)
+      .sort(([, a], [, b]) => b - a)
+      .map(([cat, total]) => ({
+        Categoria: CATEGORY_LABELS[cat] ?? cat,
+        'Valor (R$)': formatCurrencyBR(total),
+      }))
+
+    const evolucao = MONTH_LABELS.map((label, i) => ({
+      Mês: label,
+      'Entradas (R$)': formatCurrencyBR(yearRevMonths[i] ?? 0),
+      'Saídas (R$)': formatCurrencyBR(yearExpMonths[i] ?? 0),
+      'Balanço (R$)': formatCurrencyBR((yearRevMonths[i] ?? 0) - (yearExpMonths[i] ?? 0)),
+    }))
+
+    return [
+      { name: 'Resumo', rows: resumo },
+      { name: 'Receitas', rows: receitasAno },
+      { name: 'Despesas', rows: despesasAno },
+      { name: 'Categorias', rows: categorias },
+      { name: 'Evolução mensal', rows: evolucao },
+    ]
+  }, [
+    totalRevenues,
+    totalExpenses,
+    year,
+    yearTotalRev,
+    yearTotalExp,
+    yearBalance,
+    yearRevenues,
+    yearExpenses,
+    categoryTotals,
+    yearRevMonths,
+    yearExpMonths,
+  ])
+
+  const exportFilename = `relatorio-${year}-${new Date().toISOString().slice(0, 10)}`
+
   // Chart configs
   const baseTooltip = useMemo(() => ({
     backgroundColor: isDark ? '#1a1a1a' : '#fff',
@@ -327,9 +396,16 @@ export default function ReportsPage() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div>
-        <h1 className="text-xl font-semibold text-main">Análise Patrimonial</h1>
-        <p className="text-sm text-muted mt-0.5">Visão mensal e evolução anual do seu patrimônio, {pronoun}</p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="text-xl font-semibold text-main">Análise Patrimonial</h1>
+          <p className="text-sm text-muted mt-0.5">Visão mensal e evolução anual do seu patrimônio, {pronoun}</p>
+        </div>
+        <ExportMenu
+          filename={exportFilename}
+          sheets={exportSheets}
+          disabled={!hasData && !hasYearData}
+        />
       </div>
 
       {error && (
@@ -362,48 +438,24 @@ export default function ReportsPage() {
             </p>
           </div>
         ) : (
-          <div className="grid gap-6 md:grid-cols-2">
-            <div className={`${cls.card} p-6`}>
-              <h2 className={`${cls.h2} mb-4`}>Saídas por categoria</h2>
-              {!hasCategoryData ? (
-                <p className="text-sm text-muted py-12 text-center">Nenhuma saída registrada neste período.</p>
-              ) : (
-                <div className="relative h-64">
-                  <Doughnut data={doughnutData} options={doughnutOptions} />
-                </div>
-              )}
-              {hasCategoryData && (
-                <ul className="mt-4 space-y-2">
-                  {Object.entries(categoryTotals).sort(([, a], [, b]) => b - a).map(([cat, total]) => (
-                    <li key={cat} className="flex items-center justify-between text-sm">
-                      <div className="flex items-center gap-2">
-                        <span className="inline-block h-3 w-3 rounded-full" style={{ backgroundColor: CATEGORY_COLORS[cat] ?? '#6b7280' }} />
-                        <span className="text-muted">{CATEGORY_LABELS[cat] ?? cat}</span>
-                      </div>
-                      <MaskedValue value={total} className="font-medium text-main tabular-nums" />
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-
-            <div className={`${cls.card} p-6`}>
-              <h2 className={`${cls.h2} mb-4`}>Entradas vs Saídas</h2>
-              <div className="relative h-64">
-                <Bar data={barData} options={barOptions} />
-              </div>
-              <div className="mt-4 flex gap-6 text-sm">
-                <div className="flex items-center gap-2">
-                  <span className="inline-block h-3 w-3 rounded-full bg-emerald-500" />
-                  <span className="text-muted">Entradas</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="inline-block h-3 w-3 rounded-full bg-red-500" />
-                  <span className="text-muted">Saídas</span>
-                </div>
-              </div>
-            </div>
-          </div>
+          <ReportsChartsSection
+            cardClass={cls.card}
+            h2Class={cls.h2}
+            hasData={hasData}
+            hasCategoryData={hasCategoryData}
+            hasYearData={hasYearData}
+            categoryTotals={categoryTotals}
+            categoryLabels={CATEGORY_LABELS}
+            categoryColors={CATEGORY_COLORS}
+            doughnutData={doughnutData}
+            doughnutOptions={doughnutOptions}
+            barData={barData}
+            barOptions={barOptions}
+            lineData={lineData}
+            lineOptions={lineOptions}
+            year={year}
+            pronoun={pronoun}
+          />
         )}
       </section>
 
@@ -456,11 +508,24 @@ export default function ReportsPage() {
             </p>
           </div>
         ) : (
-          <div className={`${cls.card} p-6`}>
-            <div className="relative h-80">
-              <Line data={lineData} options={lineOptions} />
-            </div>
-          </div>
+          <ReportsChartsSection
+            cardClass={cls.card}
+            h2Class={cls.h2}
+            hasData={false}
+            hasCategoryData={false}
+            hasYearData={hasYearData}
+            categoryTotals={{}}
+            categoryLabels={CATEGORY_LABELS}
+            categoryColors={CATEGORY_COLORS}
+            doughnutData={doughnutData}
+            doughnutOptions={doughnutOptions}
+            barData={barData}
+            barOptions={barOptions}
+            lineData={lineData}
+            lineOptions={lineOptions}
+            year={year}
+            pronoun={pronoun}
+          />
         )}
       </section>
     </div>

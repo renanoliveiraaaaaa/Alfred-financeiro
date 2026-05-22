@@ -6,7 +6,7 @@ import { createSupabaseClient } from '@/lib/supabaseClient'
 import { formatCurrency } from '@/lib/format'
 import MaskedValue from '@/components/MaskedValue'
 import EmptyState from '@/components/EmptyState'
-import ConfirmDangerModal from '@/components/ConfirmDangerModal'
+import { ConfirmDangerModal } from '@/components/ConfirmDangerModal'
 import { useToast, CONNECTION_ERROR_MSG, isConnectionError } from '@/lib/toastContext'
 import { useGreetingPronoun } from '@/lib/greeting'
 import {

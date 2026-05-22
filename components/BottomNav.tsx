@@ -77,26 +77,26 @@ export default function BottomNav() {
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
         <div className="flex items-stretch h-16">
-          {mainItems.map(({ href, label, Icon }) => {
-            const active = isActive(href, pathname)
-            return (
-              <Link
-                key={href}
-                href={href}
-                className={`flex-1 flex flex-col items-center justify-center gap-1 min-h-[44px] transition-colors ${
-                  active ? 'text-brand' : 'text-muted'
-                }`}
-              >
-                {active && (
-                  <span className="absolute top-0 w-8 h-0.5 rounded-full bg-brand -translate-y-px" />
-                )}
-                <Icon className="h-6 w-6 shrink-0" />
-                <span className={`text-[10px] font-medium leading-none ${active ? 'text-brand' : 'text-muted'}`}>
-                  {t(label)}
-                </span>
-              </Link>
-            )
-          })}
+              {mainItems.map(({ href, label, Icon }) => {
+                const active = isActive(href, pathname)
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    className={`flex-1 flex flex-col items-center justify-center gap-1 min-h-[44px] transition-colors ${
+                      active ? 'text-brand' : 'text-muted'
+                    }`}
+                  >
+                    {active && (
+                      <span className="absolute top-0 w-8 h-0.5 rounded-full bg-brand -translate-y-px" />
+                    )}
+                    <Icon className="h-6 w-6 shrink-0" />
+                    <span className={`text-[10px] font-medium leading-none ${active ? 'text-brand' : 'text-muted'}`}>
+                      {t(label)}
+                    </span>
+                  </Link>
+                )
+              })}
 
           {/* Mais */}
           <button
@@ -159,7 +159,7 @@ export default function BottomNav() {
                     }`}
                   >
                     <Icon className="h-5 w-5 shrink-0" />
-                    <span className="text-[10px] font-medium text-center leading-tight">{label}</span>
+                    <span className="text-[10px] font-medium text-center leading-tight">{t(label)}</span>
                   </Link>
                 )
               })}
@@ -177,7 +177,7 @@ export default function BottomNav() {
                   <span className="text-base" aria-hidden>
                     ⚙️
                   </span>
-                  Painel Admin
+                  {t('nav.adminPanel')}
                 </Link>
               </div>
             ) : null}

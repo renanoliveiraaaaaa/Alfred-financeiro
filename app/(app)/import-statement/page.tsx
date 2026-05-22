@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { FileUp, Upload, X, Loader2, AlertCircle, FileText, Sparkles, History, Zap } from 'lucide-react'
 import ImportReviewModal, { ReviewTransaction } from '@/components/ImportReviewModal'
 import { useGreetingPronoun } from '@/lib/greeting'
+import { useI18n } from '@/lib/i18n'
 import { parseBankStatementPdf } from '@/lib/actions/parse-bank-statement-pdf'
 import type { ImportTransaction } from '@/lib/actions/import-statement'
 
@@ -77,9 +78,9 @@ function sniffBankFromOfxText(text: string): string | null {
   }
   return null
 }
-
 export default function ImportStatementPage() {
   const pronoun = useGreetingPronoun()
+  const { t } = useI18n()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const pdfInputRef = useRef<HTMLInputElement>(null)
 
@@ -170,7 +171,7 @@ export default function ImportStatementPage() {
   // ── Processar OFX/CSV ──
   const handleProcess = async () => {
     if (!file) {
-      setError('Selecione um arquivo para continuar.')
+      setError(t('import.selectFile'))
       return
     }
 
@@ -193,12 +194,12 @@ export default function ImportStatementPage() {
       const json = await res.json()
 
       if (!res.ok || json.error) {
-        setError(json.error ?? 'Erro ao processar o arquivo.')
+        setError(json.error ?? t('import.processError'))
         return
       }
 
       if (!json.transactions || json.transactions.length === 0) {
-        setError('Nenhuma transação encontrada no arquivo. Verifique o formato e o banco selecionado.')
+        setError(t('import.noTransactions'))
         return
       }
 
@@ -208,7 +209,7 @@ export default function ImportStatementPage() {
 
       openModal(json.transactions, bank, file.name)
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Erro inesperado.'
+      const msg = err instanceof Error ? err.message : t('import.unexpectedError')
       setError(msg)
     } finally {
       setLoading(false)
@@ -218,7 +219,7 @@ export default function ImportStatementPage() {
   // ── Processar PDF com Gemini ──
   const handlePdfProcess = async () => {
     if (!pdfFile) {
-      setPdfError('Selecione um arquivo PDF para continuar.')
+      setPdfError(t('import.selectPdf'))
       return
     }
 
@@ -272,7 +273,7 @@ export default function ImportStatementPage() {
         if (anySuccess && allTransactions.length > 0) {
           openModal(pdfImportToReviewRows(allTransactions), bank, pdfFile.name)
         } else {
-          setPdfError('Não foi possível processar o PDF em blocos. Tente dividir o extrato ou exportar em períodos menores.')
+          setPdfError(t('import.pdfBlockError'))
         }
       } else {
         // PDF pequeno: fluxo normal
@@ -284,7 +285,15 @@ export default function ImportStatementPage() {
         openModal(pdfImportToReviewRows(result.transactions), result.bank, pdfFile.name)
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Erro inesperado.'
+      let msg = t('import.unexpectedError')
+      if (err instanceof Error) {
+        // Detecta erro de alta demanda Gemini
+        if (err.message.includes('503 Service Unavailable') && err.message.includes('high demand')) {
+          msg = t('import.geminiUnavailable')
+        } else {
+          msg = err.message
+        }
+      }
       setPdfError(msg)
     } finally {
       setPdfLoading(false)
@@ -306,12 +315,12 @@ export default function ImportStatementPage() {
         <div>
           <h1 className="text-xl font-semibold text-main flex items-center gap-2">
             <FileUp className="h-5 w-5 text-brand" />
-            Importar Extrato
+            {t('import.title')}
           </h1>
           <p className="text-sm text-muted mt-1">
             {pronoun
-              ? `Prezado(a) ${pronoun}, importe extratos bancários para catalogar transações de períodos anteriores.`
-              : 'Importe extratos bancários para catalogar transações de períodos anteriores.'}
+              ? t('import.subtitleWithPronoun', { pronoun })
+              : t('import.subtitle')}
           </p>
         </div>
         <Link
@@ -319,7 +328,7 @@ export default function ImportStatementPage() {
           className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-border text-sm font-medium text-muted hover:text-main hover:bg-background transition-colors shrink-0"
         >
           <History className="h-4 w-4" />
-          Ver histórico
+          {t('import.history')}
         </Link>
       </div>
 
@@ -334,7 +343,7 @@ export default function ImportStatementPage() {
           }`}
         >
           <FileText className="h-4 w-4" />
-          CSV / OFX
+          {t('import.tabOfx')}
         </button>
         <button
           onClick={() => setMode('pdf')}
@@ -345,7 +354,7 @@ export default function ImportStatementPage() {
           }`}
         >
           <Zap className="h-4 w-4 text-amber-500" />
-          PDF com IA
+          {t('import.tabPdf')}
         </button>
       </div>
 
@@ -356,20 +365,20 @@ export default function ImportStatementPage() {
             <div className="flex items-start gap-3 rounded-lg bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 px-4 py-3">
               <Zap className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
               <p className="text-xs text-amber-700 dark:text-amber-300">
-                O Gemini AI lê o PDF do seu extrato e extrai todas as transações automaticamente. Funciona com qualquer banco.
+                {t('import.geminiInfo')}
               </p>
             </div>
 
             {/* Drop zone PDF */}
             <div>
-              <label className={cls.label}>Arquivo PDF do extrato</label>
+              <label className={cls.label}>{t('import.pdfLabel')}</label>
               <div
                 onDrop={(e) => {
                   e.preventDefault()
                   setPdfDragging(false)
                   const f = e.dataTransfer.files[0]
                   if (f?.type === 'application/pdf') { setPdfFile(f); setPdfError(null) }
-                  else setPdfError('Apenas arquivos PDF são suportados.')
+                  else setPdfError(t('import.onlyPdf'))
                 }}
                 onDragOver={(e) => { e.preventDefault(); setPdfDragging(true) }}
                 onDragLeave={() => setPdfDragging(false)}
@@ -409,8 +418,8 @@ export default function ImportStatementPage() {
                   <>
                     <Upload className="h-8 w-8 text-muted" />
                     <div className="text-center">
-                      <p className="text-sm font-medium text-main">Arraste o PDF ou clique para selecionar</p>
-                      <p className="text-xs text-muted mt-0.5">Extrato de qualquer banco em PDF</p>
+                      <p className="text-sm font-medium text-main">{t('import.dragPdf')}</p>
+                      <p className="text-xs text-muted mt-0.5">{t('import.anyBankPdf')}</p>
                     </div>
                   </>
                 )}
@@ -438,22 +447,22 @@ export default function ImportStatementPage() {
                       Processando páginas {pdfProgress.current} de {pdfProgress.total}...
                     </span>
                   ) : (
-                    'Gemini analisando PDF...'
+                    t('import.geminiAnalyzing')
                   )}
                 </>
               ) : (
-                <><Zap className="h-4 w-4" /> Analisar PDF com IA</>
+                <><Zap className="h-4 w-4" /> {t('import.analyzePdf')}</>
               )}
             </button>
           </div>
 
           <div className="glass-card rounded-xl border border-border bg-surface p-4 space-y-2">
-            <p className="text-xs font-medium text-muted uppercase tracking-wider">Como funciona</p>
+            <p className="text-xs font-medium text-muted uppercase tracking-wider">{t('import.howItWorks')}</p>
             <ul className="space-y-1 text-xs text-muted">
-              <li>1. Faça o upload do PDF do extrato (exportado pelo app do banco)</li>
-              <li>2. O Gemini AI lê e extrai todas as transações</li>
-              <li>3. Você revisa, edita tipos (receita/despesa) e confirma</li>
-              <li className="pt-1 text-[10px]">Requer <code className="bg-border/40 px-1 rounded">GEMINI_API_KEY</code> configurada no .env.local</li>
+              <li>{t('import.step1')}</li>
+              <li>{t('import.step2')}</li>
+              <li>{t('import.step3')}</li>
+              <li className="pt-1 text-[10px]">{t('import.step4')}</li>
             </ul>
           </div>
         </>
@@ -467,7 +476,7 @@ export default function ImportStatementPage() {
         {/* Bank selector */}
         <div>
           <div className="flex items-center justify-between mb-1.5">
-            <label className={cls.label.replace('mb-1.5', '')}>Banco / Instituição</label>
+            <label className={cls.label.replace('mb-1.5', '')}>{t('import.bankLabel')}</label>
             {autoDetectedBank && (
               <span className="inline-flex items-center gap-1 text-[10px] font-medium text-brand rounded-full bg-brand/10 px-2 py-0.5">
                 <Sparkles className="h-2.5 w-2.5" />

@@ -6,7 +6,7 @@ import { createSupabaseClient } from '@/lib/supabaseClient'
 import { formatDate } from '@/lib/format'
 import MaskedValue from '@/components/MaskedValue'
 import EmptyState from '@/components/EmptyState'
-import ConfirmDangerModal from '@/components/ConfirmDangerModal'
+import { ConfirmDangerModal } from '@/components/ConfirmDangerModal'
 import { useToast, CONNECTION_ERROR_MSG, isConnectionError } from '@/lib/toastContext'
 import { useGreetingPronoun } from '@/lib/greeting'
 import type { Database } from '@/types/supabase'
@@ -22,9 +22,9 @@ import {
   Trash2,
   Check,
   Copy,
-  Download,
 } from 'lucide-react'
-import { downloadCsv, formatDateBR } from '@/lib/exportCsv'
+import { formatDateBR, formatCurrencyBR } from '@/lib/exportCsv'
+import ExportMenu from '@/components/ExportMenu'
 import {
   allIdsInDuplicateClusters,
   allSuggestedDeleteIds,
@@ -213,20 +213,24 @@ export default function ExpensesPage() {
     setSelectedIds(new Set(suggestedDuplicateDeleteIds))
   }
 
-  const handleExportCsv = () => {
+  const exportSheets = useMemo(() => {
     const rows = filtered.map((e) => ({
       'Data vencimento': formatDateBR(e.due_date),
-      'Descrição': e.description,
-      'Categoria': CATEGORY_LABELS[e.category] ?? e.category,
-      'Valor (R$)': Number(e.amount || 0).toFixed(2).replace('.', ','),
-      'Pagamento': PAYMENT_LABELS[e.payment_method] ?? e.payment_method,
-      'Status': e.paid ? 'Pago' : 'Em aberto',
-      'Parcela': e.installment_number && e.installments ? `${e.installment_number}/${e.installments}` : '',
-      'Origem': e.source === 'import' ? 'Importado' : 'Manual',
+      Descrição: e.description,
+      Categoria: CATEGORY_LABELS[e.category] ?? e.category,
+      'Valor (R$)': formatCurrencyBR(Number(e.amount || 0)),
+      Pagamento: PAYMENT_LABELS[e.payment_method] ?? e.payment_method,
+      Status: e.paid ? 'Pago' : 'Em aberto',
+      Parcela: e.installment_number && e.installments ? `${e.installment_number}/${e.installments}` : '',
+      Origem: e.source === 'import' ? 'Importado' : 'Manual',
     }))
-    const today = new Date().toISOString().slice(0, 10)
-    downloadCsv(rows, `despesas-${today}.csv`)
-  }
+    return [{ name: 'Despesas', rows }]
+  }, [filtered])
+
+  const exportFilename = useMemo(
+    () => `despesas-${new Date().toISOString().slice(0, 10)}`,
+    [filtered],
+  )
 
   const togglePaid = useCallback(async (id: string, currentPaid: boolean) => {
     const newPaid = !currentPaid
@@ -354,15 +358,11 @@ export default function ExpensesPage() {
           <p className="text-sm text-muted mt-0.5">Controle detalhado das suas obrigações financeiras, senhor</p>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={handleExportCsv}
+          <ExportMenu
+            filename={exportFilename}
+            sheets={exportSheets}
             disabled={filtered.length === 0}
-            title="Exportar lista atual em CSV"
-            className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2.5 text-sm font-medium text-muted hover:text-main hover:bg-background disabled:opacity-40 transition-colors"
-          >
-            <Download className="h-4 w-4" />
-            <span className="hidden sm:inline">Exportar CSV</span>
-          </button>
+          />
           <Link
             href="/expenses/new"
             className="inline-flex items-center gap-2 rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-white hover:opacity-90 transition-colors"

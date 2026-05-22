@@ -10,6 +10,7 @@ export const I18nContext = createContext<{
   locale: Locale;
   setLocale: (locale: Locale) => void;
   t: (key: string) => string;
+  ready?: boolean;
 }>({
   locale: defaultLocale,
   setLocale: () => {},

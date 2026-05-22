@@ -3,6 +3,7 @@
   "short_name": "Alfred",
   "description": "Seu mordomo financeiro pessoal — elegância e controle ao seu dispor.",
   "start_url": "/dashboard",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#0f0f0f",
   "theme_color": "#0f0f0f",

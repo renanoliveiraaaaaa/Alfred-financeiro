@@ -1,0 +1,10 @@
+{
+  "error.connection": "Houve um problema de comunicação. Verifique sua conexão e tente novamente.",
+  "error.unauthorized": "Sessão expirada. Faça login novamente.",
+  "error.orgNotFound": "Não foi possível determinar a organização ativa. Tente recarregar a página.",
+  "error.loadFailed": "Falha ao carregar dados.",
+  "error.saveFailed": "Falha ao salvar.",
+  "error.unexpected": "Ocorreu um erro inesperado. Tente novamente.",
+  "error.authFailed": "Falha na autenticação.",
+  "error.exportEmpty": "Nenhum dado para exportar."
+}

@@ -1,7 +1,11 @@
 /**
- * Utilitário de exportação de dados para CSV.
- * Gera e faz download de um arquivo .csv no navegador.
+ * Utilitário de exportação de dados para CSV e Excel.
  */
+
+import * as XLSX from 'xlsx'
+
+export type ExportRow = Record<string, string | number | boolean | null | undefined>
+export type ExportSheet = { name: string; rows: ExportRow[] }
 
 function escapeCsvCell(value: string | number | boolean | null | undefined): string {
   if (value === null || value === undefined) return ''
@@ -12,7 +16,7 @@ function escapeCsvCell(value: string | number | boolean | null | undefined): str
   return str
 }
 
-export function downloadCsv(rows: Record<string, string | number | boolean | null | undefined>[], filename: string) {
+export function downloadCsv(rows: ExportRow[], filename: string) {
   if (rows.length === 0) return
 
   const headers = Object.keys(rows[0])
@@ -29,6 +33,27 @@ export function downloadCsv(rows: Record<string, string | number | boolean | nul
   a.download = filename
   a.click()
   URL.revokeObjectURL(url)
+}
+
+/** Nome de aba válido no Excel (máx. 31 caracteres, sem \ / ? * [ ]). */
+function sanitizeSheetName(name: string): string {
+  return name.replace(/[\\/?*[\]]/g, '').slice(0, 31) || 'Dados'
+}
+
+export function downloadExcel(sheets: ExportSheet[], filename: string) {
+  const wb = XLSX.utils.book_new()
+  for (const sheet of sheets) {
+    if (sheet.rows.length === 0) continue
+    const ws = XLSX.utils.json_to_sheet(sheet.rows)
+    XLSX.utils.book_append_sheet(wb, ws, sanitizeSheetName(sheet.name))
+  }
+  if (wb.SheetNames.length === 0) return
+  const base = filename.replace(/\.xlsx$/i, '')
+  XLSX.writeFile(wb, `${base}.xlsx`)
+}
+
+export function formatCurrencyBR(value: number): string {
+  return value.toFixed(2).replace('.', ',')
 }
 
 export function formatDateBR(dateStr: string | null | undefined): string {

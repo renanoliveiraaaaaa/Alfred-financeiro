@@ -1,28 +1,3 @@
-import ConfirmDangerModal from '@/components/ConfirmDangerModal'
-  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
-  const [deleting, setDeleting] = useState(false)
-  // Exclusão de conta
-  const handleDeleteAccount = async () => {
-    setDeleting(true)
-    setError(null)
-    setSuccess(null)
-    try {
-      // Remove do Supabase Auth
-      const { error: authErr } = await supabase.auth.admin.deleteUser(userId)
-      if (authErr) throw new Error('Falha ao remover autenticação: ' + authErr.message)
-      // Remove perfil
-      await supabase.from('profiles').delete().eq('id', userId)
-      setSuccess('Conta excluída com sucesso. Seus dados foram removidos. Redirecionando...')
-      setTimeout(() => {
-        window.location.href = '/login'
-      }, 2000)
-    } catch (err: any) {
-      setError(err?.message || 'Falha ao excluir conta.')
-    } finally {
-      setDeleting(false)
-      setDeleteModalOpen(false)
-    }
-  }
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
@@ -31,6 +6,13 @@ import { useUserPreferences, type Gender, type AppTheme } from '@/lib/userPrefer
 import { getPrefTitle } from '@/lib/greeting'
 import { useTheme } from 'next-themes'
 import { useGreetingPronoun } from '@/lib/greeting'
+import { useI18n, type Locale } from '@/lib/i18n'
+import { parseCustomTheme, type CustomTheme } from '@/lib/customTheme'
+import { logActivity } from '@/lib/activityLog'
+import CustomThemeEditor from '@/components/CustomThemeEditor'
+import TwoFactorPanel from '@/components/security/TwoFactorPanel'
+import ActivityLogPanel from '@/components/security/ActivityLogPanel'
+import { ConfirmDangerModal } from '@/components/ConfirmDangerModal'
 import { Loader2, Camera, User, Sun, Moon, Monitor, Droplets } from 'lucide-react'
 
 export default function ProfilePage() {
@@ -52,11 +34,16 @@ export default function ProfilePage() {
 
   const { setLocalPreferences, updatePreferences } = useUserPreferences()
   const { theme, setTheme } = useTheme()
+  const { locale, setLocale, t } = useI18n()
   const pronoun = useGreetingPronoun()
   const prefTitle = getPrefTitle(gender)
 
   const [prefWeeklyReport, setPrefWeeklyReport] = useState(false)
   const [prefHideBalance, setPrefHideBalance] = useState(false)
+  const [customTheme, setCustomTheme] = useState<CustomTheme | null>(null)
+  const [profileLocale, setProfileLocale] = useState<Locale>('pt')
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   const initials = fullName
     ? fullName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
@@ -88,6 +75,10 @@ export default function ProfilePage() {
         setLocalPreferences({ gender: (profile.gender as Gender) || null, appTheme: theme })
         setPrefHideBalance(profile.hide_balance ?? false)
         setPrefWeeklyReport(profile.weekly_report ?? false)
+        setCustomTheme(parseCustomTheme(profile.custom_theme))
+        const loc = (profile.locale as Locale) || 'pt'
+        setProfileLocale(loc)
+        setLocale(loc)
       }
     } catch (err: any) {
       setError(err?.message || 'Falha ao carregar perfil.')
@@ -151,17 +142,34 @@ export default function ProfilePage() {
           app_theme: appTheme,
           hide_balance: prefHideBalance,
           weekly_report: prefWeeklyReport,
+          locale: profileLocale,
+          custom_theme: customTheme,
           updated_at: new Date().toISOString(),
         })
       if (upsertErr) throw new Error(upsertErr.message)
 
-      setLocalPreferences({ gender, appTheme })
+      setLocalPreferences({ gender, appTheme, customTheme, locale: profileLocale })
+      await logActivity(supabase, userId, { action: 'profile_update' })
 
       setSuccess(`Preferências salvas com distinção, ${pronoun}.`)
     } catch (err: any) {
       setError(err?.message || 'Falha ao salvar preferências.')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleDeleteAccount = async () => {
+    setDeleting(true)
+    setError(null)
+    setSuccess(null)
+    try {
+      setError('Exclusão de conta requer confirmação por e-mail. Entre em contato com o suporte.')
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Falha ao excluir conta.')
+    } finally {
+      setDeleting(false)
+      setDeleteModalOpen(false)
     }
   }
 
@@ -409,6 +417,37 @@ export default function ProfilePage() {
 
           <div className="border-t border-border" />
 
+          <div>
+            <label htmlFor="locale" className="block text-xs font-medium text-muted uppercase tracking-wider mb-2">
+              {t('profile.locale')}
+            </label>
+            <select
+              id="locale"
+              value={profileLocale}
+              onChange={(e) => {
+                const next = e.target.value as Locale
+                setProfileLocale(next)
+                setLocale(next)
+              }}
+              className="block w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm text-main focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand transition-colors"
+            >
+              <option value="pt">{t('profile.locale.pt')}</option>
+              <option value="en">{t('profile.locale.en')}</option>
+            </select>
+          </div>
+
+          <div className="border-t border-border" />
+
+          <CustomThemeEditor
+            value={customTheme}
+            onChange={(next) => {
+              setCustomTheme(next)
+              setLocalPreferences({ customTheme: next })
+            }}
+          />
+
+          <div className="border-t border-border" />
+
           <div className="flex items-center justify-between gap-4">
             <div className="min-w-0">
               <p className="text-sm font-medium text-main">Relatórios semanais por e-mail</p>
@@ -458,6 +497,14 @@ export default function ProfilePage() {
               />
             </button>
           </div>
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-border bg-surface p-6 space-y-6 glass-card">
+        <h2 className="text-sm font-semibold text-main">{t('profile.security')}</h2>
+        {userId && <TwoFactorPanel userId={userId} />}
+        <div className="border-t border-border pt-6">
+          {userId && <ActivityLogPanel userId={userId} />}
         </div>
       </div>
 

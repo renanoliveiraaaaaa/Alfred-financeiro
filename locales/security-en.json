@@ -1,0 +1,16 @@
+{
+  "security.2fa.title": "Two-factor authentication (2FA)",
+  "security.2fa.desc": "Protect your account with a code from an authenticator app.",
+  "security.2fa.enable": "Enable 2FA",
+  "security.2fa.disable": "Disable 2FA",
+  "security.2fa.scan": "Scan the QR code in Google Authenticator or similar.",
+  "security.2fa.code": "Verification code",
+  "security.2fa.verify": "Verify and enable",
+  "security.2fa.active": "2FA enabled",
+  "security.2fa.inactive": "2FA disabled",
+  "security.activity.title": "Activity log",
+  "security.activity.desc": "Record of sensitive actions on your account.",
+  "security.activity.empty": "No activity recorded yet.",
+  "security.activity.when": "When",
+  "security.activity.action": "Action"
+}

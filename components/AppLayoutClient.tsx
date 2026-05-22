@@ -76,7 +76,7 @@ export default function AppLayoutClient({
         <Sidebar />
       <div className="relative z-10 flex flex-1 flex-col min-w-0 lg:ml-60">
         <Topbar />
-        <main className="flex-1 min-h-0 overflow-y-auto p-4 lg:p-6 pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] lg:pb-6">
+        <main id="main-content" className="flex-1 min-h-0 overflow-y-auto p-4 lg:p-6 pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] lg:pb-6">
           <AnimatedPage>{children}</AnimatedPage>
         </main>
       </div>

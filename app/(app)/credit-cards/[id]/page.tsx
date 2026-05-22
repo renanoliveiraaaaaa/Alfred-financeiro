@@ -8,7 +8,7 @@ import { formatDate } from '@/lib/format'
 import MaskedValue from '@/components/MaskedValue'
 import CardBrandIcon from '@/components/CardBrandIcon'
 import CardChipIcon from '@/components/CardChipIcon'
-import ConfirmDangerModal from '@/components/ConfirmDangerModal'
+import { ConfirmDangerModal } from '@/components/ConfirmDangerModal'
 import { useToast, CONNECTION_ERROR_MSG, isConnectionError } from '@/lib/toastContext'
 import { useGreetingPronoun } from '@/lib/greeting'
 import {

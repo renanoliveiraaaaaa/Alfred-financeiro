@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useMemo, useRef, type ReactNode } from 'react'
+import { useEffect, useState, useMemo, useRef, useCallback, type ReactNode } from 'react'
 import Link from 'next/link'
 import { resolveActiveOrganizationIdForClient } from '@/lib/activeOrganizationClient'
 import { useActiveOrganizationRevision } from '@/lib/useActiveOrganizationRevision'
@@ -17,11 +17,13 @@ import {
 import { useGreetingPronoun, getGreetingWithName, getGreetingSuffix } from '@/lib/greeting'
 import MaskedValue from '@/components/MaskedValue'
 import WelcomeModal, { shouldShowWelcomeModal } from '@/components/WelcomeModal'
+import OnboardingChecklist from '@/components/OnboardingChecklist'
+import DashboardCustomizeModal from '@/components/DashboardCustomizeModal'
 import AttentionPanel from '@/components/AttentionPanel'
 import BudgetsPanel from '@/components/BudgetsPanel'
 import { useUserPreferences } from '@/lib/userPreferencesContext'
 import { useToast, CONNECTION_ERROR_MSG, isConnectionError } from '@/lib/toastContext'
-import { RefreshCw, Loader2, ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react'
+import { RefreshCw, Loader2, ChevronLeft, ChevronRight, CalendarDays, LayoutDashboard } from 'lucide-react'
 import BuyingPowerCard from '@/components/dashboard/BuyingPowerCard'
 import SubscriptionWasteRadar from '@/components/dashboard/SubscriptionWasteRadar'
 import {
@@ -30,6 +32,13 @@ import {
   threeMonthWindowEnd,
 } from '@/lib/lifestyleFinance'
 import type { Database } from '@/types/supabase'
+import {
+  DEFAULT_DASHBOARD_LAYOUT,
+  loadDashboardLayout,
+  visibleSections,
+  type DashboardSectionId,
+  type DashboardSectionConfig,
+} from '@/lib/dashboardLayout'
 
 type Revenue = Database['public']['Tables']['revenues']['Row']
 type Expense = Database['public']['Tables']['expenses']['Row']
@@ -91,6 +100,10 @@ export default function DashboardPageClient({ children }: { children?: ReactNode
   const [dueIncomeSources, setDueIncomeSources] = useState<IncomeSource[]>([])
   const [processingIncomeId, setProcessingIncomeId] = useState<string | null>(null)
   const [showWelcomeModal, setShowWelcomeModal] = useState(false)
+  const [onboardingRefresh, setOnboardingRefresh] = useState(0)
+  const [userId, setUserId] = useState<string | undefined>()
+  const [dashboardLayout, setDashboardLayout] = useState<DashboardSectionConfig[]>(DEFAULT_DASHBOARD_LAYOUT)
+  const [customizeOpen, setCustomizeOpen] = useState(false)
   const [goals, setGoals] = useState<Goal[]>([])
   const [expensesThreeMonthWindow, setExpensesThreeMonthWindow] = useState<Expense[]>([])
   const [allActiveSubscriptions, setAllActiveSubscriptions] = useState<Subscription[]>([])
@@ -158,6 +171,12 @@ export default function DashboardPageClient({ children }: { children?: ReactNode
       try {
         const { data: userData } = await supabase.auth.getUser()
         setUserEmail(userData.user?.email ?? '')
+        if (userData.user?.id) {
+          setUserId(userData.user.id)
+          if (isInitialLoad.current) {
+            setDashboardLayout(loadDashboardLayout(userData.user.id))
+          }
+        }
 
         if (userData.user && isInitialLoad.current) {
           const { data: prof } = await supabase
@@ -440,6 +459,299 @@ export default function DashboardPageClient({ children }: { children?: ReactNode
     skel: 'bg-border rounded animate-pulse',
   }
 
+  const monthOpacity = monthBusy ? 'opacity-60 pointer-events-none' : ''
+
+  const renderSection = useCallback(
+    (id: DashboardSectionId): ReactNode => {
+      switch (id) {
+        case 'attention':
+          return <AttentionPanel key={id} />
+        case 'alerts_income':
+          if (dueIncomeSources.length === 0) return null
+          return (
+            <div key={id} className={`${c.card} p-4 space-y-3 border-emerald-200 dark:border-emerald-500/20 bg-emerald-50/50 dark:bg-emerald-500/5`}>
+              <div className="flex items-center gap-2">
+                <span className="text-lg">💰</span>
+                <p className="text-sm font-semibold text-main">Boas notícias{getGreetingSuffix(gender)}</p>
+              </div>
+              <ul className={c.divider}>
+                {dueIncomeSources.map((src) => (
+                  <li key={src.id} className="py-2.5 flex items-center gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-main">
+                        O seu pagamento de <strong>{src.name}</strong> (<MaskedValue value={Number(src.amount)} className="font-semibold" />) está agendado para hoje. Deseja confirmar a entrada no cofre?
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => handleConfirmIncome(src)}
+                      disabled={processingIncomeId === src.id}
+                      className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-600 dark:bg-emerald-500 text-white hover:bg-emerald-700 dark:hover:bg-emerald-600 disabled:opacity-50 transition-colors"
+                    >
+                      {processingIncomeId === src.id ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+                      Confirmar
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )
+        case 'alerts_subs':
+          if (dueSubs.length === 0) return null
+          return (
+            <div key={id} className={`${c.card} p-4 space-y-3`}>
+              <div className="flex items-center gap-2">
+                <RefreshCw className="h-4 w-4 text-brand" />
+                <p className="text-sm font-semibold text-main">Renovações pendentes</p>
+              </div>
+              <ul className={c.divider}>
+                {dueSubs.map((sub) => (
+                  <li key={sub.id} className="py-2.5 flex items-center gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-main">
+                        Senhor, a sua assinatura de <strong>{sub.name}</strong> (<MaskedValue value={Number(sub.amount)} className="font-semibold" />) foi renovada.
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => handleRegisterSub(sub)}
+                      disabled={processingSubId === sub.id}
+                      className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-brand text-white hover:opacity-90 disabled:opacity-50 transition-colors"
+                    >
+                      {processingSubId === sub.id ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+                      Registrar saída
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )
+        case 'summary':
+          return (
+            <section
+              key={id}
+              className={`grid gap-4 sm:grid-cols-2 lg:grid-cols-4 relative transition-opacity ${monthOpacity}`}
+            >
+              <div className={`${c.card} p-4 glass-interactive`}>
+                <p className={c.label}>Saldo do mês</p>
+                <MaskedValue value={balance} className={`mt-1.5 text-2xl font-semibold ${balance >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`} />
+              </div>
+              <div className={`${c.card} p-4 glass-interactive`}>
+                <p className={c.label}>Entradas</p>
+                <MaskedValue value={totalRevenues} className="mt-1.5 text-2xl font-semibold text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <div className={`${c.card} p-4 glass-interactive`}>
+                <p className={c.label}>Saídas</p>
+                <MaskedValue value={totalExpenses} className="mt-1.5 text-2xl font-semibold text-red-600 dark:text-red-400" />
+              </div>
+              <div className={`${c.card} p-4 glass-interactive`}>
+                <p className={c.label}>Orçamento</p>
+                {projectedExpenses > 0 ? (
+                  <>
+                    <p className={`mt-1.5 text-2xl font-semibold ${
+                      budgetPercent > 100 ? 'text-red-600 dark:text-red-400' : budgetPercent > 80 ? 'text-brand' : 'text-main'
+                    }`}>
+                      {Math.round(budgetPercent)}%
+                    </p>
+                    <div className="mt-2 h-1.5 w-full rounded-full bg-border overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-700 ${
+                          budgetPercent > 100 ? 'bg-red-500' : budgetPercent > 80 ? 'bg-brand' : 'bg-brand'
+                        }`}
+                        style={{ width: `${Math.min(budgetPercent, 100)}%` }}
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <p className="mt-1.5 text-sm text-muted">
+                    <Link href="/projections" className="text-brand hover:opacity-80 transition-colors">Definir metas</Link>
+                  </p>
+                )}
+              </div>
+            </section>
+          )
+        case 'buying_power':
+          return (
+            <div key={id} className={monthOpacity}>
+              <BuyingPowerCard data={buyingPower} monthLabel={monthLabel} />
+            </div>
+          )
+        case 'subscription_radar':
+          return (
+            <div key={id} className={monthOpacity}>
+              <SubscriptionWasteRadar alerts={subscriptionAlerts} />
+            </div>
+          )
+        case 'budgets':
+          return <BudgetsPanel key={id} />
+        case 'movements':
+          return (
+            <div key={id} className={`${c.card} ${monthOpacity}`}>
+              <div className={`${c.borderB} px-5 py-4 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between`}>
+                <h2 className={c.h2}>Movimentações — {monthLabel}</h2>
+                <div className="flex gap-3">
+                  <Link href="/revenues" className="text-xs text-brand hover:opacity-80 transition-colors">Entradas</Link>
+                  <Link href="/expenses" className="text-xs text-brand hover:opacity-80 transition-colors">Saídas</Link>
+                </div>
+              </div>
+              <div className="px-5 py-2">
+                {movements.length === 0 ? (
+                  <p className="py-8 text-center text-sm text-muted">
+                    Nenhuma entrada ou saída com data em {monthLabel}
+                    {getGreetingSuffix(gender)}. Use as setas acima para ver outros meses.
+                  </p>
+                ) : (
+                  <ul className={`${c.divider} max-h-[min(28rem,55vh)] overflow-y-auto overscroll-contain`}>
+                    {movements.map((m) => (
+                      <li key={m.id} className="flex items-center gap-3 py-3">
+                        <span className={`inline-flex h-8 w-8 items-center justify-center rounded-lg text-sm ${
+                          m.type === 'revenue'
+                            ? 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
+                            : 'bg-red-100 dark:bg-red-500/15 text-red-600 dark:text-red-400'
+                        }`}>
+                          {m.type === 'revenue' ? '↑' : '↓'}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-main truncate">{m.description}</p>
+                          <p className="text-xs text-muted">{formatDate(m.date)} · {m.status}</p>
+                        </div>
+                        <MaskedValue
+                          value={m.amount}
+                          className={`text-sm font-semibold tabular-nums ${
+                            m.type === 'revenue' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'
+                          }`}
+                        />
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          )
+        case 'unpaid':
+          return (
+            <div key={id} className={`${c.card} ${monthOpacity}`}>
+              <div className={`${c.borderB} px-5 py-4 flex items-center justify-between`}>
+                <h2 className={c.h2}>Compromissos pendentes</h2>
+                {unpaid.length > 0 && (
+                  <span className="inline-flex items-center rounded-full bg-red-100 dark:bg-red-500/15 px-2 py-0.5 text-xs font-medium text-red-700 dark:text-red-400">
+                    {unpaid.length}
+                  </span>
+                )}
+              </div>
+              <div className="px-5 py-2">
+                {unpaid.length === 0 ? (
+                  <p className="py-8 text-center text-sm text-muted">
+                    Todas as obrigações estão em dia{getGreetingSuffix(gender)}. Excelente gestão.
+                  </p>
+                ) : (
+                  <ul className={c.divider}>
+                    {unpaid.map((e) => {
+                      const badge = dueBadge(e.due_date)
+                      return (
+                        <li key={e.id} className="py-3 space-y-1.5">
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="text-sm font-medium text-main truncate flex-1">{e.description}</p>
+                            <MaskedValue value={Number(e.amount || 0)} className="text-sm font-semibold text-red-600 dark:text-red-400 tabular-nums shrink-0" />
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${badge.cls}`}>{badge.label}</span>
+                            {e.category && <span className="text-xs text-muted">{e.category}</span>}
+                          </div>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                )}
+              </div>
+            </div>
+          )
+        default:
+          return null
+      }
+    },
+    [
+      dueIncomeSources,
+      dueSubs,
+      gender,
+      balance,
+      totalRevenues,
+      totalExpenses,
+      projectedExpenses,
+      budgetPercent,
+      monthOpacity,
+      buyingPower,
+      monthLabel,
+      subscriptionAlerts,
+      movements,
+      unpaid,
+      processingIncomeId,
+      processingSubId,
+      c,
+    ],
+  )
+
+  const orderedSections = useMemo(() => {
+    const ids = visibleSections(dashboardLayout)
+    const nodes: ReactNode[] = []
+    let i = 0
+
+    while (i < ids.length) {
+      const id = ids[i]
+      const next = ids[i + 1]
+
+      const isLifestylePair =
+        (id === 'buying_power' && next === 'subscription_radar') ||
+        (id === 'subscription_radar' && next === 'buying_power')
+
+      const isActivityPair =
+        (id === 'movements' && next === 'unpaid') ||
+        (id === 'unpaid' && next === 'movements')
+
+      if (isLifestylePair) {
+        const first = renderSection(id)
+        const second = renderSection(next)
+        if (first || second) {
+          nodes.push(
+            <section
+              key={`lifestyle-${id}-${next}`}
+              className={`grid gap-4 relative transition-opacity ${
+                subscriptionAlerts.length > 0 ? 'lg:grid-cols-2' : ''
+              } ${monthOpacity}`}
+            >
+              {first}
+              {second}
+            </section>,
+          )
+        }
+        i += 2
+        continue
+      }
+
+      if (isActivityPair) {
+        const first = renderSection(id)
+        const second = renderSection(next)
+        if (first || second) {
+          nodes.push(
+            <section
+              key={`activity-${id}-${next}`}
+              className={`grid gap-6 lg:grid-cols-5 relative transition-opacity ${monthOpacity}`}
+            >
+              <div className={id === 'movements' ? 'lg:col-span-3' : 'lg:col-span-2'}>{first}</div>
+              <div className={next === 'movements' ? 'lg:col-span-3' : 'lg:col-span-2'}>{second}</div>
+            </section>,
+          )
+        }
+        i += 2
+        continue
+      }
+
+      const node = renderSection(id)
+      if (node) nodes.push(node)
+      i += 1
+    }
+
+    return nodes
+  }, [dashboardLayout, renderSection, subscriptionAlerts.length, monthOpacity])
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -470,13 +782,38 @@ export default function DashboardPageClient({ children }: { children?: ReactNode
   return (
     <div className="space-y-6">
       {children}
-      <WelcomeModal open={showWelcomeModal} onClose={() => setShowWelcomeModal(false)} pronoun={pronoun} />
+      <WelcomeModal
+        open={showWelcomeModal}
+        onClose={() => setShowWelcomeModal(false)}
+        onComplete={() => setOnboardingRefresh((k) => k + 1)}
+        pronoun={pronoun}
+      />
 
-      <div>
-        <h1 className={c.h1}>
-          {getGreetingWithName(getGreeting(), firstName || '', gender)}!
-        </h1>
-        <p className={`${c.sub} mt-0.5`}>Visão geral do patrimônio — período selecionado abaixo</p>
+      <OnboardingChecklist refreshKey={onboardingRefresh} />
+
+      <DashboardCustomizeModal
+        open={customizeOpen}
+        onClose={() => setCustomizeOpen(false)}
+        layout={dashboardLayout}
+        onChange={setDashboardLayout}
+        userId={userId}
+      />
+
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className={c.h1}>
+            {getGreetingWithName(getGreeting(), firstName || '', gender)}!
+          </h1>
+          <p className={`${c.sub} mt-0.5`}>Visão geral do patrimônio — período selecionado abaixo</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setCustomizeOpen(true)}
+          className="inline-flex items-center gap-2 self-start rounded-lg border border-border px-3 py-2 text-sm font-medium text-muted hover:text-main hover:bg-surface transition-colors"
+        >
+          <LayoutDashboard className="h-4 w-4" />
+          Personalizar painel
+        </button>
       </div>
 
       {/* Navegação por mês (receitas/despesas do período) */}
@@ -530,209 +867,13 @@ export default function DashboardPageClient({ children }: { children?: ReactNode
         </div>
       </div>
 
-      <AttentionPanel />
-
       {error && (
         <div className="rounded-lg border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-300">
           {error}
         </div>
       )}
 
-      {/* Alertas de recebimentos agendados */}
-      {dueIncomeSources.length > 0 && (
-        <div className={`${c.card} p-4 space-y-3 border-emerald-200 dark:border-emerald-500/20 bg-emerald-50/50 dark:bg-emerald-500/5`}>
-          <div className="flex items-center gap-2">
-            <span className="text-lg">💰</span>
-            <p className="text-sm font-semibold text-main">Boas notícias{getGreetingSuffix(gender)}</p>
-          </div>
-          <ul className={c.divider}>
-            {dueIncomeSources.map((src) => (
-              <li key={src.id} className="py-2.5 flex items-center gap-3">
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-main">
-                    O seu pagamento de <strong>{src.name}</strong> (<MaskedValue value={Number(src.amount)} className="font-semibold" />) está agendado para hoje. Deseja confirmar a entrada no cofre?
-                  </p>
-                </div>
-                <button
-                  onClick={() => handleConfirmIncome(src)}
-                  disabled={processingIncomeId === src.id}
-                  className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-600 dark:bg-emerald-500 text-white hover:bg-emerald-700 dark:hover:bg-emerald-600 disabled:opacity-50 transition-colors"
-                >
-                  {processingIncomeId === src.id ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
-                  Confirmar
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {/* Alertas de assinaturas vencidas */}
-      {dueSubs.length > 0 && (
-        <div className={`${c.card} p-4 space-y-3`}>
-          <div className="flex items-center gap-2">
-            <RefreshCw className="h-4 w-4 text-brand" />
-            <p className="text-sm font-semibold text-main">Renovações pendentes</p>
-          </div>
-          <ul className={c.divider}>
-            {dueSubs.map((sub) => (
-              <li key={sub.id} className="py-2.5 flex items-center gap-3">
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-main">
-                    Senhor, a sua assinatura de <strong>{sub.name}</strong> (<MaskedValue value={Number(sub.amount)} className="font-semibold" />) foi renovada.
-                  </p>
-                </div>
-                <button
-                  onClick={() => handleRegisterSub(sub)}
-                  disabled={processingSubId === sub.id}
-                  className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-brand text-white hover:opacity-90 disabled:opacity-50 transition-colors"
-                >
-                  {processingSubId === sub.id ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
-                  Registrar saída
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      <section
-        className={`grid gap-4 sm:grid-cols-2 lg:grid-cols-4 relative transition-opacity ${
-          monthBusy ? 'opacity-60 pointer-events-none' : ''
-        }`}
-      >
-        <div className={`${c.card} p-4 glass-interactive`}>
-          <p className={c.label}>Saldo do mês</p>
-          <MaskedValue value={balance} className={`mt-1.5 text-2xl font-semibold ${balance >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`} />
-        </div>
-        <div className={`${c.card} p-4 glass-interactive`}>
-          <p className={c.label}>Entradas</p>
-          <MaskedValue value={totalRevenues} className="mt-1.5 text-2xl font-semibold text-emerald-600 dark:text-emerald-400" />
-        </div>
-        <div className={`${c.card} p-4 glass-interactive`}>
-          <p className={c.label}>Saídas</p>
-          <MaskedValue value={totalExpenses} className="mt-1.5 text-2xl font-semibold text-red-600 dark:text-red-400" />
-        </div>
-        <div className={`${c.card} p-4 glass-interactive`}>
-          <p className={c.label}>Orçamento</p>
-          {projectedExpenses > 0 ? (
-            <>
-              <p className={`mt-1.5 text-2xl font-semibold ${
-                budgetPercent > 100 ? 'text-red-600 dark:text-red-400' : budgetPercent > 80 ? 'text-brand' : 'text-main'
-              }`}>
-                {Math.round(budgetPercent)}%
-              </p>
-              <div className="mt-2 h-1.5 w-full rounded-full bg-border overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all duration-700 ${
-                    budgetPercent > 100 ? 'bg-red-500' : budgetPercent > 80 ? 'bg-brand' : 'bg-brand'
-                  }`}
-                  style={{ width: `${Math.min(budgetPercent, 100)}%` }}
-                />
-              </div>
-            </>
-          ) : (
-            <p className="mt-1.5 text-sm text-muted">
-              <Link href="/projections" className="text-brand hover:opacity-80 transition-colors">Definir metas</Link>
-            </p>
-          )}
-        </div>
-      </section>
-
-      <section
-        className={`grid gap-4 relative transition-opacity ${
-          subscriptionAlerts.length > 0 ? 'lg:grid-cols-2' : ''
-        } ${monthBusy ? 'opacity-60 pointer-events-none' : ''}`}
-      >
-        <BuyingPowerCard data={buyingPower} monthLabel={monthLabel} />
-        <SubscriptionWasteRadar alerts={subscriptionAlerts} />
-      </section>
-
-      <BudgetsPanel />
-
-      <section
-        className={`grid gap-6 lg:grid-cols-5 relative transition-opacity ${
-          monthBusy ? 'opacity-60 pointer-events-none' : ''
-        }`}
-      >
-        <div className={`lg:col-span-3 ${c.card}`}>
-          <div className={`${c.borderB} px-5 py-4 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between`}>
-            <h2 className={c.h2}>Movimentações — {monthLabel}</h2>
-            <div className="flex gap-3">
-              <Link href="/revenues" className="text-xs text-brand hover:opacity-80 transition-colors">Entradas</Link>
-              <Link href="/expenses" className="text-xs text-brand hover:opacity-80 transition-colors">Saídas</Link>
-            </div>
-          </div>
-          <div className="px-5 py-2">
-            {movements.length === 0 ? (
-              <p className="py-8 text-center text-sm text-muted">
-                Nenhuma entrada ou saída com data em {monthLabel}
-                {getGreetingSuffix(gender)}. Use as setas acima para ver outros meses.
-              </p>
-            ) : (
-              <ul className={`${c.divider} max-h-[min(28rem,55vh)] overflow-y-auto overscroll-contain`}>
-                {movements.map((m) => (
-                  <li key={m.id} className="flex items-center gap-3 py-3">
-                    <span className={`inline-flex h-8 w-8 items-center justify-center rounded-lg text-sm ${
-                      m.type === 'revenue'
-                        ? 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
-                        : 'bg-red-100 dark:bg-red-500/15 text-red-600 dark:text-red-400'
-                    }`}>
-                      {m.type === 'revenue' ? '↑' : '↓'}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-main truncate">{m.description}</p>
-                      <p className="text-xs text-muted">{formatDate(m.date)} · {m.status}</p>
-                    </div>
-                    <MaskedValue
-                      value={m.amount}
-                      className={`text-sm font-semibold tabular-nums ${
-                        m.type === 'revenue' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'
-                      }`}
-                    />
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </div>
-
-        <div className={`lg:col-span-2 ${c.card}`}>
-          <div className={`${c.borderB} px-5 py-4 flex items-center justify-between`}>
-            <h2 className={c.h2}>Compromissos pendentes</h2>
-            {unpaid.length > 0 && (
-              <span className="inline-flex items-center rounded-full bg-red-100 dark:bg-red-500/15 px-2 py-0.5 text-xs font-medium text-red-700 dark:text-red-400">
-                {unpaid.length}
-              </span>
-            )}
-          </div>
-          <div className="px-5 py-2">
-            {unpaid.length === 0 ? (
-              <p className="py-8 text-center text-sm text-muted">
-                Todas as obrigações estão em dia{getGreetingSuffix(gender)}. Excelente gestão.
-              </p>
-            ) : (
-              <ul className={c.divider}>
-                {unpaid.map((e) => {
-                  const badge = dueBadge(e.due_date)
-                  return (
-                    <li key={e.id} className="py-3 space-y-1.5">
-                      <div className="flex items-start justify-between gap-2">
-                        <p className="text-sm font-medium text-main truncate flex-1">{e.description}</p>
-                        <MaskedValue value={Number(e.amount || 0)} className="text-sm font-semibold text-red-600 dark:text-red-400 tabular-nums shrink-0" />
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${badge.cls}`}>{badge.label}</span>
-                        {e.category && <span className="text-xs text-muted">{e.category}</span>}
-                      </div>
-                    </li>
-                  )
-                })}
-              </ul>
-            )}
-          </div>
-        </div>
-      </section>
+      {orderedSections}
     </div>
   )
 }

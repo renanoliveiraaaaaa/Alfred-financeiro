@@ -7,7 +7,7 @@ import { formatDate } from '@/lib/format'
 import MaskedValue from '@/components/MaskedValue'
 import type { Database } from '@/types/supabase'
 import EmptyState from '@/components/EmptyState'
-import ConfirmDangerModal from '@/components/ConfirmDangerModal'
+import { ConfirmDangerModal } from '@/components/ConfirmDangerModal'
 import { useToast, CONNECTION_ERROR_MSG, isConnectionError } from '@/lib/toastContext'
 import { useGreetingPronoun } from '@/lib/greeting'
 import {
@@ -26,9 +26,9 @@ import {
   Check,
   Trash2,
   Copy,
-  Download,
 } from 'lucide-react'
-import { downloadCsv, formatDateBR } from '@/lib/exportCsv'
+import { formatDateBR, formatCurrencyBR } from '@/lib/exportCsv'
+import ExportMenu from '@/components/ExportMenu'
 import { resolveActiveOrganizationIdForClient } from '@/lib/activeOrganizationClient'
 import { useActiveOrganizationRevision } from '@/lib/useActiveOrganizationRevision'
 
@@ -198,18 +198,22 @@ export default function RevenuesPage() {
   const allSelected = revenues.length > 0 && selectedIds.size === revenues.length
   const someSelected = selectedIds.size > 0
 
-  const handleExportCsv = () => {
+  const exportSheets = useMemo(() => {
     const rows = revenues.map((r) => ({
-      'Data': formatDateBR(r.date),
+      Data: formatDateBR(r.date),
       'Data prevista': formatDateBR(r.expected_date),
-      'Descrição': r.description,
-      'Valor (R$)': Number(r.amount || 0).toFixed(2).replace('.', ','),
-      'Status': r.received ? 'Recebido' : 'Pendente',
-      'Origem': r.source === 'import' ? 'Importado' : 'Manual',
+      Descrição: r.description,
+      'Valor (R$)': formatCurrencyBR(Number(r.amount || 0)),
+      Status: r.received ? 'Recebido' : 'Pendente',
+      Origem: r.source === 'import' ? 'Importado' : 'Manual',
     }))
-    const today = new Date().toISOString().slice(0, 10)
-    downloadCsv(rows, `receitas-${today}.csv`)
-  }
+    return [{ name: 'Receitas', rows }]
+  }, [revenues])
+
+  const exportFilename = useMemo(
+    () => `receitas-${new Date().toISOString().slice(0, 10)}`,
+    [revenues],
+  )
 
   return (
     <div className="space-y-6">
@@ -220,15 +224,11 @@ export default function RevenuesPage() {
           <p className="text-sm text-muted mt-0.5">Acompanhamento dos seus rendimentos e recebimentos, {pronoun}</p>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={handleExportCsv}
+          <ExportMenu
+            filename={exportFilename}
+            sheets={exportSheets}
             disabled={revenues.length === 0}
-            title="Exportar lista atual em CSV"
-            className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2.5 text-sm font-medium text-muted hover:text-main hover:bg-background disabled:opacity-40 transition-colors"
-          >
-            <Download className="h-4 w-4" />
-            <span className="hidden sm:inline">Exportar CSV</span>
-          </button>
+          />
           <Link
             href="/revenues/new"
             className="inline-flex items-center gap-2 rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-white hover:opacity-90 transition-colors"

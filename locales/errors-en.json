@@ -1,0 +1,10 @@
+{
+  "error.connection": "Communication problem. Please check your connection and try again.",
+  "error.unauthorized": "Session expired. Please sign in again.",
+  "error.orgNotFound": "Could not determine active organization. Try reloading the page.",
+  "error.loadFailed": "Failed to load data.",
+  "error.saveFailed": "Failed to save.",
+  "error.unexpected": "An unexpected error occurred. Please try again.",
+  "error.authFailed": "Authentication failed.",
+  "error.exportEmpty": "No data to export."
+}

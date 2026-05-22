@@ -3,7 +3,7 @@
 import { useState, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Shield, Trash2 } from 'lucide-react'
-import ConfirmDangerModal from '@/components/ConfirmDangerModal'
+import { ConfirmDangerModal } from '@/components/ConfirmDangerModal'
 import { useToast } from '@/lib/toastContext'
 import { deleteUserProfile, updateUserRole } from '@/lib/actions/admin'
 

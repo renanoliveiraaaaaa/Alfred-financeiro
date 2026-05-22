@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { createSupabaseClient } from '@/lib/supabaseClient'
 import CurrencyInput from '@/components/CurrencyInput'
 import { Loader2, Trash2, ArrowLeft, ExternalLink, Paperclip } from 'lucide-react'
-import ConfirmDangerModal from '@/components/ConfirmDangerModal'
+import { ConfirmDangerModal } from '@/components/ConfirmDangerModal'
 import { useToast, CONNECTION_ERROR_MSG, isConnectionError } from '@/lib/toastContext'
 import { useGreetingPronoun } from '@/lib/greeting'
 import {

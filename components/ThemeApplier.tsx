@@ -2,16 +2,12 @@
 
 import { useEffect } from 'react'
 import { useUserPreferences } from '@/lib/userPreferencesContext'
+import { applyCustomTheme, clearCustomTheme } from '@/lib/customTheme'
 
 const THEME_CLASSES = ['theme-gala', 'theme-classic', 'theme-club', 'theme-liquid'] as const
 
-/**
- * Aplica a classe de tema no html conforme app_theme do perfil.
- * Tema Padrão: :root (normal) - sem classe extra
- * Temas Premium: theme-gala | theme-classic | theme-club | theme-liquid
- */
 export default function ThemeApplier() {
-  const { appTheme } = useUserPreferences()
+  const { appTheme, customTheme } = useUserPreferences()
 
   useEffect(() => {
     const html = document.documentElement
@@ -20,6 +16,11 @@ export default function ThemeApplier() {
       html.classList.add(`theme-${appTheme}`)
     }
   }, [appTheme])
+
+  useEffect(() => {
+    if (customTheme) applyCustomTheme(customTheme)
+    else clearCustomTheme()
+  }, [customTheme])
 
   return null
 }

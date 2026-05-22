@@ -1,0 +1,16 @@
+{
+  "security.2fa.title": "Autenticação em duas etapas (2FA)",
+  "security.2fa.desc": "Proteja sua conta com um código do aplicativo autenticador.",
+  "security.2fa.enable": "Ativar 2FA",
+  "security.2fa.disable": "Desativar 2FA",
+  "security.2fa.scan": "Escaneie o QR code no Google Authenticator ou similar.",
+  "security.2fa.code": "Código de verificação",
+  "security.2fa.verify": "Verificar e ativar",
+  "security.2fa.active": "2FA ativo",
+  "security.2fa.inactive": "2FA inativo",
+  "security.activity.title": "Log de atividades",
+  "security.activity.desc": "Registro de ações sensíveis na sua conta.",
+  "security.activity.empty": "Nenhuma atividade registrada ainda.",
+  "security.activity.when": "Quando",
+  "security.activity.action": "Ação"
+}

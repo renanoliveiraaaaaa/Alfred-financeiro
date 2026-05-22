@@ -22,6 +22,8 @@ export interface Database {
           app_theme: 'normal' | 'gala' | 'classic' | 'club' | 'liquid'
           hide_balance: boolean
           weekly_report: boolean
+          locale: 'pt' | 'en'
+          custom_theme: Record<string, unknown> | null
           role: 'user' | 'admin'
           plan_status?: 'trial' | 'active' | 'expired'
           trial_ends_at?: string | null
@@ -37,6 +39,8 @@ export interface Database {
           app_theme?: 'normal' | 'gala' | 'classic' | 'club' | 'liquid'
           hide_balance?: boolean
           weekly_report?: boolean
+          locale?: 'pt' | 'en'
+          custom_theme?: Record<string, unknown> | null
           role?: 'user' | 'admin'
           plan_status?: 'trial' | 'active' | 'expired'
           trial_ends_at?: string | null
@@ -52,11 +56,45 @@ export interface Database {
           app_theme?: 'normal' | 'gala' | 'classic' | 'club' | 'liquid'
           hide_balance?: boolean
           weekly_report?: boolean
+          locale?: 'pt' | 'en'
+          custom_theme?: Record<string, unknown> | null
           role?: 'user' | 'admin'
           plan_status?: 'trial' | 'active' | 'expired'
           trial_ends_at?: string | null
           subscription_status?: 'trial' | 'active' | 'past_due' | 'canceled'
           subscription_plan?: 'free' | 'premium' | 'business'
+          created_at?: string
+        }
+      }
+      activity_logs: {
+        Row: {
+          id: string
+          user_id: string
+          organization_id: string | null
+          action: string
+          entity_type: string | null
+          entity_id: string | null
+          metadata: Record<string, unknown>
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          organization_id?: string | null
+          action: string
+          entity_type?: string | null
+          entity_id?: string | null
+          metadata?: Record<string, unknown>
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          organization_id?: string | null
+          action?: string
+          entity_type?: string | null
+          entity_id?: string | null
+          metadata?: Record<string, unknown>
           created_at?: string
         }
       }
