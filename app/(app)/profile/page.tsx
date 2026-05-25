@@ -3,10 +3,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { createSupabaseClient } from '@/lib/supabaseClient'
 import { useUserPreferences, type Gender, type AppTheme } from '@/lib/userPreferencesContext'
-import { getPrefTitle } from '@/lib/greeting'
-import { useTheme } from 'next-themes'
 import { useGreetingPronoun } from '@/lib/greeting'
+import { useTheme } from 'next-themes'
 import { useI18n, type Locale } from '@/lib/i18n'
+import { formatMessage } from '@/lib/i18nFormat'
 import { parseCustomTheme, type CustomTheme } from '@/lib/customTheme'
 import { logActivity } from '@/lib/activityLog'
 import CustomThemeEditor from '@/components/CustomThemeEditor'
@@ -36,7 +36,7 @@ export default function ProfilePage() {
   const { theme, setTheme } = useTheme()
   const { locale, setLocale, t } = useI18n()
   const pronoun = useGreetingPronoun()
-  const prefTitle = getPrefTitle(gender)
+  const prefTitleKey = gender === 'M' ? 'profile.prefTitle.m' : gender === 'F' ? 'profile.prefTitle.f' : 'profile.prefTitle.o'
 
   const [prefWeeklyReport, setPrefWeeklyReport] = useState(false)
   const [prefHideBalance, setPrefHideBalance] = useState(false)
@@ -55,7 +55,7 @@ export default function ProfilePage() {
     setLoading(true)
     try {
       const { data: userData, error: authErr } = await supabase.auth.getUser()
-      if (authErr || !userData.user) throw new Error('Sessão expirada.')
+      if (authErr || !userData.user) throw new Error(t('profile.error.session'))
 
       setEmail(userData.user.email ?? '')
       setUserId(userData.user.id)
@@ -81,7 +81,7 @@ export default function ProfilePage() {
         setLocale(loc)
       }
     } catch (err: any) {
-      setError(err?.message || 'Falha ao carregar perfil.')
+      setError(err?.message || t('profile.error.load'))
     } finally {
       setLoading(false)
     }
@@ -118,9 +118,9 @@ export default function ProfilePage() {
       if (upsertErr) throw new Error(upsertErr.message)
 
       setAvatarUrl(publicUrl)
-      setSuccess(`Seu retrato foi atualizado com distinção, ${pronoun}.`)
+      setSuccess(formatMessage(t('profile.success.avatar'), { pronoun }))
     } catch (err: any) {
-      setError(err?.message || 'Falha ao atualizar retrato.')
+      setError(err?.message || t('profile.error.avatar'))
     } finally {
       setUploadingAvatar(false)
     }
@@ -151,9 +151,9 @@ export default function ProfilePage() {
       setLocalPreferences({ gender, appTheme, customTheme, locale: profileLocale })
       await logActivity(supabase, userId, { action: 'profile_update' })
 
-      setSuccess(`Preferências salvas com distinção, ${pronoun}.`)
+      setSuccess(formatMessage(t('profile.success.save'), { pronoun }))
     } catch (err: any) {
-      setError(err?.message || 'Falha ao salvar preferências.')
+      setError(err?.message || t('profile.error.save'))
     } finally {
       setSaving(false)
     }
@@ -164,9 +164,9 @@ export default function ProfilePage() {
     setError(null)
     setSuccess(null)
     try {
-      setError('Exclusão de conta requer confirmação por e-mail. Entre em contato com o suporte.')
+      setError(t('profile.error.deleteSupport'))
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Falha ao excluir conta.')
+      setError(err instanceof Error ? err.message : t('profile.error.delete'))
     } finally {
       setDeleting(false)
       setDeleteModalOpen(false)
@@ -199,9 +199,11 @@ export default function ProfilePage() {
   return (
     <div className="max-w-2xl space-y-6">
       <div>
-        <h1 className="text-xl font-semibold text-main">Preferências {prefTitle}</h1>
+        <h1 className="text-xl font-semibold text-main">
+          {formatMessage(t('profile.title'), { prefTitle: t(prefTitleKey) })}
+        </h1>
         <p className="text-sm text-muted mt-0.5">
-          Como posso tornar sua experiência mais agradável hoje?
+          {t('profile.subtitle')}
         </p>
       </div>
 
@@ -218,7 +220,7 @@ export default function ProfilePage() {
 
       {/* O Retrato */}
       <div className="rounded-xl border border-border bg-surface p-6 glass-card">
-        <h2 className="text-sm font-semibold text-main mb-4">O Retrato</h2>
+        <h2 className="text-sm font-semibold text-main mb-4">{t('profile.portrait')}</h2>
         <div className="flex items-center gap-6">
           <div className="relative group">
             <div className="h-24 w-24 rounded-full border-2 border-brand/40 overflow-hidden bg-border flex items-center justify-center">
@@ -256,7 +258,7 @@ export default function ProfilePage() {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-main truncate">
-              {fullName || email.split('@')[0] || 'Senhor'}
+              {fullName || email.split('@')[0] || t('profile.fallbackName')}
             </p>
             <p className="text-xs text-muted mt-0.5">{email}</p>
             <button
@@ -266,7 +268,7 @@ export default function ProfilePage() {
               className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-brand hover:opacity-80 transition-colors disabled:opacity-50"
             >
               <Camera className="h-3.5 w-3.5" />
-              {uploadingAvatar ? 'Atualizando...' : 'Atualizar retrato'}
+              {uploadingAvatar ? t('profile.updatingAvatar') : t('profile.updateAvatar')}
             </button>
           </div>
         </div>
@@ -274,29 +276,29 @@ export default function ProfilePage() {
 
       {/* Informações pessoais */}
       <div className="rounded-xl border border-border bg-surface p-6 space-y-5 glass-card">
-        <h2 className="text-sm font-semibold text-main">Informações pessoais</h2>
+        <h2 className="text-sm font-semibold text-main">{t('profile.personalInfo')}</h2>
 
         <div>
           <label className="block text-xs font-medium text-muted uppercase tracking-wider mb-1.5">
-            Credencial de acesso
+            {t('profile.emailLabel')}
           </label>
           <div className="flex items-center gap-2 rounded-lg border border-border bg-background px-4 py-2.5">
             <User className="h-4 w-4 text-muted shrink-0" />
             <span className="text-sm text-muted">{email}</span>
           </div>
-          <p className="mt-1 text-xs text-muted">O e-mail de acesso não pode ser alterado por aqui.</p>
+          <p className="mt-1 text-xs text-muted">{t('profile.emailHint')}</p>
         </div>
 
         <div>
           <label htmlFor="fullName" className="block text-xs font-medium text-muted uppercase tracking-wider mb-1.5">
-            Como devo chamá-lo?
+            {t('profile.fullNameLabel')}
           </label>
           <input
             id="fullName"
             type="text"
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
-            placeholder="Seu nome completo"
+            placeholder={t('profile.fullNamePlaceholder')}
             className="block w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm text-main placeholder-muted focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand transition-colors"
           />
         </div>
@@ -304,12 +306,12 @@ export default function ProfilePage() {
 
       {/* Preferências do sistema */}
       <div className="rounded-xl border border-border bg-surface p-6 space-y-5 glass-card">
-        <h2 className="text-sm font-semibold text-main">Preferências do sistema</h2>
+        <h2 className="text-sm font-semibold text-main">{t('profile.systemPrefs')}</h2>
 
         <div className="space-y-5">
           <div>
             <label htmlFor="gender" className="block text-xs font-medium text-muted uppercase tracking-wider mb-2">
-              Gênero
+              {t('profile.gender')}
             </label>
             <select
               id="gender"
@@ -317,10 +319,10 @@ export default function ProfilePage() {
               onChange={(e) => setGender((e.target.value || null) as Gender | null)}
               className="block w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm text-main placeholder-muted focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand transition-colors"
             >
-              <option value="">Selecione...</option>
-              <option value="M">Masculino</option>
-              <option value="F">Feminino</option>
-              <option value="O">Prefiro não informar</option>
+              <option value="">{t('profile.genderSelect')}</option>
+              <option value="M">{t('profile.gender.m')}</option>
+              <option value="F">{t('profile.gender.f')}</option>
+              <option value="O">{t('profile.gender.o')}</option>
             </select>
           </div>
 
@@ -329,16 +331,16 @@ export default function ProfilePage() {
           {/* Dark Mode: Claro / Escuro / Sistema */}
           <div className="flex items-center justify-between gap-4">
             <div className="min-w-0">
-              <p className="text-sm font-medium text-main">Iluminação (Dark Mode)</p>
+              <p className="text-sm font-medium text-main">{t('profile.darkMode.title')}</p>
               <p className="text-xs text-muted mt-0.5">
-                Escolha entre modo claro, escuro ou seguir a preferência do sistema
+                {t('profile.darkMode.desc')}
               </p>
             </div>
             <div className="flex rounded-lg border border-border overflow-hidden">
               {[
-                { value: 'light' as const, label: 'Claro', Icon: Sun },
-                { value: 'dark' as const, label: 'Escuro', Icon: Moon },
-                { value: 'system' as const, label: 'Sistema', Icon: Monitor },
+                { value: 'light' as const, labelKey: 'profile.darkMode.light', Icon: Sun },
+                { value: 'dark' as const, labelKey: 'profile.darkMode.dark', Icon: Moon },
+                { value: 'system' as const, labelKey: 'profile.darkMode.system', Icon: Monitor },
               ].map((opt) => (
                 <button
                   key={opt.value}
@@ -355,7 +357,7 @@ export default function ProfilePage() {
                   }`}
                 >
                   <opt.Icon className="h-3.5 w-3.5" />
-                  {opt.label}
+                  {t(opt.labelKey)}
                 </button>
               ))}
             </div>
@@ -365,51 +367,51 @@ export default function ProfilePage() {
 
           {/* Aparência e Temas */}
           <div>
-            <p className="text-sm font-medium text-main mb-1">Aparência e Temas</p>
+            <p className="text-sm font-medium text-main mb-1">{t('profile.appearance.title')}</p>
             <p className="text-xs text-muted mb-3">
-              Escolha a paleta que combina com o seu escritório virtual
+              {t('profile.appearance.desc')}
             </p>
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
               {[
-                { value: 'normal' as const, label: 'Padrão Institucional', colors: ['#2563eb', '#f8fafc', '#0f172a'] },
-                { value: 'gala' as const, label: 'Traje de Gala', colors: ['#ca8a04', '#fafafa', '#18181b'] },
-                { value: 'classic' as const, label: 'Clássico Atemporal', colors: ['#b45309', '#fafaf9', '#1c1917'] },
-                { value: 'club' as const, label: 'Clube Exclusivo', colors: ['#065f46', '#f8fafc', '#0f172a'] },
-                { value: 'liquid' as const, label: 'Liquid Glass', colors: ['#6366f1', '#f0f4f8', '#0a0a1a'] },
-              ].map((t) => (
+                { value: 'normal' as const, labelKey: 'profile.theme.normal', colors: ['#2563eb', '#f8fafc', '#0f172a'] },
+                { value: 'gala' as const, labelKey: 'profile.theme.gala', colors: ['#ca8a04', '#fafafa', '#18181b'] },
+                { value: 'classic' as const, labelKey: 'profile.theme.classic', colors: ['#b45309', '#fafaf9', '#1c1917'] },
+                { value: 'club' as const, labelKey: 'profile.theme.club', colors: ['#065f46', '#f8fafc', '#0f172a'] },
+                { value: 'liquid' as const, labelKey: 'profile.theme.liquid', colors: ['#6366f1', '#f0f4f8', '#0a0a1a'] },
+              ].map((themeOpt) => (
                 <button
-                  key={t.value}
+                  key={themeOpt.value}
                   type="button"
                   onClick={async () => {
                     const prev = appTheme
-                    setAppTheme(t.value)
+                    setAppTheme(themeOpt.value)
                     try {
-                      await updatePreferences({ appTheme: t.value })
+                      await updatePreferences({ appTheme: themeOpt.value })
                     } catch {
                       setAppTheme(prev)
                     }
                   }}
                   className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all text-left w-full ${
-                    appTheme === t.value
+                    appTheme === themeOpt.value
                       ? 'border-brand bg-brand/5 ring-2 ring-brand/20'
                       : 'border-border hover:border-muted hover:bg-background'
                   }`}
                 >
                   <div className="flex gap-1 w-full justify-center">
-                    {t.value === 'liquid' ? (
+                    {themeOpt.value === 'liquid' ? (
                       <div className="flex items-center gap-1">
                         <Droplets className="h-5 w-5 text-indigo-500" />
-                        {t.colors.map((c, i) => (
+                        {themeOpt.colors.map((c, i) => (
                           <div key={i} className="w-5 h-5 rounded-full shrink-0" style={{ backgroundColor: c }} />
                         ))}
                       </div>
                     ) : (
-                      t.colors.map((c, i) => (
+                      themeOpt.colors.map((c, i) => (
                         <div key={i} className="w-6 h-6 rounded-full shrink-0" style={{ backgroundColor: c }} />
                       ))
                     )}
                   </div>
-                  <span className="text-xs font-medium text-main text-center leading-tight">{t.label}</span>
+                  <span className="text-xs font-medium text-main text-center leading-tight">{t(themeOpt.labelKey)}</span>
                 </button>
               ))}
             </div>
@@ -450,9 +452,9 @@ export default function ProfilePage() {
 
           <div className="flex items-center justify-between gap-4">
             <div className="min-w-0">
-              <p className="text-sm font-medium text-main">Relatórios semanais por e-mail</p>
+              <p className="text-sm font-medium text-main">{t('profile.weeklyReport.title')}</p>
               <p className="text-xs text-muted mt-0.5">
-                Receba um resumo semanal do patrimônio por pombo-correio eletrônico
+                {t('profile.weeklyReport.desc')}
               </p>
             </div>
             <button
@@ -476,9 +478,9 @@ export default function ProfilePage() {
 
           <div className="flex items-center justify-between gap-4">
             <div className="min-w-0">
-              <p className="text-sm font-medium text-main">Ocultar saldo na tela inicial</p>
+              <p className="text-sm font-medium text-main">{t('profile.hideBalance.title')}</p>
               <p className="text-xs text-muted mt-0.5">
-                Mantenha discrição sobre o patrimônio ao abrir o sistema
+                {t('profile.hideBalance.desc')}
               </p>
             </div>
             <button
@@ -519,34 +521,34 @@ export default function ProfilePage() {
           {saving ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" />
-              Processando...
+              {t('crud.processing')}
             </>
           ) : (
-            'Salvar preferências'
+            t('profile.save')
           )}
         </button>
       </div>
       {/* Exclusão de conta */}
       <div className="rounded-xl border border-red-200 bg-red-50 p-6 glass-card mt-8">
-        <h2 className="text-sm font-semibold text-red-700 mb-2">Excluir conta</h2>
-        <p className="text-xs text-red-700 mb-4">Esta ação é <b>irreversível</b>. Todos os seus dados serão apagados e não poderão ser recuperados.</p>
+        <h2 className="text-sm font-semibold text-red-700 mb-2">{t('profile.delete.title')}</h2>
+        <p className="text-xs text-red-700 mb-4">{t('profile.delete.desc')}</p>
         <button
           type="button"
           className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-6 py-2.5 text-sm font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:ring-offset-red-50 disabled:opacity-50 transition-colors"
           onClick={() => setDeleteModalOpen(true)}
           disabled={deleting}
-          aria-label="Excluir conta"
+          aria-label={t('profile.delete.button')}
         >
           {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-          Excluir conta
+          {t('profile.delete.button')}
         </button>
       </div>
 
       <ConfirmDangerModal
         open={deleteModalOpen}
-        title="Excluir conta"
-        description="Tem certeza que deseja excluir sua conta? Esta ação é irreversível e apagará todos os seus dados."
-        confirmLabel={deleting ? 'Excluindo...' : 'Sim, excluir'}
+        title={t('profile.delete.modalTitle')}
+        description={t('profile.delete.modalDesc')}
+        confirmLabel={deleting ? t('profile.delete.deleting') : t('profile.delete.confirm')}
         loading={deleting}
         onConfirm={handleDeleteAccount}
         onCancel={() => setDeleteModalOpen(false)}

@@ -24,5 +24,20 @@
   "import.noTransactions": "Nenhuma transação encontrada no arquivo. Verifique o formato e o banco selecionado.",
   "import.unexpectedError": "Erro inesperado.",
   "import.selectPdf": "Selecione um arquivo PDF para continuar.",
-  "import.pdfBlockError": "Não foi possível processar o PDF em blocos. Tente dividir o extrato ou exportar em períodos menores."
+  "import.pdfBlockError": "Não foi possível processar o PDF em blocos. Tente dividir o extrato ou exportar em períodos menores.",
+  "import.autoDetected": "Auto-detectado",
+  "import.detectedBank": "O arquivo OFX foi reconhecido como {bank}. As heurísticas específicas deste banco foram aplicadas automaticamente.",
+  "import.itauSkipTitle": "Não aplicar regra PIX Itaú",
+  "import.itauSkipDesc": "Extratos Itaú (OFX 102) costumam marcar tudo como CREDIT. Por padrão, tratamos linhas PIX TRANSF (exceto rendimentos/devoluções) como despesa. Marque aqui se você recebe PIX com essa descrição e prefere classificar tudo como receita no modal.",
+  "import.fileLabel": "Arquivo de extrato",
+  "import.dragFile": "Arraste o arquivo ou clique para selecionar",
+  "import.fileTypes": "CSV, OFX ou QFX",
+  "import.processing": "Processando extrato...",
+  "import.process": "Processar extrato",
+  "import.formatsTitle": "Formatos suportados",
+  "import.formatCsv": "CSV — Nubank, Inter e formato genérico",
+  "import.formatOfx": "OFX / QFX — Itaú, Bradesco, Banco do Brasil, Santander, Caixa e outros (banco detectado automaticamente)",
+  "import.periodHint": "O período importado é o que consta no arquivo (DTSTART / DTEND no OFX). Para meses fora do intervalo, gere um novo extrato no banco.",
+  "import.reviewHint": "Após o processamento, você poderá revisar, editar e confirmar cada transação antes de importar.",
+  "import.pdfProgress": "Processando páginas {current} de {total}..."
 }

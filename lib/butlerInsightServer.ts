@@ -402,9 +402,11 @@ export async function getButlerInsightData(): Promise<ButlerInsightData | null> 
       const target = resolveTargetOrganization(mismatch.suggestedTarget, userOrgs)
       if (!target) continue
 
-      const rawDesc = String((row as { description?: string }).description ?? '').trim() || 'Despesa'
+      const rawDesc = String((row as { description?: string }).description ?? '').trim() || (locale === 'en' ? 'Expense' : 'Despesa')
       const rowCtxNome =
-        orgType === 'personal' ? '«Minhas Finanças» (Pessoal)' : 'contexto Business'
+        orgType === 'personal'
+          ? butlerT('butler.context.personal', locale)
+          : butlerT('butler.context.business', locale)
 
       contextConflicts.push({
         transactionId: id,
@@ -412,15 +414,21 @@ export async function getButlerInsightData(): Promise<ButlerInsightData | null> 
         suggestedTargetOrgId: target.id,
         suggestedTargetOrgName: target.name,
       })
+      const descShort = rawDesc.length > 70 ? `${rawDesc.slice(0, 67)}…` : rawDesc
       suspicionLines.push(
-        `— «${rawDesc.slice(0, 70)}${rawDesc.length > 70 ? '…' : ''}» (pistas: ${mismatch.matchedHints.slice(0, 4).join(', ')}) em ${rowCtxNome}; destino sugerido: «${target.name}».`,
+        butlerFormat('butler.suspeitas.line', locale, {
+          desc: descShort,
+          hints: mismatch.matchedHints.slice(0, 4).join(', '),
+          context: rowCtxNome,
+          target: target.name,
+        }),
       )
     }
 
     const suspeitasContexto =
       suspicionLines.length > 0
         ? suspicionLines.join('\n')
-        : 'Nenhuma suspeita relevante neste mês.'
+        : butlerT('butler.suspeitas.none', locale)
 
     const snapshot: ButlerFinanceSnapshot = {
       contextoOrganizacao: context === 'business' ? 'Business' : 'Personal',

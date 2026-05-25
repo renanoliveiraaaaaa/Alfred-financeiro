@@ -36,6 +36,7 @@ Use este arquivo como base para criar issues no GitHub depois (`gh issue create`
 | 26 | **CATEGORY_LABELS migrados** | ImportReview, CardStatement, reports, credit-cards, transactionAuditor |
 | 27 | **i18n páginas secundárias** | settings, goals, subs, income, projections; headers+empty em import-history, reports, credit-cards |
 | 28 | **i18n Butler server-side** | fallback, conforto, alertas assinaturas via cookie `alfred_locale` |
+| 29 | **i18n profile + import OFX** | profile completo; import-statement OFX; import-history stats; Butler suspeitas |
 
 ---
 
@@ -45,11 +46,7 @@ Use este arquivo como base para criar issues no GitHub depois (`gh issue create`
 - **Labels:** `i18n`, `enhancement`
 - **Escopo:** `settings`, `goals`, `subscriptions`, `income-sources`, `projections`, `import-statement`, `import-history`, `profile`, `credit-cards` (UI além de categorias)
 - **Critério:** zero strings PT hardcoded com locale EN ativo
-- **Pendente:** `profile`, `import-statement`, corpo de reports/credit-cards/projections/import-history
-
-### Issue: i18n Butler server-side *(feito — #28)*
-- **Escopo:** `butlerInsightServer.ts` — margem, conforto, conciliação, resumos PT hardcoded
-- **Pendente:** prompt Gemini / suspeitas de contexto ainda em PT
+- **Pendente:** corpo de reports/credit-cards/projections; prompt Gemini Butler
 
 ---
 

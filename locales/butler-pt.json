@@ -9,5 +9,9 @@
   "butler.fallback.up.personal": "Senhor, notei um aumento de {pct}% nas despesas este mês na sua economia doméstica. Recomendo revisar a categoria «{category}» para mantermos o plano de saúde financeira.",
   "butler.fallback.down.business": "Excelente desempenho, Senhor. As despesas empresariais recuaram {pct}%, o que favorece a margem de lucro e o fluxo de caixa. Deseja alocar este excedente na sua meta de «Reserva de Emergência»?",
   "butler.fallback.down.personal": "Excelente desempenho, Senhor. As suas despesas na economia doméstica reduziram {pct}%. Deseja alocar este excedente na sua meta de «Reserva de Emergência»?",
-  "butler.summary.header": "Resumo financeiro do mês atual ({month}):"
+  "butler.summary.header": "Resumo financeiro do mês atual ({month}):",
+  "butler.suspeitas.none": "Nenhuma suspeita relevante neste mês.",
+  "butler.suspeitas.line": "— «{desc}» (pistas: {hints}) em {context}; destino sugerido: «{target}».",
+  "butler.context.personal": "«Minhas Finanças» (Pessoal)",
+  "butler.context.business": "contexto Business"
 }

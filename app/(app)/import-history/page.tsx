@@ -143,8 +143,7 @@ export default function ImportHistoryPage() {
         </div>
         {sessions.length > 0 && (
           <div className="rounded-lg border border-border bg-surface px-4 py-2.5 text-sm shrink-0 glass-card">
-            <span className="text-muted">Total importado: </span>
-            <span className="font-semibold text-main">{totalImported} transações</span>
+            <span className="text-muted">{formatMessage(t('importHistory.totalImported'), { count: totalImported })}</span>
           </div>
         )}
       </div>
@@ -154,7 +153,7 @@ export default function ImportHistoryPage() {
           icon={History}
           title={t('importHistory.empty')}
           description={formatMessage(t('importHistory.subtitle'), { pronoun })}
-          actionLabel="Importar extrato"
+          actionLabel={t('import.title')}
           onAction={() => { window.location.href = '/import-statement' }}
         />
       ) : (
@@ -186,7 +185,7 @@ export default function ImportHistoryPage() {
                         {formatDateBR(session.period_start)} → {formatDateBR(session.period_end)}
                       </span>
                       <span className="text-muted/70">
-                        Importado em {formatDateBR(session.created_at)}
+                        {formatMessage(t('importHistory.importedOn'), { date: formatDateBR(session.created_at) })}
                       </span>
                     </div>
                   </div>
@@ -207,19 +206,19 @@ export default function ImportHistoryPage() {
               {/* Estatísticas */}
               <div className="mt-3 pt-3 border-t border-border grid grid-cols-3 gap-3 text-center">
                 <div>
-                  <p className="text-xs text-muted">Total</p>
+                  <p className="text-xs text-muted">{t('importHistory.statTotal')}</p>
                   <p className="text-base font-bold text-main tabular-nums">
                     {session.total_transactions ?? '—'}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted">Importadas</p>
+                  <p className="text-xs text-muted">{t('importHistory.statImported')}</p>
                   <p className="text-base font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
                     {session.imported_transactions ?? '—'}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted">Ignoradas</p>
+                  <p className="text-xs text-muted">{t('importHistory.statSkipped')}</p>
                   <p className="text-base font-bold text-amber-600 dark:text-amber-400 tabular-nums">
                     {session.skipped_transactions ?? '—'}
                   </p>

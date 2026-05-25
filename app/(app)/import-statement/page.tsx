@@ -6,6 +6,7 @@ import { FileUp, Upload, X, Loader2, AlertCircle, FileText, Sparkles, History, Z
 import ImportReviewModal, { ReviewTransaction } from '@/components/ImportReviewModal'
 import { useGreetingPronoun } from '@/lib/greeting'
 import { useI18n } from '@/lib/i18n'
+import { formatMessage } from '@/lib/i18nFormat'
 import { parseBankStatementPdf } from '@/lib/actions/parse-bank-statement-pdf'
 import type { ImportTransaction } from '@/lib/actions/import-statement'
 
@@ -319,7 +320,7 @@ export default function ImportStatementPage() {
           </h1>
           <p className="text-sm text-muted mt-1">
             {pronoun
-              ? t('import.subtitleWithPronoun').replace('{pronoun}', pronoun)
+              ? formatMessage(t('import.subtitleWithPronoun'), { pronoun })
               : t('import.subtitle')}
           </p>
         </div>
@@ -444,7 +445,7 @@ export default function ImportStatementPage() {
                   <Loader2 className="h-4 w-4 animate-spin" />
                   {pdfProgress ? (
                     <span>
-                      Processando páginas {pdfProgress.current} de {pdfProgress.total}...
+                      {formatMessage(t('import.pdfProgress'), { current: pdfProgress.current, total: pdfProgress.total })}
                     </span>
                   ) : (
                     t('import.geminiAnalyzing')
@@ -480,7 +481,7 @@ export default function ImportStatementPage() {
             {autoDetectedBank && (
               <span className="inline-flex items-center gap-1 text-[10px] font-medium text-brand rounded-full bg-brand/10 px-2 py-0.5">
                 <Sparkles className="h-2.5 w-2.5" />
-                Auto-detectado
+                {t('import.autoDetected')}
               </span>
             )}
           </div>
@@ -500,14 +501,13 @@ export default function ImportStatementPage() {
           </select>
           {autoDetectedBank && (
             <p className="mt-1.5 text-xs text-muted">
-              O arquivo OFX foi reconhecido como{' '}
-              <strong className="text-main">{BANK_ID_LABELS[autoDetectedBank] ?? autoDetectedBank}</strong>.
-              As heurísticas específicas deste banco foram aplicadas automaticamente.
+              {formatMessage(t('import.detectedBank'), {
+                bank: BANK_ID_LABELS[autoDetectedBank] ?? autoDetectedBank,
+              })}
             </p>
           )}
         </div>
 
-        {/* Ajuste Itaú OFX (opcional) */}
         {showItauHint && (
           <label className="flex items-start gap-3 cursor-pointer rounded-lg border border-border bg-background/50 px-3 py-2.5">
             <input
@@ -517,19 +517,15 @@ export default function ImportStatementPage() {
               className="mt-0.5 rounded border-border text-brand focus:ring-brand"
             />
             <span className="text-xs text-muted leading-snug">
-              <span className="font-medium text-main">Não aplicar regra PIX Itaú</span>
+              <span className="font-medium text-main">{t('import.itauSkipTitle')}</span>
               {' — '}
-              Extratos Itaú (OFX 102) costumam marcar tudo como CREDIT. Por padrão, tratamos linhas{' '}
-              <code className="text-[10px] bg-border/50 px-1 rounded">PIX TRANSF</code> (exceto rendimentos/devoluções)
-              como <strong className="text-main">despesa</strong>. Marque aqui se você <strong>recebe</strong> PIX com
-              essa descrição e prefere classificar tudo como receita no modal.
+              {t('import.itauSkipDesc')}
             </span>
           </label>
         )}
 
-        {/* File drop zone */}
         <div>
-          <label className={cls.label}>Arquivo de extrato</label>
+          <label className={cls.label}>{t('import.fileLabel')}</label>
           <div
             onDrop={handleDrop}
             onDragOver={handleDragOver}
@@ -574,10 +570,8 @@ export default function ImportStatementPage() {
               <>
                 <Upload className="h-8 w-8 text-muted" />
                 <div className="text-center">
-                  <p className="text-sm font-medium text-main">
-                    Arraste o arquivo ou clique para selecionar
-                  </p>
-                  <p className="text-xs text-muted mt-0.5">CSV, OFX ou QFX</p>
+                  <p className="text-sm font-medium text-main">{t('import.dragFile')}</p>
+                  <p className="text-xs text-muted mt-0.5">{t('import.fileTypes')}</p>
                 </div>
               </>
             )}
@@ -601,46 +595,24 @@ export default function ImportStatementPage() {
         >
           {loading ? (
             <>
-              <Loader2 className="h-4 w-4 animate-spin" /> Processando extrato...
+              <Loader2 className="h-4 w-4 animate-spin" /> {t('import.processing')}
             </>
           ) : (
             <>
-              <FileUp className="h-4 w-4" /> Processar extrato
+              <FileUp className="h-4 w-4" /> {t('import.process')}
             </>
           )}
         </button>
       </div>
 
-      {/* Info card */}
       <div className="glass-card rounded-xl border border-border bg-surface p-4 space-y-2">
-        <p className="text-xs font-medium text-muted uppercase tracking-wider">Formatos suportados</p>
+        <p className="text-xs font-medium text-muted uppercase tracking-wider">{t('import.formatsTitle')}</p>
         <ul className="space-y-1 text-xs text-muted">
-          <li><span className="text-main font-medium">CSV</span> — Nubank, Inter e formato genérico</li>
-          <li><span className="text-main font-medium">OFX / QFX</span> — Itaú, Bradesco, Banco do Brasil, Santander, Caixa e outros (banco detectado automaticamente)</li>
+          <li>{t('import.formatCsv')}</li>
+          <li>{t('import.formatOfx')}</li>
         </ul>
-        <p className="text-xs text-muted pt-1">
-          O período importado é o que consta no arquivo (<code className="text-[10px] bg-border/40 px-1 rounded">DTSTART</code> /{' '}
-          <code className="text-[10px] bg-border/40 px-1 rounded">DTEND</code> no OFX). Para meses fora do intervalo, gere um novo extrato no banco.
-        </p>
-        <p className="text-xs text-muted pt-1">
-          Após o processamento, você poderá revisar, editar e confirmar cada transação antes de importar.
-        </p>
-      </div>
-
-      {/* Info card */}
-      <div className="glass-card rounded-xl border border-border bg-surface p-4 space-y-2">
-        <p className="text-xs font-medium text-muted uppercase tracking-wider">Formatos suportados</p>
-        <ul className="space-y-1 text-xs text-muted">
-          <li><span className="text-main font-medium">CSV</span> — Nubank, Inter e formato genérico</li>
-          <li><span className="text-main font-medium">OFX / QFX</span> — Itaú, Bradesco, Banco do Brasil, Santander, Caixa e outros (banco detectado automaticamente)</li>
-        </ul>
-        <p className="text-xs text-muted pt-1">
-          O período importado é o que consta no arquivo (<code className="text-[10px] bg-border/40 px-1 rounded">DTSTART</code> /{' '}
-          <code className="text-[10px] bg-border/40 px-1 rounded">DTEND</code> no OFX). Para meses fora do intervalo, gere um novo extrato no banco.
-        </p>
-        <p className="text-xs text-muted pt-1">
-          Após o processamento, você poderá revisar, editar e confirmar cada transação antes de importar.
-        </p>
+        <p className="text-xs text-muted pt-1">{t('import.periodHint')}</p>
+        <p className="text-xs text-muted pt-1">{t('import.reviewHint')}</p>
       </div>
       </>
       )}

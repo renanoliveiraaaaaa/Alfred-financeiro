@@ -24,5 +24,20 @@
   "import.noTransactions": "No transactions found in the file. Check the format and selected bank.",
   "import.unexpectedError": "Unexpected error.",
   "import.selectPdf": "Select a PDF file to continue.",
-  "import.pdfBlockError": "Could not process the PDF in blocks. Try splitting the statement or exporting in smaller periods."
+  "import.pdfBlockError": "Could not process the PDF in blocks. Try splitting the statement or exporting in smaller periods.",
+  "import.autoDetected": "Auto-detected",
+  "import.detectedBank": "The OFX file was recognized as {bank}. This bank's specific heuristics were applied automatically.",
+  "import.itauSkipTitle": "Do not apply Itaú PIX rule",
+  "import.itauSkipDesc": "Itaú statements (OFX 102) often mark everything as CREDIT. By default, we treat PIX TRANSF lines (except yields/refunds) as expenses. Check here if you receive PIX with this description and prefer to classify everything as income in the modal.",
+  "import.fileLabel": "Statement file",
+  "import.dragFile": "Drag the file or click to select",
+  "import.fileTypes": "CSV, OFX or QFX",
+  "import.processing": "Processing statement...",
+  "import.process": "Process statement",
+  "import.formatsTitle": "Supported formats",
+  "import.formatCsv": "CSV — Nubank, Inter and generic format",
+  "import.formatOfx": "OFX / QFX — Itaú, Bradesco, Banco do Brasil, Santander, Caixa and others (bank auto-detected)",
+  "import.periodHint": "The imported period is what appears in the file (DTSTART / DTEND in OFX). For months outside the range, generate a new statement at your bank.",
+  "import.reviewHint": "After processing, you can review, edit and confirm each transaction before importing.",
+  "import.pdfProgress": "Processing pages {current} of {total}..."
 }
