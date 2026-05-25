@@ -90,7 +90,7 @@ export default function RevenuesPage() {
       const activeOrgId = await resolveActiveOrganizationIdForClient(supabase, uid)
       if (!activeOrgId) {
         setRevenues([])
-        setError('Não foi possível determinar a organização ativa. Tente recarregar a página.')
+        setError(t('list.errors.noOrg'))
         return
       }
 
@@ -104,7 +104,7 @@ export default function RevenuesPage() {
       setRevenues((data ?? []) as Revenue[])
     } catch (err: unknown) {
       console.error(err)
-      const msg = err instanceof Error ? err.message : 'Erro ao carregar receitas.'
+      const msg = err instanceof Error ? err.message : t('list.errors.loadRevenues')
       setError(msg)
     } finally {
       setLoading(false)
@@ -133,7 +133,7 @@ export default function RevenuesPage() {
         setRevenues((prev) =>
           prev.map((r) => (r.id === id ? { ...r, received: currentReceived } : r))
         )
-        const msg = isConnectionError(updateErr) ? CONNECTION_ERROR_MSG : 'Falha ao atualizar status. Tente novamente.'
+        const msg = isConnectionError(updateErr) ? CONNECTION_ERROR_MSG : t('list.errors.updateStatus')
         setError(msg)
         toastError(msg)
       }
@@ -141,7 +141,7 @@ export default function RevenuesPage() {
       setRevenues((prev) =>
         prev.map((r) => (r.id === id ? { ...r, received: currentReceived } : r))
       )
-      const msg = isConnectionError(err) ? CONNECTION_ERROR_MSG : 'Falha ao atualizar status. Tente novamente.'
+      const msg = isConnectionError(err) ? CONNECTION_ERROR_MSG : t('list.errors.updateStatus')
       setError(msg)
       toastError(msg)
     } finally {
@@ -199,7 +199,7 @@ export default function RevenuesPage() {
         setSelectedIds(new Set())
       }
     } catch (err: unknown) {
-      const msg = isConnectionError(err) ? CONNECTION_ERROR_MSG : 'Falha ao excluir registros.'
+      const msg = isConnectionError(err) ? CONNECTION_ERROR_MSG : t('list.errors.batchDelete')
       setError(msg)
       toastError(msg)
     } finally {
@@ -219,15 +219,15 @@ export default function RevenuesPage() {
 
   const exportSheets = useMemo(() => {
     const rows = revenues.map((r) => ({
-      Data: formatDateBR(r.date),
-      'Data prevista': formatDateBR(r.expected_date),
-      Descrição: r.description,
-      'Valor (R$)': formatCurrencyBR(Number(r.amount || 0)),
-      Status: r.received ? 'Recebido' : 'Pendente',
-      Origem: r.source === 'import' ? 'Importado' : 'Manual',
+      [t('list.export.colDate')]: formatDateBR(r.date),
+      [t('list.export.colExpectedDate')]: formatDateBR(r.expected_date),
+      [t('list.export.colDescription')]: r.description,
+      [t('list.export.colAmount')]: formatCurrencyBR(Number(r.amount || 0)),
+      [t('list.export.colStatus')]: r.received ? t('list.received') : t('list.pending'),
+      [t('list.export.colOrigin')]: r.source === 'import' ? t('list.export.originImport') : t('list.export.originManual'),
     }))
-    return [{ name: 'Receitas', rows }]
-  }, [revenues])
+    return [{ name: t('list.export.sheetRevenues'), rows }]
+  }, [revenues, t])
 
   const exportFilename = useMemo(
     () => `receitas-${new Date().toISOString().slice(0, 10)}`,
@@ -239,8 +239,8 @@ export default function RevenuesPage() {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-main">Registro de Entradas</h1>
-          <p className="text-sm text-muted mt-0.5">Acompanhamento dos seus rendimentos e recebimentos, {pronoun}</p>
+          <h1 className="text-xl font-semibold text-main">{t('list.revenues.title')}</h1>
+          <p className="text-sm text-muted mt-0.5">{formatMessage(t('list.revenues.subtitle'), { pronoun })}</p>
         </div>
         <div className="flex items-center gap-2">
           <ExportMenu
@@ -253,7 +253,7 @@ export default function RevenuesPage() {
             className="inline-flex items-center gap-2 rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-white hover:opacity-90 transition-colors"
           >
             <Plus className="h-4 w-4" />
-            Registrar nova entrada
+            {t('crud.revenue.newTitle')}
           </Link>
         </div>
       </div>
@@ -261,11 +261,11 @@ export default function RevenuesPage() {
       {/* Mini cards */}
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="rounded-xl border border-border bg-surface p-4 transition-colors glass-card">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted">Total recebido</p>
+          <p className="text-xs font-medium uppercase tracking-wide text-muted">{t('list.revenues.totalReceived')}</p>
           <MaskedValue value={totalReceived} className="mt-1 text-lg font-semibold text-emerald-600 dark:text-emerald-400 block" />
         </div>
         <div className="rounded-xl border border-border bg-surface p-4 transition-colors glass-card">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted">Pendente de recebimento</p>
+          <p className="text-xs font-medium uppercase tracking-wide text-muted">{t('list.revenues.totalPending')}</p>
           <MaskedValue value={totalPending} className="mt-1 text-lg font-semibold text-amber-600 dark:text-amber-400 block" />
         </div>
       </div>
@@ -281,13 +281,14 @@ export default function RevenuesPage() {
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <p className="text-sm font-medium text-amber-900 dark:text-amber-200">
-                Possíveis duplicatas detectadas
+                {t('list.duplicates.titleRevenues')}
               </p>
               <p className="text-xs text-amber-800/90 dark:text-amber-300/90 mt-1">
-                {duplicateClusters.length}{' '}
-                {duplicateClusters.length === 1 ? 'grupo' : 'grupos'} com a mesma data, valor e descrição (após
-                normalização). Linhas marcadas em âmbar estão nesses grupos. Sugestão: manter o registro{' '}
-                <strong className="text-main">mais antigo</strong> de cada grupo e excluir o restante.
+                {formatMessage(t('list.duplicates.bodyRevenues'), {
+                  count: duplicateClusters.length,
+                  groups: duplicateClusters.length === 1 ? t('list.duplicates.groupOne') : t('list.duplicates.groupMany'),
+                  oldest: t('list.duplicates.oldest'),
+                })}
               </p>
             </div>
             <button
@@ -296,7 +297,7 @@ export default function RevenuesPage() {
               className="shrink-0 inline-flex items-center justify-center gap-2 rounded-lg border border-amber-300 dark:border-amber-500/50 bg-surface px-3 py-2 text-xs font-medium text-main hover:bg-amber-100/80 dark:hover:bg-amber-500/20 transition-colors touch-manipulation min-h-[44px]"
             >
               <Copy className="h-3.5 w-3.5" />
-              Selecionar sugeridos ({suggestedDeleteIds.size})
+              {formatMessage(t('list.duplicates.selectSuggested'), { count: suggestedDeleteIds.size })}
             </button>
           </div>
         </div>
@@ -305,7 +306,7 @@ export default function RevenuesPage() {
       {someSelected && (
         <div className="flex flex-wrap items-center gap-3 rounded-xl border border-brand/30 bg-brand/15 px-4 py-3">
           <span className="text-sm font-medium text-brand">
-            {selectedIds.size} {selectedIds.size === 1 ? 'item selecionado' : 'itens selecionados'}
+            {selectedIds.size} {selectedIds.size === 1 ? t('list.selectedOne') : t('list.selectedMany')}
           </span>
           <div className="flex-1 min-w-[8rem]" />
           <button
@@ -314,7 +315,7 @@ export default function RevenuesPage() {
             className="min-h-[44px] inline-flex items-center gap-1.5 rounded-lg px-4 py-2.5 text-xs font-medium bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 transition-colors touch-manipulation"
           >
             <Trash2 className="h-3.5 w-3.5" />
-            Excluir selecionados
+            {t('list.deleteSelected')}
           </button>
         </div>
       )}
@@ -353,7 +354,7 @@ export default function RevenuesPage() {
                     type="button"
                     onClick={() => toggleSelect(r.id)}
                     className="mt-0.5 shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg border border-border -m-2 p-2 touch-manipulation"
-                    aria-label={isSelected ? 'Desmarcar' : 'Selecionar'}
+                    aria-label={isSelected ? t('list.deselect') : t('list.select')}
                   >
                     <span
                       className={`inline-flex h-5 w-5 rounded border-2 items-center justify-center ${
@@ -369,12 +370,12 @@ export default function RevenuesPage() {
                         {r.description}
                         {isDup && (
                           <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-amber-200/80 dark:bg-amber-500/25 text-amber-900 dark:text-amber-200">
-                            Duplicata?
+                            {t('list.duplicateBadge')}
                           </span>
                         )}
                         {r.source === 'import' && (
                           <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-sky-100 dark:bg-sky-500/20 text-sky-700 dark:text-sky-300">
-                            Importado
+                            {t('list.importedBadge')}
                           </span>
                         )}
                       </p>
@@ -393,12 +394,12 @@ export default function RevenuesPage() {
                     } disabled:opacity-50`}
                   >
                     {isToggling ? <Loader2 className="h-4 w-4 animate-spin" /> : r.received ? <CheckCircle2 className="h-4 w-4" /> : <Circle className="h-4 w-4" />}
-                    {r.received ? 'Recebido' : 'Pendente'}
+                    {r.received ? t('list.received') : t('list.pending')}
                   </button>
                   <Link
                     href={`/revenues/${r.id}`}
                     className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-lg text-muted hover:bg-background"
-                    aria-label="Editar"
+                    aria-label={t('list.edit')}
                   >
                     <Pencil className="h-4 w-4" />
                   </Link>
@@ -422,16 +423,16 @@ export default function RevenuesPage() {
                       checked={allSelected}
                       onChange={toggleSelectAll}
                       className="h-4 w-4 rounded border-border text-brand focus:ring-brand bg-background cursor-pointer"
-                      aria-label="Selecionar todos"
+                      aria-label={t('list.selectAll')}
                     />
                   )}
                 </th>
-                <th className="px-4 py-3 text-left font-medium text-muted">Descrição</th>
-                <th className="px-4 py-3 text-right font-medium text-muted">Valor</th>
-                <th className="px-4 py-3 text-left font-medium text-muted hidden sm:table-cell">Data efetiva</th>
-                <th className="px-4 py-3 text-left font-medium text-muted hidden lg:table-cell">Data esperada</th>
-                <th className="px-4 py-3 text-center font-medium text-muted">Status</th>
-                <th className="px-4 py-3 text-center font-medium text-muted">Ações</th>
+                <th className="px-4 py-3 text-left font-medium text-muted">{t('list.col.description')}</th>
+                <th className="px-4 py-3 text-right font-medium text-muted">{t('list.col.amount')}</th>
+                <th className="px-4 py-3 text-left font-medium text-muted hidden sm:table-cell">{t('crud.effectiveDate')}</th>
+                <th className="px-4 py-3 text-left font-medium text-muted hidden lg:table-cell">{t('crud.expectedDate')}</th>
+                <th className="px-4 py-3 text-center font-medium text-muted">{t('list.col.status')}</th>
+                <th className="px-4 py-3 text-center font-medium text-muted">{t('list.col.actions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -486,12 +487,12 @@ export default function RevenuesPage() {
                           {r.description}
                           {isDup && (
                             <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-amber-200/80 dark:bg-amber-500/25 text-amber-900 dark:text-amber-200">
-                              Duplicata?
+                              {t('list.duplicateBadge')}
                             </span>
                           )}
                           {r.source === 'import' && (
                             <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-sky-100 dark:bg-sky-500/20 text-sky-700 dark:text-sky-300">
-                              Importado
+                              {t('list.importedBadge')}
                             </span>
                           )}
                         </span>
@@ -522,7 +523,7 @@ export default function RevenuesPage() {
                           ) : (
                             <Circle className="h-3.5 w-3.5" />
                           )}
-                          {r.received ? 'Recebido' : 'Pendente'}
+                          {r.received ? t('list.received') : t('list.pending')}
                         </button>
                       </td>
 
@@ -532,7 +533,7 @@ export default function RevenuesPage() {
                           href={`/revenues/${r.id}`}
                           className="inline-flex items-center justify-center min-h-[44px] min-w-[44px] rounded-lg text-muted hover:text-main hover:bg-background transition-colors"
                           title="Editar registro"
-                          aria-label="Editar"
+                          aria-label={t('list.edit')}
                         >
                           <Pencil className="h-4 w-4" />
                         </Link>

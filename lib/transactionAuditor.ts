@@ -12,21 +12,7 @@ export type ContextMismatchResult = {
   suggestedTarget: OrganizationKind
 }
 
-const CATEGORY_LABELS_PT: Record<string, string> = {
-  mercado: 'mercado',
-  alimentacao: 'alimentação',
-  compras: 'compras online',
-  transporte: 'transporte',
-  combustivel: 'combustível',
-  veiculo: 'veículo',
-  assinaturas: 'assinaturas',
-  saude: 'saúde',
-  educacao: 'educação',
-  lazer: 'lazer',
-  moradia: 'moradia',
-  fatura_cartao: 'fatura de cartão',
-  outros: 'outros',
-}
+import { getCategoryLabelFromLocale } from './categoryI18n'
 
 function normalizeForMatch(text: string): string {
   return text
@@ -196,7 +182,7 @@ export function detectExpenseContextMismatch(params: {
 }): ContextMismatchResult | null {
   const desc = normalizeForMatch(params.description)
   const catKey = normalizeForMatch(params.category || '')
-  const catLabel = CATEGORY_LABELS_PT[catKey] ?? catKey
+  const catLabel = normalizeForMatch(getCategoryLabelFromLocale(catKey, 'pt'))
   const catBlob = normalizeForMatch(`${catKey} ${catLabel}`)
 
   if (params.organizationType === 'personal') {

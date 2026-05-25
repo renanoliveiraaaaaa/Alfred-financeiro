@@ -20,6 +20,8 @@ import CardStatementImportModal from '@/components/CardStatementImportModal'
 import type { Database } from '@/types/supabase'
 import { resolveActiveOrganizationIdForClient } from '@/lib/activeOrganizationClient'
 import { useActiveOrganizationRevision } from '@/lib/useActiveOrganizationRevision'
+import { useI18n } from '@/lib/i18n'
+import { buildCategoryLabelsMap } from '@/lib/categoryI18n'
 
 type Card = Database['public']['Tables']['credit_cards']['Row']
 type Expense = Database['public']['Tables']['expenses']['Row']
@@ -54,13 +56,6 @@ const COLOR_OPTIONS = [
   { value: 'orange', label: 'Bronze' },
 ]
 
-const CATEGORY_LABELS: Record<string, string> = {
-  mercado: 'Mercado', alimentacao: 'Alimentação', compras: 'Compras',
-  transporte: 'Transporte', combustivel: 'Combustível', veiculo: 'Veículo',
-  assinaturas: 'Assinaturas', saude: 'Saúde', educacao: 'Educação',
-  lazer: 'Lazer', moradia: 'Moradia', fatura_cartao: 'Fatura', outros: 'Outros',
-}
-
 const CATEGORY_ICONS: Record<string, React.ReactNode> = {
   mercado: <ShoppingCart className="h-4 w-4" />,
   alimentacao: <Utensils className="h-4 w-4" />,
@@ -90,6 +85,8 @@ export default function CreditCardsPage() {
   const orgRevision = useActiveOrganizationRevision()
   const { toast, toastError } = useToast()
   const pronoun = useGreetingPronoun()
+  const { t } = useI18n()
+  const CATEGORY_LABELS = useMemo(() => buildCategoryLabelsMap(t), [t])
 
   const [cards, setCards] = useState<Card[]>([])
   const [monthlySpend, setMonthlySpend] = useState<Record<string, number>>({})

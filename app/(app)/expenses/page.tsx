@@ -91,7 +91,7 @@ export default function ExpensesPage() {
       if (!activeOrgId) {
         setExpenses([])
         setUserOrgs([])
-        setError('Não foi possível determinar a organização ativa. Tente recarregar a página.')
+        setError(t('list.errors.noOrg'))
         return
       }
 
@@ -115,7 +115,7 @@ export default function ExpensesPage() {
             id: o.id,
             type: o.type as 'personal' | 'business',
             name:
-              (o.name && o.name.trim()) || (o.type === 'personal' ? 'Minhas Finanças' : 'Empresa'),
+              (o.name && o.name.trim()) || (o.type === 'personal' ? t('org.personal') : t('list.org.businessShort')),
           })),
         )
       } else {
@@ -123,7 +123,7 @@ export default function ExpensesPage() {
       }
     } catch (err: unknown) {
       console.error(err)
-      const msg = err instanceof Error ? err.message : 'Erro ao carregar despesas.'
+      const msg = err instanceof Error ? err.message : t('list.errors.loadExpenses')
       setError(msg)
     } finally {
       setLoading(false)
@@ -213,17 +213,17 @@ export default function ExpensesPage() {
 
   const exportSheets = useMemo(() => {
     const rows = filtered.map((e) => ({
-      'Data vencimento': formatDateBR(e.due_date),
-      Descrição: e.description,
-      Categoria: CATEGORY_LABELS[e.category] ?? e.category,
-      'Valor (R$)': formatCurrencyBR(Number(e.amount || 0)),
-      Pagamento: PAYMENT_LABELS[e.payment_method] ?? e.payment_method,
-      Status: e.paid ? 'Pago' : 'Em aberto',
+      [t('list.export.colDueDate')]: formatDateBR(e.due_date),
+      [t('list.export.colDescription')]: e.description,
+      [t('list.export.colCategory')]: CATEGORY_LABELS[e.category] ?? e.category,
+      [t('list.export.colAmount')]: formatCurrencyBR(Number(e.amount || 0)),
+      [t('list.export.colPayment')]: PAYMENT_LABELS[e.payment_method] ?? e.payment_method,
+      [t('list.export.colStatus')]: e.paid ? t('list.paid') : t('list.open'),
       Parcela: e.installment_number && e.installments ? `${e.installment_number}/${e.installments}` : '',
-      Origem: e.source === 'import' ? 'Importado' : 'Manual',
+      [t('list.export.colOrigin')]: e.source === 'import' ? t('list.export.originImport') : t('list.export.originManual'),
     }))
-    return [{ name: 'Despesas', rows }]
-  }, [filtered])
+    return [{ name: t('list.export.sheetExpenses'), rows }]
+  }, [filtered, t, CATEGORY_LABELS, PAYMENT_LABELS])
 
   const exportFilename = useMemo(
     () => `despesas-${new Date().toISOString().slice(0, 10)}`,
@@ -243,13 +243,13 @@ export default function ExpensesPage() {
 
       if (updateErr) {
         setExpenses((prev) => prev.map((e) => (e.id === id ? { ...e, paid: currentPaid } : e)))
-        const msg = isConnectionError(updateErr) ? CONNECTION_ERROR_MSG : 'Falha ao atualizar status. Tente novamente.'
+        const msg = isConnectionError(updateErr) ? CONNECTION_ERROR_MSG : t('list.errors.updateStatus')
         setError(msg)
         toastError(msg)
       }
     } catch (err: unknown) {
       setExpenses((prev) => prev.map((e) => (e.id === id ? { ...e, paid: currentPaid } : e)))
-      const msg = isConnectionError(err) ? CONNECTION_ERROR_MSG : 'Falha ao atualizar status. Tente novamente.'
+      const msg = isConnectionError(err) ? CONNECTION_ERROR_MSG : t('list.errors.updateStatus')
       setError(msg)
       toastError(msg)
     } finally {
@@ -290,14 +290,14 @@ export default function ExpensesPage() {
 
       if (err) {
         setExpenses((prev) => prev.map((e) => ids.includes(e.id) ? { ...e, paid: false } : e))
-        const msg = isConnectionError(err) ? CONNECTION_ERROR_MSG : 'Falha ao atualizar em massa.'
+        const msg = isConnectionError(err) ? CONNECTION_ERROR_MSG : t('list.errors.batchUpdate')
         setError(msg)
         toastError(msg)
       } else {
         setSelectedIds(new Set())
       }
     } catch (err: unknown) {
-      const msg = isConnectionError(err) ? CONNECTION_ERROR_MSG : 'Falha ao atualizar em massa.'
+      const msg = isConnectionError(err) ? CONNECTION_ERROR_MSG : t('list.errors.batchUpdate')
       setError(msg)
       toastError(msg)
     } finally {
@@ -330,7 +330,7 @@ export default function ExpensesPage() {
         setSelectedIds(new Set())
       }
     } catch (err: unknown) {
-      const msg = isConnectionError(err) ? CONNECTION_ERROR_MSG : 'Falha ao excluir registros.'
+      const msg = isConnectionError(err) ? CONNECTION_ERROR_MSG : t('list.errors.batchDelete')
       setError(msg)
       toastError(msg)
     } finally {
@@ -352,8 +352,8 @@ export default function ExpensesPage() {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-main">Registro de Saídas</h1>
-          <p className="text-sm text-muted mt-0.5">Controle detalhado das suas obrigações financeiras, senhor</p>
+          <h1 className="text-xl font-semibold text-main">{t('list.expenses.title')}</h1>
+          <p className="text-sm text-muted mt-0.5">{t('list.expenses.subtitle')}</p>
         </div>
         <div className="flex items-center gap-2">
           <ExportMenu
@@ -366,7 +366,7 @@ export default function ExpensesPage() {
             className="inline-flex items-center gap-2 rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-white hover:opacity-90 transition-colors"
           >
             <Plus className="h-4 w-4" />
-            Registrar nova saída
+            {t('crud.expense.newTitle')}
           </Link>
         </div>
       </div>
@@ -374,11 +374,11 @@ export default function ExpensesPage() {
       {/* Mini cards */}
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="rounded-xl border border-border bg-surface p-4 transition-colors glass-card">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted">Total quitado</p>
+          <p className="text-xs font-medium uppercase tracking-wide text-muted">{t('list.expenses.totalPaid')}</p>
           <MaskedValue value={totalPaid} className="mt-1 text-lg font-semibold text-emerald-600 dark:text-emerald-400 block" />
         </div>
         <div className="rounded-xl border border-border bg-surface p-4 transition-colors glass-card">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted">Pendências em aberto</p>
+          <p className="text-xs font-medium uppercase tracking-wide text-muted">{t('list.expenses.totalOpen')}</p>
           <MaskedValue value={totalOpen} className="mt-1 text-lg font-semibold text-red-600 dark:text-red-400 block" />
         </div>
       </div>
@@ -394,13 +394,14 @@ export default function ExpensesPage() {
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <p className="text-sm font-medium text-amber-900 dark:text-amber-200">
-                Possíveis duplicatas detectadas
+                {t('list.duplicates.titleExpenses')}
               </p>
               <p className="text-xs text-amber-800/90 dark:text-amber-300/90 mt-1">
-                {duplicateClusters.length}{' '}
-                {duplicateClusters.length === 1 ? 'grupo' : 'grupos'} com o mesmo vencimento (ou data de criação),
-                valor, categoria e descrição. Parcelas diferentes não são agrupadas. Sugestão: manter o registro{' '}
-                <strong className="text-main">mais antigo</strong> de cada grupo.
+                {formatMessage(t('list.duplicates.bodyExpenses'), {
+                  count: duplicateClusters.length,
+                  groups: duplicateClusters.length === 1 ? t('list.duplicates.groupOne') : t('list.duplicates.groupMany'),
+                  oldest: t('list.duplicates.oldest'),
+                })}
               </p>
             </div>
             <button
@@ -409,7 +410,7 @@ export default function ExpensesPage() {
               className="shrink-0 inline-flex items-center justify-center gap-2 rounded-lg border border-amber-300 dark:border-amber-500/50 bg-surface px-3 py-2 text-xs font-medium text-main hover:bg-amber-100/80 dark:hover:bg-amber-500/20 transition-colors touch-manipulation min-h-[44px]"
             >
               <Copy className="h-3.5 w-3.5" />
-              Selecionar sugeridos ({suggestedDuplicateDeleteIds.size})
+              {formatMessage(t('list.duplicates.selectSuggested'), { count: suggestedDuplicateDeleteIds.size })}
             </button>
           </div>
         </div>
@@ -422,7 +423,7 @@ export default function ExpensesPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted" />
             <input
               type="text"
-              placeholder="Buscar por descrição..."
+              placeholder={t('list.expenses.search')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className={`${cls.input} pl-9`}
@@ -433,7 +434,7 @@ export default function ExpensesPage() {
             onChange={(e) => setFilterCategory(e.target.value)}
             className={`${cls.input} sm:w-44`}
           >
-            <option value="all">Todas categorias</option>
+            <option value="all">{t('list.expenses.filterAllCategories')}</option>
             {uniqueCategories.map((cat) => (
               <option key={cat} value={cat}>{CATEGORY_LABELS[cat] ?? cat}</option>
             ))}
@@ -443,9 +444,9 @@ export default function ExpensesPage() {
             onChange={(e) => setFilterStatus(e.target.value as any)}
             className={`${cls.input} sm:w-36`}
           >
-            <option value="all">Todos status</option>
-            <option value="paid">Quitados</option>
-            <option value="open">Em aberto</option>
+            <option value="all">{t('list.expenses.filterAllStatus')}</option>
+            <option value="paid">{t('list.expenses.filterPaid')}</option>
+            <option value="open">{t('list.expenses.filterOpen')}</option>
           </select>
         </div>
       )}
@@ -454,7 +455,7 @@ export default function ExpensesPage() {
       {someSelected && (
         <div className="flex items-center gap-3 rounded-xl border border-brand/30 bg-brand/15 px-4 py-3">
           <span className="text-sm font-medium text-brand">
-            {selectedIds.size} {selectedIds.size === 1 ? 'item selecionado' : 'itens selecionados'}
+            {selectedIds.size} {selectedIds.size === 1 ? t('list.selectedOne') : t('list.selectedMany')}
           </span>
           <div className="flex-1" />
           <button
@@ -463,7 +464,7 @@ export default function ExpensesPage() {
             className="min-h-[44px] inline-flex items-center gap-1.5 rounded-lg px-4 py-2.5 text-xs font-medium bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors touch-manipulation"
           >
             {batchLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
-            Marcar como pagos
+            {t('list.markPaidBatch')}
           </button>
           <button
             onClick={openBatchDelete}
@@ -471,7 +472,7 @@ export default function ExpensesPage() {
             className="min-h-[44px] inline-flex items-center gap-1.5 rounded-lg px-4 py-2.5 text-xs font-medium bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 transition-colors touch-manipulation"
           >
             <Trash2 className="h-3.5 w-3.5" />
-            Excluir selecionados
+            {t('list.deleteSelected')}
           </button>
         </div>
       )}
@@ -521,7 +522,7 @@ export default function ExpensesPage() {
                     type="button"
                     onClick={() => toggleSelect(e.id)}
                     className="mt-0.5 shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg border border-border -m-2 p-2 touch-manipulation"
-                    aria-label={isSelected ? 'Desmarcar' : 'Selecionar'}
+                    aria-label={isSelected ? t('list.deselect') : t('list.select')}
                   >
                     <span className={`inline-flex h-5 w-5 rounded border-2 items-center justify-center ${
                       isSelected ? 'bg-brand border-brand' : 'border-border'
@@ -534,17 +535,17 @@ export default function ExpensesPage() {
                       {e.description}
                       {isDup && (
                         <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-amber-200/80 dark:bg-amber-500/25 text-amber-900 dark:text-amber-200">
-                          Duplicata?
+                          {t('list.duplicateBadge')}
                         </span>
                       )}
                       {e.source === 'import' && (
                         <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-sky-100 dark:bg-sky-500/20 text-sky-700 dark:text-sky-300">
-                          Importado
+                          {t('list.importedBadge')}
                         </span>
                       )}
                     </p>
                     {e.installments && e.installment_number && (
-                      <p className="text-xs text-muted">Parcela {e.installment_number}/{e.installments}</p>
+                      <p className="text-xs text-muted">{formatMessage(t('list.installment'), { current: e.installment_number!, total: e.installments! })}</p>
                     )}
                     <p className="text-xs text-muted mt-0.5">{CATEGORY_LABELS[e.category] ?? e.category} · {formatDate(e.due_date)}</p>
                   </div>
@@ -560,7 +561,7 @@ export default function ExpensesPage() {
                     } disabled:opacity-50 flex-1`}
                   >
                     {isToggling ? <Loader2 className="h-4 w-4 animate-spin" /> : e.paid ? <CheckCircle2 className="h-4 w-4" /> : <Circle className="h-4 w-4" />}
-                    {e.paid ? 'Quitado' : 'Em aberto'}
+                    {e.paid ? t('list.paid') : t('list.open')}
                   </button>
                   {e.invoice_url && (
                     <a
@@ -568,7 +569,7 @@ export default function ExpensesPage() {
                       target="_blank"
                       rel="noopener noreferrer"
                       className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-lg text-muted hover:bg-background"
-                      aria-label="Ver fatura"
+                      aria-label={t('list.viewInvoice')}
                     >
                       <Paperclip className="h-4 w-4" />
                     </a>
@@ -576,14 +577,14 @@ export default function ExpensesPage() {
                   <Link
                     href={`/expenses/${e.id}`}
                     className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-lg text-muted hover:bg-background"
-                    aria-label="Editar"
+                    aria-label={t('list.edit')}
                   >
                     <Pencil className="h-4 w-4" />
                   </Link>
                 </div>
                 {moveSuggestion && (
                   <div className="mt-2 flex flex-wrap items-center justify-end gap-2 border-t border-dashed border-border/60 pt-2">
-                    <span className="text-[10px] uppercase tracking-wide text-muted mr-auto">Conciliação</span>
+                    <span className="text-[10px] uppercase tracking-wide text-muted mr-auto">{t('list.reconciliation')}</span>
                     <ExpenseContextMoveButton
                       expenseId={e.id}
                       targetOrgId={moveSuggestion.targetId}
@@ -614,13 +615,13 @@ export default function ExpensesPage() {
                     />
                   )}
                 </th>
-                <th className="px-4 py-3 text-left font-medium text-muted">Descrição</th>
-                <th className="px-4 py-3 text-right font-medium text-muted">Valor</th>
-                <th className="px-4 py-3 text-left font-medium text-muted hidden sm:table-cell">Categoria</th>
-                <th className="px-4 py-3 text-left font-medium text-muted hidden lg:table-cell">Pagamento</th>
-                <th className="px-4 py-3 text-left font-medium text-muted hidden lg:table-cell">Vencimento</th>
-                <th className="px-4 py-3 text-center font-medium text-muted">Status</th>
-                <th className="px-4 py-3 text-center font-medium text-muted">Ações</th>
+                <th className="px-4 py-3 text-left font-medium text-muted">{t('list.col.description')}</th>
+                <th className="px-4 py-3 text-right font-medium text-muted">{t('list.col.amount')}</th>
+                <th className="px-4 py-3 text-left font-medium text-muted hidden sm:table-cell">{t('list.col.category')}</th>
+                <th className="px-4 py-3 text-left font-medium text-muted hidden lg:table-cell">{t('list.col.payment')}</th>
+                <th className="px-4 py-3 text-left font-medium text-muted hidden lg:table-cell">{t('list.col.due')}</th>
+                <th className="px-4 py-3 text-center font-medium text-muted">{t('list.col.status')}</th>
+                <th className="px-4 py-3 text-center font-medium text-muted">{t('list.col.actions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -682,12 +683,12 @@ export default function ExpensesPage() {
                           {e.description}
                           {isDup && (
                             <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-amber-200/80 dark:bg-amber-500/25 text-amber-900 dark:text-amber-200">
-                              Duplicata?
+                              {t('list.duplicateBadge')}
                             </span>
                           )}
                           {e.source === 'import' && (
                             <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-sky-100 dark:bg-sky-500/20 text-sky-700 dark:text-sky-300">
-                              Importado
+                              {t('list.importedBadge')}
                             </span>
                           )}
                         </p>
@@ -729,7 +730,7 @@ export default function ExpensesPage() {
                           ) : (
                             <Circle className="h-3.5 w-3.5" />
                           )}
-                          {e.paid ? 'Quitado' : 'Em aberto'}
+                          {e.paid ? t('list.paid') : t('list.open')}
                         </button>
                       </td>
 
@@ -742,7 +743,7 @@ export default function ExpensesPage() {
                               rel="noopener noreferrer"
                               className="inline-flex items-center justify-center min-h-[44px] min-w-[44px] rounded-lg text-brand hover:bg-background transition-colors"
                               title="Ver fatura"
-                              aria-label="Ver fatura"
+                              aria-label={t('list.viewInvoice')}
                             >
                               <Paperclip className="h-4 w-4" />
                             </a>
@@ -765,7 +766,7 @@ export default function ExpensesPage() {
                             href={`/expenses/${e.id}`}
                             className="inline-flex items-center justify-center min-h-[44px] min-w-[44px] rounded-lg text-muted hover:text-main hover:bg-background transition-colors"
                             title="Editar registro"
-                            aria-label="Editar"
+                            aria-label={t('list.edit')}
                           >
                             <Pencil className="h-4 w-4" />
                           </Link>

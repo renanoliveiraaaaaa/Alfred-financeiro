@@ -25,6 +25,8 @@ import {
 import type { Database } from '@/types/supabase'
 import { resolveActiveOrganizationIdForClient } from '@/lib/activeOrganizationClient'
 import { useActiveOrganizationRevision } from '@/lib/useActiveOrganizationRevision'
+import { useI18n } from '@/lib/i18n'
+import { buildCategoryLabelsMap } from '@/lib/categoryI18n'
 
 type Card = Database['public']['Tables']['credit_cards']['Row']
 type Expense = Database['public']['Tables']['expenses']['Row']
@@ -90,18 +92,14 @@ function daysUntilDay(day: number): number {
   return Math.ceil((target.getTime() - today.getTime()) / 86_400_000)
 }
 
-const CATEGORY_LABELS: Record<string, string> = {
-  mercado: 'Mercado', alimentacao: 'Alimentação', compras: 'Compras', transporte: 'Transporte',
-  combustivel: 'Combustível', veiculo: 'Veículo', assinaturas: 'Assinaturas', saude: 'Saúde',
-  educacao: 'Educação', lazer: 'Lazer', moradia: 'Moradia', fatura_cartao: 'Fatura', outros: 'Outros',
-}
-
 export default function CreditCardDetailPage() {
   const params = useParams()
   const supabase = createSupabaseClient()
   const orgRevision = useActiveOrganizationRevision()
   const { toast, toastError } = useToast()
   const pronoun = useGreetingPronoun()
+  const { t } = useI18n()
+  const CATEGORY_LABELS = useMemo(() => buildCategoryLabelsMap(t), [t])
   const cardId = params.id as string
 
   const [card, setCard] = useState<Card | null>(null)

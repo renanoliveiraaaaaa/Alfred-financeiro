@@ -11,6 +11,8 @@ import { formatCurrency } from '@/lib/format'
 import { formatDateBR, formatCurrencyBR } from '@/lib/exportCsv'
 import ExportMenu from '@/components/ExportMenu'
 import MaskedValue from '@/components/MaskedValue'
+import { useI18n } from '@/lib/i18n'
+import { buildCategoryLabelsMap } from '@/lib/categoryI18n'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import type { Database } from '@/types/supabase'
 
@@ -32,22 +34,6 @@ type Revenue = Database['public']['Tables']['revenues']['Row']
 type Expense = Database['public']['Tables']['expenses']['Row']
 
 const MONTH_LABELS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
-
-const CATEGORY_LABELS: Record<string, string> = {
-  mercado: 'Mercado',
-  alimentacao: 'Alimentação',
-  compras: 'Compras online',
-  transporte: 'Transporte',
-  combustivel: 'Combustível',
-  veiculo: 'Veículo',
-  assinaturas: 'Assinaturas',
-  saude: 'Saúde',
-  educacao: 'Educação',
-  lazer: 'Lazer',
-  moradia: 'Moradia',
-  fatura_cartao: 'Fatura de cartão',
-  outros: 'Outros',
-}
 
 const CATEGORY_COLORS: Record<string, string> = {
   mercado: '#10b981',
@@ -80,6 +66,8 @@ export default function ReportsPage() {
   const orgRevision = useActiveOrganizationRevision()
   const { resolvedTheme } = useTheme()
   const pronoun = useGreetingPronoun()
+  const { t } = useI18n()
+  const CATEGORY_LABELS = useMemo(() => buildCategoryLabelsMap(t), [t])
   const [mounted, setMounted] = useState(false)
 
   const currentYear = new Date().getFullYear()

@@ -23,6 +23,7 @@ import {
 import { confirmImport } from '@/lib/actions/import-statement'
 import { useToast } from '@/lib/toastContext'
 import { useGreetingPronoun } from '@/lib/greeting'
+import { buildCategoryLabelsMap, buildPaymentLabelsMap } from '@/lib/categoryI18n'
 
 export interface ReviewTransaction {
   id: string
@@ -59,29 +60,6 @@ interface Props {
   transactions: ReviewTransaction[]
   bank: string
   fileName: string
-}
-
-const CATEGORY_LABELS: Record<string, string> = {
-  mercado: 'Mercado',
-  alimentacao: 'Alimentação',
-  compras: 'Compras online',
-  transporte: 'Transporte',
-  combustivel: 'Combustível',
-  veiculo: 'Veículo',
-  assinaturas: 'Assinaturas',
-  saude: 'Saúde',
-  educacao: 'Educação',
-  lazer: 'Lazer',
-  moradia: 'Moradia',
-  fatura_cartao: 'Fatura de cartão',
-  outros: 'Outros',
-}
-
-const PAYMENT_LABELS: Record<string, string> = {
-  pix: 'Pix',
-  debito: 'Débito',
-  credito: 'Crédito',
-  especie: 'Espécie',
 }
 
 const MONTH_NAMES = [
@@ -132,6 +110,8 @@ export default function ImportReviewModal({ open, onClose, transactions, bank, f
   const { toast, toastError } = useToast()
   const { t } = useI18n()
   const pronoun = useGreetingPronoun()
+  const categoryLabels = useMemo(() => buildCategoryLabelsMap(t), [t])
+  const paymentLabels = useMemo(() => buildPaymentLabelsMap(t), [t])
 
   /** useState só roda na 1ª montagem; o modal costuma montar com transactions=[] antes do parse — precisamos sincronizar quando abrir com dados */
   const [rows, setRows] = useState<TransactionRow[]>([])
@@ -453,6 +433,8 @@ export default function ImportReviewModal({ open, onClose, transactions, bank, f
                     row={row}
                     onUpdate={updateRow}
                     cls={cls}
+                    categoryLabels={categoryLabels}
+                    paymentLabels={paymentLabels}
                   />
                 ))}
               </div>
@@ -511,9 +493,11 @@ interface RowProps {
   row: TransactionRow
   onUpdate: (id: string, patch: Partial<TransactionRow>) => void
   cls: { input: string; select: string }
+  categoryLabels: Record<string, string>
+  paymentLabels: Record<string, string>
 }
 
-function TransactionRowItem({ row, onUpdate, cls }: RowProps) {
+function TransactionRowItem({ row, onUpdate, cls, categoryLabels, paymentLabels }: RowProps) {
   return (
     <>
       {/* Desktop row */}
@@ -584,7 +568,7 @@ function TransactionRowItem({ row, onUpdate, cls }: RowProps) {
               value={row.editedCategory}
               onChange={(e) => onUpdate(row.id, { editedCategory: e.target.value })}
             >
-              {Object.entries(CATEGORY_LABELS).map(([v, l]) => (
+              {Object.entries(categoryLabels).map(([v, l]) => (
                 <option key={v} value={v}>{l}</option>
               ))}
             </select>
@@ -600,7 +584,7 @@ function TransactionRowItem({ row, onUpdate, cls }: RowProps) {
               value={row.editedPaymentMethod}
               onChange={(e) => onUpdate(row.id, { editedPaymentMethod: e.target.value })}
             >
-              {Object.entries(PAYMENT_LABELS).map(([v, l]) => (
+              {Object.entries(paymentLabels).map(([v, l]) => (
                 <option key={v} value={v}>{l}</option>
               ))}
             </select>
@@ -676,7 +660,7 @@ function TransactionRowItem({ row, onUpdate, cls }: RowProps) {
                     value={row.editedCategory}
                     onChange={(e) => onUpdate(row.id, { editedCategory: e.target.value })}
                   >
-                    {Object.entries(CATEGORY_LABELS).map(([v, l]) => (
+                    {Object.entries(categoryLabels).map(([v, l]) => (
                       <option key={v} value={v}>{l}</option>
                     ))}
                   </select>
@@ -685,7 +669,7 @@ function TransactionRowItem({ row, onUpdate, cls }: RowProps) {
                     value={row.editedPaymentMethod}
                     onChange={(e) => onUpdate(row.id, { editedPaymentMethod: e.target.value })}
                   >
-                    {Object.entries(PAYMENT_LABELS).map(([v, l]) => (
+                    {Object.entries(paymentLabels).map(([v, l]) => (
                       <option key={v} value={v}>{l}</option>
                     ))}
                   </select>

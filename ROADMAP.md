@@ -29,18 +29,23 @@ Use este arquivo como base para criar issues no GitHub depois (`gh issue create`
 | 19 | **i18n dashboard** | `DashboardPageClient` + ~50 keys em `app-*.json` |
 | 20 | **useCachedQuery dashboard** | `lib/dashboardData.ts`, TTL 60s por org+mês |
 | 21 | **ModalShell modais** | Customize, ImportReview, CardStatementImport |
+| 22 | **i18n widgets dashboard** | AttentionPanel, BudgetsPanel, BuyingPower, SubscriptionRadar |
+| 23 | **i18n CRUD** | new/edit expenses & revenues, empty states |
+| 24 | **Categorias centralizadas** | `lib/categoryI18n.ts`, `categories-*.json` |
+| 25 | **i18n listagens** | expenses/revenues: tabela, batch, export, duplicatas |
+| 26 | **CATEGORY_LABELS migrados** | ImportReview, CardStatement, reports, credit-cards, transactionAuditor |
 
 ---
 
 ## 🔴 Alta prioridade (criar issues)
 
-### Issue: i18n CRUD completo
+### Issue: i18n páginas secundárias
 - **Labels:** `i18n`, `enhancement`
-- **Escopo:** páginas new/edit, `AttentionPanel`, `BudgetsPanel`, `EmptyState` defaults, categorias
+- **Escopo:** `settings`, `goals`, `subscriptions`, `income-sources`, `projections`, `import-statement`, `import-history`, `profile`, `credit-cards` (UI além de categorias)
 - **Critério:** zero strings PT hardcoded com locale EN ativo
 
-### Issue: i18n widgets dashboard secundários
-- **Escopo:** `BuyingPowerCard`, `SubscriptionWasteRadar`, `AttentionPanel`, `BudgetsPanel`
+### Issue: i18n Butler server-side
+- **Escopo:** `butlerInsightServer.ts` — margem, conforto, conciliação, resumos PT hardcoded
 
 ---
 
@@ -82,7 +87,7 @@ Use este arquivo como base para criar issues no GitHub depois (`gh issue create`
 ## Comandos para criar issues (depois)
 
 ```bash
-gh issue create --title "i18n: dashboard e CRUD completo" --body-file .github/issue-templates/i18n-dashboard.md --label enhancement
+gh issue create --title "i18n: páginas secundárias" --body-file .github/issue-templates/i18n-secondary.md --label enhancement
 ```
 
 Ou copiar cada seção acima manualmente no GitHub.

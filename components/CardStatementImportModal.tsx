@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import ModalShell from '@/components/ModalShell'
 import { useI18n } from '@/lib/i18n'
@@ -18,6 +18,7 @@ import {
 } from '@/lib/actions/parse-card-statement'
 import { extractPdfTextInBrowser } from '@/lib/parsers/extractPdfTextBrowser'
 import { useToast } from '@/lib/toastContext'
+import { buildCategoryLabelsMap } from '@/lib/categoryI18n'
 import type { Database } from '@/types/supabase'
 
 type Card = Database['public']['Tables']['credit_cards']['Row']
@@ -32,13 +33,6 @@ type Props = {
   onClose: () => void
   existingCards: Card[]
   onSuccess: () => void
-}
-
-const CATEGORY_LABELS: Record<string, string> = {
-  mercado: 'Mercado', alimentacao: 'Alimentação', compras: 'Compras',
-  transporte: 'Transporte', combustivel: 'Combustível', veiculo: 'Veículo',
-  assinaturas: 'Assinaturas', saude: 'Saúde', educacao: 'Educação',
-  lazer: 'Lazer', moradia: 'Moradia', fatura_cartao: 'Fatura', outros: 'Outros',
 }
 
 const MONTH_NAMES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
@@ -57,6 +51,7 @@ function fmtCurrency(n: number) {
 export default function CardStatementImportModal({ open, onClose, existingCards, onSuccess }: Props) {
   const { toast, toastError } = useToast()
   const { t } = useI18n()
+  const categoryLabels = useMemo(() => buildCategoryLabelsMap(t), [t])
   const router = useRouter()
 
   const [step, setStep] = useState<Step>('upload')
@@ -471,7 +466,7 @@ export default function CardStatementImportModal({ open, onClose, existingCards,
                           {tx.category_hint && (
                             <>
                               <span>·</span>
-                              <span>{CATEGORY_LABELS[tx.category_hint] ?? tx.category_hint}</span>
+                              <span>{categoryLabels[tx.category_hint] ?? tx.category_hint}</span>
                             </>
                           )}
                         </p>

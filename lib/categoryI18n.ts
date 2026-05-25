@@ -1,3 +1,7 @@
+import ptCategories from '@/locales/categories-pt.json'
+import enCategories from '@/locales/categories-en.json'
+import type { Locale } from './i18n'
+
 export const DEFAULT_CATEGORY_KEYS = [
   'mercado',
   'alimentacao',
@@ -23,6 +27,37 @@ export const PAYMENT_METHOD_KEYS = [
 ] as const
 
 export type PaymentMethodKey = (typeof PAYMENT_METHOD_KEYS)[number]
+
+const STATIC_MESSAGES: Record<Locale, Record<string, string>> = {
+  pt: ptCategories as Record<string, string>,
+  en: enCategories as Record<string, string>,
+}
+
+export function getCategoryLabelFromLocale(key: string, locale: Locale = 'pt'): string {
+  const translated = STATIC_MESSAGES[locale][`category.${key}`]
+  return translated ?? key
+}
+
+export function getPaymentLabelFromLocale(key: string, locale: Locale = 'pt'): string {
+  const translated = STATIC_MESSAGES[locale][`payment.${key}`]
+  return translated ?? key
+}
+
+export function buildCategoryLabelsMapFromLocale(locale: Locale = 'pt'): Record<string, string> {
+  const map: Record<string, string> = {}
+  for (const key of DEFAULT_CATEGORY_KEYS) {
+    map[key] = getCategoryLabelFromLocale(key, locale)
+  }
+  return map
+}
+
+export function buildPaymentLabelsMapFromLocale(locale: Locale = 'pt'): Record<string, string> {
+  const map: Record<string, string> = {}
+  for (const key of PAYMENT_METHOD_KEYS) {
+    map[key] = getPaymentLabelFromLocale(key, locale)
+  }
+  return map
+}
 
 export function getCategoryLabel(t: (key: string) => string, key: string): string {
   const localeKey = `category.${key}`
