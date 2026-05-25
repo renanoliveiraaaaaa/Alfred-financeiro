@@ -21,6 +21,7 @@ import type { Database } from '@/types/supabase'
 import { resolveActiveOrganizationIdForClient } from '@/lib/activeOrganizationClient'
 import { useActiveOrganizationRevision } from '@/lib/useActiveOrganizationRevision'
 import { useI18n } from '@/lib/i18n'
+import { formatMessage } from '@/lib/i18nFormat'
 import { buildCategoryLabelsMap } from '@/lib/categoryI18n'
 
 type Card = Database['public']['Tables']['credit_cards']['Row']
@@ -314,9 +315,9 @@ export default function CreditCardsPage() {
       {/* ── Header ── */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-main">A Carteira</h1>
+          <h1 className="text-xl font-semibold text-main">{t('creditCards.title')}</h1>
           <p className="text-sm text-muted mt-0.5">
-            Seus cartões de crédito{pronoun ? `, ${pronoun}` : ''}
+            {formatMessage(t('creditCards.subtitle'), { pronoun })}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -324,10 +325,10 @@ export default function CreditCardsPage() {
             onClick={() => setShowImportModal(true)}
             className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm font-medium text-muted hover:bg-hover hover:text-main transition-colors"
           >
-            <FileUp className="h-4 w-4" /> Importar fatura PDF
+            <FileUp className="h-4 w-4" /> {t('creditCards.importStatement')}
           </button>
           <button onClick={openNew} className={cls.btnPrimary}>
-            <Plus className="h-4 w-4" /> Novo cartão
+            <Plus className="h-4 w-4" /> {t('creditCards.new')}
           </button>
         </div>
       </div>
@@ -387,9 +388,9 @@ export default function CreditCardsPage() {
       {cards.length === 0 ? (
         <EmptyState
           icon={CreditCard}
-          title="Sua carteira está vazia"
-          description="Registre seu primeiro cartão para acompanhar faturas e gastos."
-          actionLabel="Adicionar cartão"
+          title={t('creditCards.emptyTitle')}
+          description={formatMessage(t('creditCards.emptyDesc'), { pronoun })}
+          actionLabel={t('creditCards.emptyAction')}
           onAction={openNew}
         />
       ) : (

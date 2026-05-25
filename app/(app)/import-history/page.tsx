@@ -7,6 +7,8 @@ import { ConfirmDangerModal } from '@/components/ConfirmDangerModal'
 import EmptyState from '@/components/EmptyState'
 import { useToast, CONNECTION_ERROR_MSG, isConnectionError } from '@/lib/toastContext'
 import { useGreetingPronoun } from '@/lib/greeting'
+import { useI18n } from '@/lib/i18n'
+import { formatMessage } from '@/lib/i18nFormat'
 import { History, Trash2, CheckCircle2, XCircle, Loader2, FileText, Building2 } from 'lucide-react'
 
 type ImportSession = {
@@ -60,6 +62,7 @@ export default function ImportHistoryPage() {
   const supabase = createSupabaseClient()
   const { toast, toastError } = useToast()
   const pronoun = useGreetingPronoun()
+  const { t } = useI18n()
 
   const [sessions, setSessions] = useState<ImportSession[]>([])
   const [loading, setLoading] = useState(true)
@@ -106,7 +109,7 @@ export default function ImportHistoryPage() {
       setSessions((prev) => prev.filter((s) => s.id !== sessionId))
       toast(`Importação desfeita com sucesso, ${pronoun}.`, 'success')
     } catch (err: unknown) {
-      toastError(isConnectionError(err) ? CONNECTION_ERROR_MSG : (err instanceof Error ? err.message : 'Erro ao desfazer importação.'))
+      toastError(isConnectionError(err) ? CONNECTION_ERROR_MSG : (err instanceof Error ? err.message : t('importHistory.error.undo')))
     } finally {
       setUndoing(false)
       setUndoTarget(null)
@@ -133,9 +136,9 @@ export default function ImportHistoryPage() {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-main">Histórico de Importações</h1>
+          <h1 className="text-xl font-semibold text-main">{t('importHistory.title')}</h1>
           <p className="text-sm text-muted mt-0.5">
-            Extratos importados e transações geradas, {pronoun}
+            {formatMessage(t('importHistory.subtitle'), { pronoun })}
           </p>
         </div>
         {sessions.length > 0 && (
@@ -149,8 +152,8 @@ export default function ImportHistoryPage() {
       {sessions.length === 0 ? (
         <EmptyState
           icon={History}
-          title="Nenhuma importação registrada"
-          description={`Ainda não há extratos importados, ${pronoun}. Utilize a opção "Importar Extrato" para começar.`}
+          title={t('importHistory.empty')}
+          description={formatMessage(t('importHistory.subtitle'), { pronoun })}
           actionLabel="Importar extrato"
           onAction={() => { window.location.href = '/import-statement' }}
         />
@@ -196,7 +199,7 @@ export default function ImportHistoryPage() {
                     className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium border border-red-200 dark:border-red-500/40 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors shrink-0"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
-                    Desfazer importação
+                    {t('importHistory.undo')}
                   </button>
                 )}
               </div>
@@ -229,7 +232,7 @@ export default function ImportHistoryPage() {
 
       <ConfirmDangerModal
         open={!!undoTarget}
-        title="Desfazer importação"
+        title={t('importHistory.undo')}
         description={
           undoTarget
             ? `Isso excluirá permanentemente todas as ${undoTarget.imported_transactions} transações importadas do arquivo "${undoTarget.file_name}". A operação não pode ser desfeita, ${pronoun}.`

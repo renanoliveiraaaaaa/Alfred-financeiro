@@ -4,6 +4,10 @@ import { GoogleGenerativeAI } from '@google/generative-ai'
 import { createSupabaseServerClient } from '@/lib/supabaseServer'
 import { formatGeminiCallError, getGeminiApiKey, getGeminiModelId } from '@/lib/geminiEnv'
 import ptApp from '@/locales/app-pt.json'
+import enApp from '@/locales/app-en.json'
+import { LOCALE_STORAGE_KEY } from '@/lib/I18nProvider'
+import { butlerFormat, butlerT } from '@/lib/butlerI18n'
+import type { Locale } from '@/lib/i18n'
 import { formatSubscriptionAlert } from '@/lib/subscriptionAlertI18n'
 import {
   auditSubscriptions,
@@ -72,9 +76,17 @@ function formatCategoryLabel(raw: string): string {
     .join(' ')
 }
 
-function monthLabelPt(year: number, month: number): string {
+function monthLabel(year: number, month: number, locale: Locale): string {
   const d = new Date(year, month - 1, 1)
-  return new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' }).format(d)
+  return new Intl.DateTimeFormat(locale === 'en' ? 'en-US' : 'pt-BR', { month: 'long', year: 'numeric' }).format(d)
+}
+
+function resolveLocale(raw: string | undefined): Locale {
+  return raw === 'en' ? 'en' : 'pt'
+}
+
+function appMessages(locale: Locale): Record<string, string> {
+  return (locale === 'en' ? enApp : ptApp) as Record<string, string>
 }
 
 function formatBrl(n: number): string {
@@ -88,28 +100,20 @@ function buildMessage(params: {
   topCategory: string
   current: number
   previous: number
+  locale: Locale
 }): string {
-  const { context, trend, pct, topCategory } = params
+  const { context, trend, pct, topCategory, locale } = params
   const pctAbs = Math.min(999, Math.abs(Math.round(pct * 10) / 10))
 
   if (trend === 'flat') {
-    if (context === 'business') {
-      return `Senhor, o volume de despesas manteve-se alinhado com o mês anterior no fluxo de caixa. Sugiro monitorizar a rubrica «${topCategory}» para proteger a margem de lucro.`
-    }
-    return `Senhor, as suas despesas na economia doméstica mantiveram-se estáveis face ao mês anterior. Continuamos vigilantes na categoria «${topCategory}».`
+    return butlerFormat(`butler.fallback.flat.${context}`, locale, { category: topCategory, pct: pctAbs })
   }
 
   if (trend === 'up') {
-    if (context === 'business') {
-      return `Senhor, registo um aumento de ${pctAbs}% nas despesas operacionais este mês, com impacto no fluxo de caixa e na margem de lucro. Recomendo rever a rubrica «${topCategory}» com a equipa financeira.`
-    }
-    return `Senhor, notei um aumento de ${pctAbs}% nas despesas este mês na sua economia doméstica. Recomendo revisar a categoria «${topCategory}» para mantermos o plano de saúde financeira.`
+    return butlerFormat(`butler.fallback.up.${context}`, locale, { category: topCategory, pct: pctAbs })
   }
 
-  if (context === 'business') {
-    return `Excelente desempenho, Senhor. As despesas empresariais recuaram ${pctAbs}%, o que favorece a margem de lucro e o fluxo de caixa. Deseja alocar este excedente na sua meta de «Reserva de Emergência»?`
-  }
-  return `Excelente desempenho, Senhor. As suas despesas na economia doméstica reduziram ${pctAbs}%. Deseja alocar este excedente na sua meta de «Reserva de Emergência»?`
+  return butlerFormat(`butler.fallback.down.${context}`, locale, { category: topCategory, pct: pctAbs })
 }
 
 function buildUserPrompt(snapshot: ButlerFinanceSnapshot): string {
@@ -179,6 +183,7 @@ export async function getButlerInsightData(): Promise<ButlerInsightData | null> 
 
     const cookieStore = cookies()
     const cookieOrgId = cookieStore.get(COOKIE_ORG)?.value?.trim() || null
+    const locale = resolveLocale(cookieStore.get(LOCALE_STORAGE_KEY)?.value)
 
     let context: ButlerOrgContext = 'personal'
     let expenseOrgFilter: string | null = null
@@ -341,21 +346,22 @@ export async function getButlerInsightData(): Promise<ButlerInsightData | null> 
     })
 
     const subAlerts = auditSubscriptions(subsRows, expWinRows, cur.year, cur.month)
-    const tPt = (key: string) => (ptApp as Record<string, string>)[key] ?? key
+    const messages = appMessages(locale)
+    const tApp = (key: string) => messages[key] ?? key
     const resumoAlertasAssinaturas =
       subAlerts.length === 0
-        ? 'Nenhum alerta relevante no período.'
+        ? butlerT('butler.noSubAlerts', locale)
         : subAlerts
             .slice(0, 4)
-            .map((a) => formatSubscriptionAlert(a, tPt, 'pt'))
+            .map((a) => formatSubscriptionAlert(a, tApp, locale))
             .join(' ')
 
     const limiteConforto =
       bp.dinheiroLivre > 0 && bp.lifestyleShareOfFree != null && bp.lifestyleShareOfFree > 0.8
-        ? 'Atenção: mais de 80% do dinheiro livre já consumido em lazer/outros.'
+        ? butlerT('butler.comfort.over80', locale)
         : bp.dinheiroLivre <= 0 && bp.lifestyleSpend > 0
-          ? 'Sem margem de dinheiro livre; há gasto em lazer/outros.'
-          : 'Dentro do limite de conforto para lazer/outros.'
+          ? butlerT('butler.comfort.noMargin', locale)
+          : butlerT('butler.comfort.ok', locale)
 
     const { data: memLinks } = await supabase
       .from('organization_members')
@@ -418,7 +424,7 @@ export async function getButlerInsightData(): Promise<ButlerInsightData | null> 
 
     const snapshot: ButlerFinanceSnapshot = {
       contextoOrganizacao: context === 'business' ? 'Business' : 'Personal',
-      mesReferencia: monthLabelPt(cur.year, cur.month),
+      mesReferencia: monthLabel(cur.year, cur.month, locale),
       totalGastosMes: currentTotal,
       totalReceitasMes,
       maiorCategoriaGasto: topCategory,
@@ -442,6 +448,7 @@ export async function getButlerInsightData(): Promise<ButlerInsightData | null> 
       topCategory,
       current: currentTotal,
       previous: previousTotal,
+      locale,
     })
 
     const conflictsPayload =

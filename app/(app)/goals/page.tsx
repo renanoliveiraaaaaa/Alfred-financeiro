@@ -10,6 +10,8 @@ import EmptyState from '@/components/EmptyState'
 import { ConfirmDangerModal } from '@/components/ConfirmDangerModal'
 import { useToast, CONNECTION_ERROR_MSG, isConnectionError } from '@/lib/toastContext'
 import { useGreetingPronoun } from '@/lib/greeting'
+import { useI18n } from '@/lib/i18n'
+import { formatMessage } from '@/lib/i18nFormat'
 import { Plus, X, Loader2, Vault, Trophy, PiggyBank, ArrowUpCircle } from 'lucide-react'
 import type { Database } from '@/types/supabase'
 import { resolveActiveOrganizationIdForClient } from '@/lib/activeOrganizationClient'
@@ -17,17 +19,19 @@ import { useActiveOrganizationRevision } from '@/lib/useActiveOrganizationRevisi
 
 type Goal = Database['public']['Tables']['goals']['Row']
 
-const COLOR_OPTIONS = [
-  { value: 'gold', label: 'Ouro', gradient: 'from-amber-600 to-yellow-700' },
-  { value: 'emerald', label: 'Esmeralda', gradient: 'from-emerald-600 to-emerald-800' },
-  { value: 'sky', label: 'Safira', gradient: 'from-sky-600 to-blue-800' },
-  { value: 'rose', label: 'Rubi', gradient: 'from-rose-600 to-rose-800' },
-  { value: 'purple', label: 'Ametista', gradient: 'from-purple-600 to-purple-800' },
-  { value: 'slate', label: 'Platina', gradient: 'from-gray-500 to-gray-700' },
-]
+const COLOR_VALUES = ['gold', 'emerald', 'sky', 'rose', 'purple', 'slate'] as const
+
+const COLOR_GRADIENTS: Record<string, string> = {
+  gold: 'from-amber-600 to-yellow-700',
+  emerald: 'from-emerald-600 to-emerald-800',
+  sky: 'from-sky-600 to-blue-800',
+  rose: 'from-rose-600 to-rose-800',
+  purple: 'from-purple-600 to-purple-800',
+  slate: 'from-gray-500 to-gray-700',
+}
 
 function gradientFor(color: string) {
-  return COLOR_OPTIONS.find((c) => c.value === color)?.gradient || 'from-amber-600 to-yellow-700'
+  return COLOR_GRADIENTS[color] || COLOR_GRADIENTS.gold
 }
 
 function progressColor(pct: number) {
@@ -42,6 +46,8 @@ export default function GoalsPage() {
   const orgRevision = useActiveOrganizationRevision()
   const { toastError } = useToast()
   const pronoun = useGreetingPronoun()
+  const { t, locale } = useI18n()
+  const dateLocale = locale === 'en' ? 'en-US' : 'pt-BR'
 
   const [goals, setGoals] = useState<Goal[]>([])
   const [loading, setLoading] = useState(true)
@@ -100,8 +106,8 @@ export default function GoalsPage() {
     e.preventDefault()
     setFormError(null)
 
-    if (!newName.trim()) { setFormError('Informe o nome do cofre.'); return }
-    if (newTarget <= 0) { setFormError('Informe um valor-alvo maior que zero.'); return }
+    if (!newName.trim()) { setFormError(t('goals.error.name')); return }
+    if (newTarget <= 0) { setFormError(t('goals.error.target')); return }
 
     setSaving(true)
     const { data: userData } = await supabase.auth.getUser()
@@ -139,7 +145,7 @@ export default function GoalsPage() {
     if (!fundGoalId) return
     setFundError(null)
 
-    if (fundAmount <= 0) { setFundError('Informe um valor maior que zero.'); return }
+    if (fundAmount <= 0) { setFundError(t('goals.error.amount')); return }
 
     setFundSaving(true)
     const goal = goals.find((g) => g.id === fundGoalId)
@@ -210,11 +216,11 @@ export default function GoalsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className={cls.h1}>Cofres e Patrimônio</h1>
-          <p className={`${cls.sub} mt-0.5`}>Seus objetivos de longo prazo, {pronoun}</p>
+          <h1 className={cls.h1}>{t('goals.title')}</h1>
+          <p className={`${cls.sub} mt-0.5`}>{formatMessage(t('goals.subtitle'), { pronoun })}</p>
         </div>
         <button onClick={() => { setShowNewForm(true); resetNewForm() }} className={cls.btnPrimary}>
-          <Plus className="h-4 w-4" /> Novo cofre
+          <Plus className="h-4 w-4" /> {t('goals.newVault')}
         </button>
       </div>
 
@@ -223,7 +229,7 @@ export default function GoalsPage() {
         <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/50 px-4">
           <div className={`${cls.card} w-full max-w-lg p-6 space-y-5 shadow-2xl`}>
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-main">Abrir novo cofre</h2>
+              <h2 className="text-lg font-semibold text-main">{t('goals.modalNewTitle')}</h2>
               <button onClick={() => setShowNewForm(false)} className="text-muted hover:text-main transition-colors">
                 <X className="h-5 w-5" />
               </button>
@@ -237,30 +243,30 @@ export default function GoalsPage() {
 
             <form onSubmit={handleCreate} className="space-y-4">
               <div>
-                <label className={cls.label}>Nome do objetivo</label>
-                <input className={cls.input} placeholder="Ex.: Reserva de emergência" value={newName} onChange={(e) => setNewName(e.target.value)} required />
+                <label className={cls.label}>{t('goals.field.name')}</label>
+                <input className={cls.input} placeholder={t('goals.field.namePlaceholder')} value={newName} onChange={(e) => setNewName(e.target.value)} required />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className={cls.label}>Valor-alvo (R$)</label>
+                  <label className={cls.label}>{t('goals.field.target')}</label>
                   <CurrencyInput value={newTarget} onChange={setNewTarget} placeholder="10.000,00" className={cls.input} required />
                 </div>
                 <div>
-                  <label className={cls.label}>Prazo (opcional)</label>
+                  <label className={cls.label}>{t('goals.field.deadline')}</label>
                   <input type="date" className={cls.input} value={newDeadline} onChange={(e) => setNewDeadline(e.target.value)} />
                 </div>
               </div>
               <div>
-                <label className={cls.label}>Cor do cofre</label>
+                <label className={cls.label}>{t('goals.field.color')}</label>
                 <div className="flex gap-2 mt-1">
-                  {COLOR_OPTIONS.map((opt) => (
+                  {COLOR_VALUES.map((value) => (
                     <button
-                      key={opt.value}
+                      key={value}
                       type="button"
-                      title={opt.label}
-                      onClick={() => setNewColor(opt.value)}
-                      className={`h-8 w-8 rounded-full bg-gradient-to-br ${opt.gradient} ring-2 ring-offset-2 ring-offset-surface transition-all ${
-                        newColor === opt.value ? 'ring-brand scale-110' : 'ring-transparent hover:ring-border'
+                      title={t(`goals.color.${value}`)}
+                      onClick={() => setNewColor(value)}
+                      className={`h-8 w-8 rounded-full bg-gradient-to-br ${COLOR_GRADIENTS[value]} ring-2 ring-offset-2 ring-offset-surface transition-all ${
+                        newColor === value ? 'ring-brand scale-110' : 'ring-transparent hover:ring-border'
                       }`}
                     />
                   ))}
@@ -268,10 +274,10 @@ export default function GoalsPage() {
               </div>
               <div className="flex justify-end gap-3 pt-2">
                 <button type="button" onClick={() => setShowNewForm(false)} className="px-4 py-2.5 rounded-lg text-sm font-medium border border-border text-muted hover:bg-background transition-colors">
-                  Cancelar
+                  {t('common.cancel')}
                 </button>
                 <button type="submit" disabled={saving} className={cls.btnPrimary}>
-                  {saving ? <><Loader2 className="h-4 w-4 animate-spin" /> Processando...</> : 'Criar cofre'}
+                  {saving ? <><Loader2 className="h-4 w-4 animate-spin" /> {t('crud.processing')}</> : t('goals.createVault')}
                 </button>
               </div>
             </form>
@@ -285,13 +291,13 @@ export default function GoalsPage() {
         <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/50 px-4">
           <div className={`${cls.card} w-full max-w-sm p-6 space-y-5 shadow-2xl`}>
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-main">Adicionar fundo</h2>
+              <h2 className="text-lg font-semibold text-main">{t('goals.modalFundTitle')}</h2>
               <button onClick={() => { setFundGoalId(null); setFundAmount(0); setFundError(null) }} className="text-muted hover:text-main transition-colors">
                 <X className="h-5 w-5" />
               </button>
             </div>
             <p className="text-sm text-muted">
-              Quanto deseja alocar neste cofre hoje, {pronoun}?
+              {formatMessage(t('goals.modalFundPrompt'), { pronoun })}
             </p>
             {fundError && (
               <div className="rounded-lg border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-300">
@@ -299,15 +305,15 @@ export default function GoalsPage() {
               </div>
             )}
             <div>
-              <label className={cls.label}>Valor (R$)</label>
+              <label className={cls.label}>{t('goals.field.amount')}</label>
               <CurrencyInput value={fundAmount} onChange={setFundAmount} placeholder="500,00" className={cls.input} autoFocus />
             </div>
             <div className="flex justify-end gap-3">
               <button onClick={() => { setFundGoalId(null); setFundAmount(0); setFundError(null) }} className="px-4 py-2.5 rounded-lg text-sm font-medium border border-border text-muted hover:bg-background transition-colors">
-                Cancelar
+                {t('common.cancel')}
               </button>
               <button onClick={handleFund} disabled={fundSaving} className={cls.btnPrimary}>
-                {fundSaving ? <><Loader2 className="h-4 w-4 animate-spin" /> Processando...</> : <><ArrowUpCircle className="h-4 w-4" /> Aportar</>}
+                {fundSaving ? <><Loader2 className="h-4 w-4 animate-spin" /> {t('crud.processing')}</> : <><ArrowUpCircle className="h-4 w-4" /> {t('goals.fund')}</>}
               </button>
             </div>
           </div>
@@ -319,9 +325,9 @@ export default function GoalsPage() {
       {goals.length === 0 ? (
         <EmptyState
           icon={Vault}
-          title="Nenhum cofre aberto"
-          description={`Permita-me ajudá-lo a criar o primeiro objetivo financeiro, ${pronoun}. Cada grande fortuna começa com uma meta.`}
-          actionLabel="Abrir primeiro cofre"
+          title={t('goals.emptyTitle')}
+          description={formatMessage(t('goals.emptyDesc'), { pronoun })}
+          actionLabel={t('goals.emptyAction')}
           onAction={() => { setShowNewForm(true); resetNewForm() }}
         />
       ) : (
@@ -352,14 +358,16 @@ export default function GoalsPage() {
                         <p className="text-sm font-semibold text-main truncate">{goal.name}</p>
                         {goal.deadline && (
                           <p className="text-xs text-muted">
-                            Prazo: {new Date(goal.deadline + 'T12:00:00').toLocaleDateString('pt-BR')}
+                            {formatMessage(t('goals.deadline'), {
+                              date: new Date(goal.deadline + 'T12:00:00').toLocaleDateString(dateLocale),
+                            })}
                           </p>
                         )}
                       </div>
                     </div>
                     {isComplete && (
                       <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-brand/15 px-2 py-0.5 text-xs font-medium text-brand ring-1 ring-inset ring-brand/30">
-                        <Trophy className="h-3 w-3" /> Alcançado
+                        <Trophy className="h-3 w-3" /> {t('goals.achieved')}
                       </span>
                     )}
                   </div>
@@ -369,7 +377,7 @@ export default function GoalsPage() {
                     <div className="flex items-baseline justify-between mb-1.5">
                       <MaskedValue value={current} className="text-lg font-bold text-main" />
                       <span className="text-xs text-muted">
-                        de <MaskedValue value={target} className="font-medium" />
+                        {t('goals.ofTarget')} <MaskedValue value={target} className="font-medium" />
                       </span>
                     </div>
 
@@ -390,14 +398,14 @@ export default function GoalsPage() {
                         onClick={() => { setFundGoalId(goal.id); setFundAmount(0); setFundError(null) }}
                         className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg border border-border px-3 py-2 text-xs font-medium text-main hover:bg-background transition-colors"
                       >
-                        <ArrowUpCircle className="h-3.5 w-3.5" /> Adicionar fundo
+                        <ArrowUpCircle className="h-3.5 w-3.5" /> {t('goals.addFund')}
                       </button>
                     )}
                     <button
                       onClick={() => setDeleteTargetId(goal.id)}
                       className="inline-flex items-center justify-center rounded-lg border border-border px-3 py-2 text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
                     >
-                      Remover
+                      {t('crud.remove')}
                     </button>
                   </div>
                 </div>
@@ -409,8 +417,8 @@ export default function GoalsPage() {
 
       <ConfirmDangerModal
         open={!!deleteTargetId}
-        title="Remover Cofre"
-        description={`Deseja remover este cofre permanentemente, ${pronoun}? Todo o progresso acumulado será perdido.`}
+        title={t('goals.deleteTitle')}
+        description={formatMessage(t('goals.deleteDesc'), { pronoun })}
         loading={deletingGoal}
         onConfirm={handleDelete}
         onCancel={() => setDeleteTargetId(null)}

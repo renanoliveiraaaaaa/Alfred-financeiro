@@ -12,6 +12,7 @@ import { formatDateBR, formatCurrencyBR } from '@/lib/exportCsv'
 import ExportMenu from '@/components/ExportMenu'
 import MaskedValue from '@/components/MaskedValue'
 import { useI18n } from '@/lib/i18n'
+import { formatMessage } from '@/lib/i18nFormat'
 import { buildCategoryLabelsMap } from '@/lib/categoryI18n'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import type { Database } from '@/types/supabase'
@@ -152,7 +153,7 @@ export default function ReportsPage() {
         setYearExpenses((expYearRes.data ?? []) as Expense[])
       } catch (err: unknown) {
         console.error('[reports] Erro ao carregar dados:', err instanceof Error ? err.message : err)
-        const msg = err instanceof Error ? err.message : 'Erro ao carregar dados.'
+        const msg = err instanceof Error ? err.message : t('reports.error.load')
         setError(msg)
       } finally {
         setLoading(false)
@@ -386,8 +387,8 @@ export default function ReportsPage() {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-main">Análise Patrimonial</h1>
-          <p className="text-sm text-muted mt-0.5">Visão mensal e evolução anual do seu patrimônio, {pronoun}</p>
+          <h1 className="text-xl font-semibold text-main">{t('reports.title')}</h1>
+          <p className="text-sm text-muted mt-0.5">{formatMessage(t('reports.subtitle'), { pronoun })}</p>
         </div>
         <ExportMenu
           filename={exportFilename}

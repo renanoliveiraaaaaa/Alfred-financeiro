@@ -1,0 +1,13 @@
+{
+  "butler.noSubAlerts": "No relevant alerts in the period.",
+  "butler.comfort.over80": "Attention: over 80% of free cash already used on leisure/other.",
+  "butler.comfort.noMargin": "No free cash margin; there is leisure/other spending.",
+  "butler.comfort.ok": "Within the comfort limit for leisure/other.",
+  "butler.fallback.flat.business": "Sir, expense volume stayed aligned with last month in cash flow. I suggest monitoring «{category}» to protect operating margin.",
+  "butler.fallback.flat.personal": "Sir, household expenses remained stable compared to last month. We remain vigilant in the «{category}» category.",
+  "butler.fallback.up.business": "Sir, I note a {pct}% increase in operating expenses this month, impacting cash flow and margin. I recommend reviewing «{category}» with the finance team.",
+  "butler.fallback.up.personal": "Sir, I noticed a {pct}% increase in expenses this month in your household budget. I recommend reviewing «{category}» to maintain financial health.",
+  "butler.fallback.down.business": "Excellent performance, Sir. Business expenses fell {pct}%, favoring margin and cash flow. Would you like to allocate this surplus to your «Emergency Reserve» goal?",
+  "butler.fallback.down.personal": "Excellent performance, Sir. Household expenses decreased {pct}%. Would you like to allocate this surplus to your «Emergency Reserve» goal?",
+  "butler.summary.header": "Financial summary for the current month ({month}):"
+}

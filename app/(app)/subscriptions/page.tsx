@@ -9,6 +9,8 @@ import EmptyState from '@/components/EmptyState'
 import { ConfirmDangerModal } from '@/components/ConfirmDangerModal'
 import { useToast, CONNECTION_ERROR_MSG, isConnectionError } from '@/lib/toastContext'
 import { useGreetingPronoun } from '@/lib/greeting'
+import { useI18n } from '@/lib/i18n'
+import { formatMessage } from '@/lib/i18nFormat'
 import {
   Plus, X, Loader2, RefreshCw, Pencil,
   Tv, Music, Cloud, ShoppingBag, Dumbbell, BookOpen, Gamepad2, Wifi, Shield, Sparkles,
@@ -33,18 +35,22 @@ const CATEGORY_ICONS: Record<string, React.ElementType> = {
   seguranca: Shield,
 }
 
-const CATEGORY_OPTIONS = [
-  { value: 'streaming', label: 'Streaming' },
-  { value: 'musica', label: 'Música' },
-  { value: 'cloud', label: 'Cloud / Software' },
-  { value: 'fitness', label: 'Fitness' },
-  { value: 'educacao', label: 'Educação' },
-  { value: 'jogos', label: 'Jogos' },
-  { value: 'internet', label: 'Internet / Telecom' },
-  { value: 'seguranca', label: 'Seguro / Proteção' },
-  { value: 'compras', label: 'Compras' },
-  { value: 'assinaturas', label: 'Outros' },
-]
+const CATEGORY_VALUES = [
+  'streaming', 'musica', 'cloud', 'fitness', 'educacao', 'jogos', 'internet', 'seguranca', 'compras', 'assinaturas',
+] as const
+
+const CATEGORY_I18N: Record<string, string> = {
+  streaming: 'subs.cat.streaming',
+  musica: 'subs.cat.music',
+  cloud: 'subs.cat.cloud',
+  fitness: 'subs.cat.fitness',
+  educacao: 'subs.cat.education',
+  jogos: 'subs.cat.games',
+  internet: 'subs.cat.internet',
+  seguranca: 'subs.cat.security',
+  compras: 'subs.cat.shopping',
+  assinaturas: 'subs.cat.other',
+}
 
 function getIcon(category: string) {
   return CATEGORY_ICONS[category] || Sparkles
@@ -55,6 +61,8 @@ export default function SubscriptionsPage() {
   const orgRevision = useActiveOrganizationRevision()
   const { toastError } = useToast()
   const pronoun = useGreetingPronoun()
+  const { t, locale } = useI18n()
+  const dateLocale = locale === 'en' ? 'en-US' : 'pt-BR'
 
   const [subs, setSubs] = useState<Subscription[]>([])
   const [loading, setLoading] = useState(true)
@@ -139,9 +147,9 @@ export default function SubscriptionsPage() {
     setFormError(null)
 
     const amount = fAmount
-    if (!fName.trim()) { setFormError('Informe o nome da assinatura.'); return }
-    if (amount <= 0) { setFormError('Informe um valor maior que zero.'); return }
-    if (!fNextDate) { setFormError('Informe a data da próxima cobrança.'); return }
+    if (!fName.trim()) { setFormError(t('subs.error.name')); return }
+    if (amount <= 0) { setFormError(t('goals.error.amount')); return }
+    if (!fNextDate) { setFormError(t('subs.error.nextDate')); return }
 
     setSaving(true)
     const { data: userData } = await supabase.auth.getUser()
@@ -248,23 +256,27 @@ export default function SubscriptionsPage() {
     )
   }
 
+  const activeCount = subs.filter((s) => s.active).length
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className={cls.h1}>Assinaturas e Custos Fixos</h1>
-          <p className={`${cls.sub} mt-0.5`}>Os seus compromissos recorrentes, senhor</p>
+          <h1 className={cls.h1}>{t('subs.title')}</h1>
+          <p className={`${cls.sub} mt-0.5`}>{t('subs.subtitle')}</p>
         </div>
         <button onClick={openNew} className={cls.btnPrimary}>
-          <Plus className="h-4 w-4" /> Nova assinatura
+          <Plus className="h-4 w-4" /> {t('subs.new')}
         </button>
       </div>
 
       {/* Resumo mensal */}
       <div className={`${cls.card} p-4 inline-block`}>
-        <p className="text-xs font-medium uppercase tracking-wider text-muted">Total fixo mensal</p>
+        <p className="text-xs font-medium uppercase tracking-wider text-muted">{t('subs.monthlyTotal')}</p>
         <MaskedValue value={monthlyTotal} className="mt-1 text-2xl font-bold text-main" />
-        <p className="text-xs text-muted mt-0.5">{subs.filter((s) => s.active).length} assinatura{subs.filter((s) => s.active).length !== 1 ? 's' : ''} ativa{subs.filter((s) => s.active).length !== 1 ? 's' : ''}</p>
+        <p className="text-xs text-muted mt-0.5">
+          {formatMessage(activeCount === 1 ? t('subs.activeCount') : t('subs.activeCountMany'), { count: activeCount })}
+        </p>
       </div>
 
       {/* Modal - full screen no mobile */}
@@ -273,12 +285,12 @@ export default function SubscriptionsPage() {
           <div className={`${cls.card} w-full max-w-lg p-6 space-y-5 shadow-2xl mt-auto sm:mt-0 max-h-[95vh] sm:max-h-none overflow-y-auto`}>
             <div className="flex items-center justify-between shrink-0">
               <h2 className="text-lg font-semibold text-main">
-                {editId ? 'Editar assinatura' : 'Nova assinatura'}
+                {editId ? t('subs.modalEdit') : t('subs.modalNew')}
               </h2>
               <button
                 onClick={() => { setShowForm(false); resetForm() }}
                 className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-muted hover:text-main hover:bg-background transition-colors touch-manipulation"
-                aria-label="Fechar"
+                aria-label={t('common.close')}
               >
                 <X className="h-5 w-5" />
               </button>
@@ -290,12 +302,12 @@ export default function SubscriptionsPage() {
 
             <form onSubmit={handleSave} className="space-y-4">
               <div>
-                <label className={cls.label}>Nome</label>
-                <input className={cls.input} placeholder="Ex.: Netflix, Spotify, AWS..." value={fName} onChange={(e) => setFName(e.target.value)} required />
+                <label className={cls.label}>{t('subs.field.name')}</label>
+                <input className={cls.input} placeholder={t('subs.field.namePlaceholder')} value={fName} onChange={(e) => setFName(e.target.value)} required />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className={cls.label}>Valor (R$)</label>
+                  <label className={cls.label}>{t('subs.field.amount')}</label>
                   <div className="relative">
                     <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted text-sm">R$</span>
                     <CurrencyInput
@@ -308,31 +320,33 @@ export default function SubscriptionsPage() {
                   </div>
                 </div>
                 <div>
-                  <label className={cls.label}>Ciclo</label>
+                  <label className={cls.label}>{t('subs.field.cycle')}</label>
                   <select className={cls.input} value={fCycle} onChange={(e) => setFCycle(e.target.value as 'mensal' | 'anual')}>
-                    <option value="mensal">Mensal</option>
-                    <option value="anual">Anual</option>
+                    <option value="mensal">{t('subs.cycle.monthly')}</option>
+                    <option value="anual">{t('subs.cycle.yearly')}</option>
                   </select>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className={cls.label}>Categoria</label>
+                  <label className={cls.label}>{t('subs.field.category')}</label>
                   <select className={cls.input} value={fCategory} onChange={(e) => setFCategory(e.target.value)}>
-                    {CATEGORY_OPTIONS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+                    {CATEGORY_VALUES.map((value) => (
+                      <option key={value} value={value}>{t(CATEGORY_I18N[value])}</option>
+                    ))}
                   </select>
                 </div>
                 <div>
-                  <label className={cls.label}>Próxima cobrança</label>
+                  <label className={cls.label}>{t('subs.field.nextBilling')}</label>
                   <input type="date" className={cls.input} value={fNextDate} onChange={(e) => setFNextDate(e.target.value)} required />
                 </div>
               </div>
               <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-2">
                 <button type="button" onClick={() => { setShowForm(false); resetForm() }} className="min-h-[44px] w-full sm:w-auto px-4 py-2.5 rounded-lg text-sm font-medium border border-border text-muted hover:bg-background transition-colors touch-manipulation">
-                  Cancelar
+                  {t('common.cancel')}
                 </button>
                 <button type="submit" disabled={saving} className={`${cls.btnPrimary} min-h-[44px] w-full sm:w-auto touch-manipulation inline-flex items-center justify-center`}>
-                  {saving ? <><Loader2 className="h-4 w-4 animate-spin" /> Processando...</> : editId ? 'Salvar alterações' : 'Adicionar'}
+                  {saving ? <><Loader2 className="h-4 w-4 animate-spin" /> {t('crud.processing')}</> : editId ? t('crud.save') : t('settings.categories.add')}
                 </button>
               </div>
             </form>
@@ -345,9 +359,9 @@ export default function SubscriptionsPage() {
       {subs.length === 0 ? (
         <EmptyState
           icon={RefreshCw}
-          title="Nenhuma assinatura registrada"
-          description={`Permita-me auxiliá-lo a catalogar os seus custos fixos, ${pronoun}. Assim poderei acompanhar as renovações.`}
-          actionLabel="Registrar primeira assinatura"
+          title={t('subs.emptyTitle')}
+          description={formatMessage(t('subs.emptyDesc'), { pronoun })}
+          actionLabel={t('subs.emptyAction')}
           onAction={openNew}
         />
       ) : (
@@ -364,7 +378,9 @@ export default function SubscriptionsPage() {
                     </div>
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-main truncate">{s.name}</p>
-                      <p className="text-xs text-muted capitalize">{s.billing_cycle}</p>
+                      <p className="text-xs text-muted capitalize">
+                        {s.billing_cycle === 'anual' ? t('subs.cycle.yearly') : t('subs.cycle.monthly')}
+                      </p>
                     </div>
                   </div>
                   <MaskedValue value={Number(s.amount)} className="text-lg font-bold text-main tabular-nums shrink-0" />
@@ -372,11 +388,11 @@ export default function SubscriptionsPage() {
 
                 <div className="flex items-center justify-between">
                   <div className="text-xs text-muted">
-                    Próxima:{' '}
+                    {t('subs.next')}{' '}
                     <span className={isOverdue && s.active ? 'text-amber-600 dark:text-amber-400 font-medium' : ''}>
-                      {new Date(s.next_billing_date + 'T12:00:00').toLocaleDateString('pt-BR')}
+                      {new Date(s.next_billing_date + 'T12:00:00').toLocaleDateString(dateLocale)}
                     </span>
-                    {isOverdue && s.active && <span className="ml-1 text-amber-600 dark:text-amber-400">· Vencida</span>}
+                    {isOverdue && s.active && <span className="ml-1 text-amber-600 dark:text-amber-400">{t('subs.overdue')}</span>}
                   </div>
                 </div>
 
@@ -390,7 +406,7 @@ export default function SubscriptionsPage() {
                     <span className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ${s.active ? 'bg-brand' : 'bg-border'}`}>
                       <span className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ${s.active ? 'translate-x-4' : 'translate-x-0'}`} />
                     </span>
-                    {s.active ? 'Ativa' : 'Pausada'}
+                    {s.active ? t('subs.active') : t('subs.paused')}
                   </button>
 
                   <div className="flex-1" />
@@ -398,7 +414,7 @@ export default function SubscriptionsPage() {
                   <button onClick={() => openEdit(s)} className="inline-flex items-center gap-1 text-xs text-muted hover:text-main transition-colors" title="Editar">
                     <Pencil className="h-3.5 w-3.5" />
                   </button>
-                  <button onClick={() => setDeleteTargetId(s.id)} className="inline-flex items-center gap-1 text-xs text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors" title="Remover">
+                  <button onClick={() => setDeleteTargetId(s.id)} className="inline-flex items-center gap-1 text-xs text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors" title={t('crud.remove')}>
                     <X className="h-3.5 w-3.5" />
                   </button>
                 </div>
@@ -410,8 +426,8 @@ export default function SubscriptionsPage() {
 
       <ConfirmDangerModal
         open={!!deleteTargetId}
-        title="Remover Assinatura"
-        description={`Deseja remover esta assinatura permanentemente, ${pronoun}? Ela deixará de ser rastreada pelo sistema.`}
+        title={t('subs.deleteTitle')}
+        description={formatMessage(t('subs.deleteDesc'), { pronoun })}
         loading={deletingSub}
         onConfirm={handleDelete}
         onCancel={() => setDeleteTargetId(null)}

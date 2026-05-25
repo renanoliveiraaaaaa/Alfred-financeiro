@@ -7,6 +7,9 @@ import CurrencyInput from '@/components/CurrencyInput'
 import MaskedValue from '@/components/MaskedValue'
 import EmptyState from '@/components/EmptyState'
 import { useToast, CONNECTION_ERROR_MSG, isConnectionError } from '@/lib/toastContext'
+import { useGreetingPronoun } from '@/lib/greeting'
+import { useI18n } from '@/lib/i18n'
+import { formatMessage } from '@/lib/i18nFormat'
 import {
   Plus, X, Loader2, Pencil, Wallet, Calendar, Repeat,
 } from 'lucide-react'
@@ -16,16 +19,19 @@ import { useActiveOrganizationRevision } from '@/lib/useActiveOrganizationRevisi
 
 type IncomeSource = Database['public']['Tables']['income_sources']['Row']
 
-const FREQUENCY_LABELS: Record<string, string> = {
-  mensal: 'Mensal',
-  quinzenal: 'Quinzenal',
-  semanal: 'Semanal',
+const FREQUENCY_KEYS: Record<string, string> = {
+  mensal: 'income.freq.monthly',
+  quinzenal: 'income.freq.biweekly',
+  semanal: 'income.freq.weekly',
 }
 
 export default function IncomeSourcesPage() {
   const supabase = createSupabaseClient()
   const orgRevision = useActiveOrganizationRevision()
   const { toastError } = useToast()
+  const pronoun = useGreetingPronoun()
+  const { t, locale } = useI18n()
+  const dateLocale = locale === 'en' ? 'en-US' : 'pt-BR'
 
   const [sources, setSources] = useState<IncomeSource[]>([])
   const [loading, setLoading] = useState(true)
@@ -99,9 +105,9 @@ export default function IncomeSourcesPage() {
     e.preventDefault()
     setFormError(null)
 
-    if (!fName.trim()) { setFormError('Informe o nome da fonte de renda.'); return }
-    if (fAmount <= 0) { setFormError('Informe um valor maior que zero.'); return }
-    if (!fNextDate) { setFormError('Informe a data do próximo recebimento.'); return }
+    if (!fName.trim()) { setFormError(t('income.error.name')); return }
+    if (fAmount <= 0) { setFormError(t('goals.error.amount')); return }
+    if (!fNextDate) { setFormError(t('income.error.nextDate')); return }
 
     setSaving(true)
     const { data: userData } = await supabase.auth.getUser()
@@ -195,11 +201,11 @@ export default function IncomeSourcesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className={cls.h1}>Fontes de Renda</h1>
-          <p className={`${cls.sub} mt-0.5`}>As origens do seu patrimônio, patrão.</p>
+          <h1 className={cls.h1}>{t('income.title')}</h1>
+          <p className={`${cls.sub} mt-0.5`}>{t('income.subtitle')}</p>
         </div>
         <button onClick={openNew} className={cls.btnPrimary}>
-          <Plus className="h-4 w-4" /> Nova fonte
+          <Plus className="h-4 w-4" /> {t('income.new')}
         </button>
       </div>
 
@@ -209,12 +215,12 @@ export default function IncomeSourcesPage() {
           <div className={`${cls.card} w-full max-w-lg p-6 space-y-5 shadow-2xl animate-modal-enter mt-auto sm:mt-0 max-h-[95vh] sm:max-h-none overflow-y-auto`}>
             <div className="flex items-center justify-between shrink-0">
               <h2 className="text-lg font-semibold text-main">
-                {editId ? 'Ajustar contrato' : 'Nova fonte de renda'}
+                {editId ? t('income.modalEdit') : t('income.modalNew')}
               </h2>
               <button
                 onClick={() => { setShowForm(false); resetForm() }}
                 className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-muted hover:text-main hover:bg-background transition-colors touch-manipulation"
-                aria-label="Fechar"
+                aria-label={t('common.close')}
               >
                 <X className="h-5 w-5" />
               </button>
@@ -232,33 +238,33 @@ export default function IncomeSourcesPage() {
 
             <form onSubmit={handleSave} className="space-y-4">
               <div>
-                <label className={cls.label}>Nome</label>
-                <input className={cls.input} placeholder="Ex.: Pró-labore Empresa X, Salário..." value={fName} onChange={(e) => setFName(e.target.value)} required />
+                <label className={cls.label}>{t('income.field.name')}</label>
+                <input className={cls.input} placeholder={t('income.field.namePlaceholder')} value={fName} onChange={(e) => setFName(e.target.value)} required />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className={cls.label}>Valor (R$)</label>
+                  <label className={cls.label}>{t('income.field.amount')}</label>
                   <CurrencyInput value={fAmount} onChange={setFAmount} placeholder="5.000,00" className={cls.input} required />
                 </div>
                 <div>
-                  <label className={cls.label}>Frequência</label>
+                  <label className={cls.label}>{t('income.field.frequency')}</label>
                   <select className={cls.input} value={fFrequency} onChange={(e) => setFFrequency(e.target.value as any)}>
-                    <option value="mensal">Mensal</option>
-                    <option value="quinzenal">Quinzenal</option>
-                    <option value="semanal">Semanal</option>
+                    <option value="mensal">{t('income.freq.monthly')}</option>
+                    <option value="quinzenal">{t('income.freq.biweekly')}</option>
+                    <option value="semanal">{t('income.freq.weekly')}</option>
                   </select>
                 </div>
               </div>
               <div>
-                <label className={cls.label}>Próximo recebimento</label>
+                <label className={cls.label}>{t('income.field.nextReceipt')}</label>
                 <input type="date" className={cls.input} value={fNextDate} onChange={(e) => setFNextDate(e.target.value)} required />
               </div>
               <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-2">
                 <button type="button" onClick={() => { setShowForm(false); resetForm() }} className="min-h-[44px] w-full sm:w-auto px-4 py-2.5 rounded-lg text-sm font-medium border border-border text-muted hover:bg-background transition-colors touch-manipulation">
-                  Cancelar
+                  {t('common.cancel')}
                 </button>
                 <button type="submit" disabled={saving} className={`${cls.btnPrimary} min-h-[44px] w-full sm:w-auto touch-manipulation inline-flex items-center justify-center`}>
-                  {saving ? <><Loader2 className="h-4 w-4 animate-spin" /> Processando...</> : editId ? 'Salvar alterações' : 'Adicionar'}
+                  {saving ? <><Loader2 className="h-4 w-4 animate-spin" /> {t('crud.processing')}</> : editId ? t('crud.save') : t('settings.categories.add')}
                 </button>
               </div>
             </form>
@@ -271,9 +277,9 @@ export default function IncomeSourcesPage() {
       {sources.length === 0 ? (
         <EmptyState
           icon={Wallet}
-          title="Nenhuma fonte de renda registrada"
-          description="Permita-me catalogar as origens do seu patrimônio, patrão. Salários, pró-labore e quinzenas."
-          actionLabel="Registrar primeira fonte"
+          title={t('income.emptyTitle')}
+          description={formatMessage(t('income.emptyDesc'), { pronoun })}
+          actionLabel={t('income.emptyAction')}
           onAction={openNew}
         />
       ) : (
@@ -288,7 +294,7 @@ export default function IncomeSourcesPage() {
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-main truncate">{s.name}</p>
                     <p className="text-xs text-muted flex items-center gap-1">
-                      <Repeat className="h-3 w-3" /> {FREQUENCY_LABELS[s.frequency]}
+                      <Repeat className="h-3 w-3" /> {t(FREQUENCY_KEYS[s.frequency] ?? 'income.freq.monthly')}
                     </p>
                   </div>
                 </div>
@@ -297,7 +303,7 @@ export default function IncomeSourcesPage() {
 
               <div className="flex items-center gap-2 text-xs text-muted">
                 <Calendar className="h-3.5 w-3.5" />
-                Próximo: {new Date(s.next_receipt_date + 'T12:00:00').toLocaleDateString('pt-BR')}
+                {t('income.next')} {new Date(s.next_receipt_date + 'T12:00:00').toLocaleDateString(dateLocale)}
               </div>
 
               <div className="flex items-center gap-2 pt-1 border-t border-border">
@@ -309,7 +315,7 @@ export default function IncomeSourcesPage() {
                   <span className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ${s.active ? 'bg-brand' : 'bg-border'}`}>
                     <span className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ${s.active ? 'translate-x-4' : 'translate-x-0'}`} />
                   </span>
-                  {s.active ? 'Ativa' : 'Pausada'}
+                  {s.active ? t('subs.active') : t('subs.paused')}
                 </button>
 
                 <div className="flex-1" />

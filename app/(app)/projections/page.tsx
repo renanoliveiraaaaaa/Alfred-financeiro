@@ -4,6 +4,8 @@ import { useEffect, useState, useCallback, useMemo } from 'react'
 import { createSupabaseClient } from '@/lib/supabaseClient'
 import { formatCurrency } from '@/lib/format'
 import { useGreetingPronoun } from '@/lib/greeting'
+import { useI18n } from '@/lib/i18n'
+import { formatMessage } from '@/lib/i18nFormat'
 import CurrencyInput from '@/components/CurrencyInput'
 import { useToast, CONNECTION_ERROR_MSG, isConnectionError } from '@/lib/toastContext'
 import { resolveActiveOrganizationIdForClient } from '@/lib/activeOrganizationClient'
@@ -18,8 +20,8 @@ type Projection = {
   actual_revenues: number
 }
 
-function monthLabel(date: Date) {
-  return date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
+function monthLabel(date: Date, locale: 'pt' | 'en') {
+  return date.toLocaleDateString(locale === 'en' ? 'en-US' : 'pt-BR', { month: 'long', year: 'numeric' })
 }
 
 function firstOfMonth(year: number, month: number) {
@@ -40,6 +42,7 @@ export default function ProjectionsPage() {
   const orgRevision = useActiveOrganizationRevision()
   const { toastError } = useToast()
   const pronoun = useGreetingPronoun()
+  const { t, locale } = useI18n()
   const now = new Date()
 
   const [year, setYear] = useState(now.getFullYear())
@@ -58,7 +61,7 @@ export default function ProjectionsPage() {
 
   const monthStr = useMemo(() => firstOfMonth(year, month), [year, month])
   const lastDay = useMemo(() => lastOfMonth(year, month), [year, month])
-  const label = useMemo(() => monthLabel(new Date(year, month)), [year, month])
+  const label = useMemo(() => monthLabel(new Date(year, month), locale), [year, month, locale])
 
   const loadData = useCallback(async () => {
     setLoading(true)
@@ -126,7 +129,7 @@ export default function ProjectionsPage() {
       setActualRevenues(totalRev)
       setActualExpenses(totalExp)
     } catch (err: unknown) {
-      const msg = isConnectionError(err) ? CONNECTION_ERROR_MSG : (err instanceof Error ? err.message : 'Erro ao carregar projeções.')
+      const msg = isConnectionError(err) ? CONNECTION_ERROR_MSG : (err instanceof Error ? err.message : t('projections.error.load'))
       setError(msg)
       toastError(msg)
     } finally {
@@ -141,7 +144,7 @@ export default function ProjectionsPage() {
     setSuccess(null)
 
     if (projRev < 0 || projExp < 0) {
-      setError('Os valores não podem ser negativos.')
+      setError(t('projections.error.negative'))
       return
     }
 
@@ -180,10 +183,10 @@ export default function ProjectionsPage() {
         if (insErr) throw insErr
       }
 
-      setSuccess(`Metas registradas com distinção, ${pronoun}.`)
+      setSuccess(formatMessage(t('projections.success'), { pronoun }))
       await loadData()
     } catch (err: unknown) {
-      const msg = isConnectionError(err) ? CONNECTION_ERROR_MSG : (err instanceof Error ? err.message : 'Erro ao salvar orçamento.')
+      const msg = isConnectionError(err) ? CONNECTION_ERROR_MSG : (err instanceof Error ? err.message : t('projections.error.save'))
       setError(msg)
       toastError(msg)
     } finally {
@@ -214,9 +217,9 @@ export default function ProjectionsPage() {
     <div className="max-w-3xl space-y-6 bg-background rounded-xl p-6">
       {/* Header */}
       <div>
-        <h1 className="text-xl font-semibold text-main">Planejamento Patrimonial</h1>
+        <h1 className="text-xl font-semibold text-main">{t('projections.title')}</h1>
         <p className="text-sm text-muted mt-0.5">
-          Defina metas e acompanhe a execução do seu orçamento, {pronoun}
+          {formatMessage(t('projections.subtitle'), { pronoun })}
         </p>
       </div>
 
@@ -271,16 +274,16 @@ export default function ProjectionsPage() {
           <div className="grid gap-6 md:grid-cols-2">
             {/* Entradas */}
             <div className="rounded-xl border border-border bg-surface p-6 space-y-4 glass-card">
-              <h2 className="text-sm font-semibold text-main">Entradas</h2>
+              <h2 className="text-sm font-semibold text-main">{t('projections.section.revenues')}</h2>
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted">Projetado</span>
+                  <span className="text-muted">{t('projections.projected')}</span>
                   <span className="font-medium text-main">
                     {projectedRevenues > 0 ? formatCurrency(projectedRevenues) : '—'}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted">Realizado</span>
+                  <span className="text-muted">{t('projections.actual')}</span>
                   <span className="font-semibold text-emerald-600 dark:text-emerald-400">
                     {formatCurrency(actualRevenues)}
                   </span>
@@ -306,7 +309,7 @@ export default function ProjectionsPage() {
 
             {/* Saídas */}
             <div className="rounded-xl border border-border bg-surface p-6 space-y-4 glass-card">
-              <h2 className="text-sm font-semibold text-main">Saídas</h2>
+              <h2 className="text-sm font-semibold text-main">{t('projections.section.expenses')}</h2>
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted">Limite definido</span>
@@ -424,7 +427,7 @@ export default function ProjectionsPage() {
               disabled={saving}
               className="inline-flex items-center gap-2 rounded-lg bg-brand px-5 py-2.5 text-sm font-medium text-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2 focus:ring-offset-surface disabled:opacity-50 transition-colors"
             >
-              {saving ? 'Processando...' : projection ? 'Atualizar metas' : 'Registrar metas'}
+              {saving ? t('projections.saving') : t('projections.saveGoals')}
             </button>
           </div>
         </>
