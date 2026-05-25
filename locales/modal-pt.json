@@ -3,5 +3,10 @@
   "modal.danger.description": "Tem certeza que deseja apagar permanentemente este(s) registro(s)? Esta ação é irreversível e afetará os relatórios.",
   "modal.danger.confirm": "Sim, Excluir",
   "modal.danger.cancel": "Cancelar",
-  "modal.danger.loading": "Excluindo..."
+  "modal.danger.loading": "Excluindo...",
+  "modal.danger.batchDescriptionOne": "Tem certeza que deseja apagar permanentemente {count} registro? Esta ação é irreversível e afetará os relatórios.",
+  "modal.danger.batchDescriptionMany": "Tem certeza que deseja apagar permanentemente {count} registros? Esta ação é irreversível e afetará os relatórios.",
+  "modal.danger.deleteRevenuesTitle": "Excluir receitas",
+  "modal.danger.deleteRevenuesOne": "Tem certeza que deseja apagar permanentemente {count} registro de receita? Esta ação é irreversível.",
+  "modal.danger.deleteRevenuesMany": "Tem certeza que deseja apagar permanentemente {count} registros de receita? Esta ação é irreversível."
 }

@@ -39,10 +39,18 @@ Use este arquivo como base para criar issues no GitHub depois (`gh issue create`
 | 29 | **i18n profile + import OFX** | profile completo; import-statement OFX; import-history stats; Butler suspeitas |
 | 30 | **i18n corpo reports/cards/projections** | gráficos, modais, Butler Gemini prompt por locale |
 | 31 | **i18n export reports + detalhe cartão** | export CSV por locale; `/credit-cards/[id]` completo; labels de mês via `Intl` |
+| 32 | **i18n varredura P0** | error/loading boundaries; org ativa; ImportReviewModal; bulk delete modals; fallbacks erro |
+| 33 | **Sentry + error boundaries** | `@sentry/nextjs`, `global-error.tsx`, capture em `(app)/error.tsx`; DSN opcional |
 
 ---
 
 ## 🔴 Alta prioridade (criar issues)
+
+### Issue: i18n resíduos *(parcial — ver varredura abaixo)*
+- **Pendente P0:** `CardStatementImportModal` (~50 strings), landing/auth (`LandingAuthForm`, `app/page.tsx`)
+- **Pendente P4:** painel admin (~80 strings)
+- **Pendente P5:** `metadata.title` em ~13 layouts
+- **Feito (#32):** boundaries, org ativa, ImportReview, bulk delete, fallbacks genéricos
 
 ### Issue: i18n páginas secundárias *(concluído — #27–#31)*
 - **Labels:** `i18n`, `enhancement`
@@ -70,8 +78,9 @@ Use este arquivo como base para criar issues no GitHub depois (`gh issue create`
 - **Labels:** `feature`
 - **Alternativa:** manter link para `/reports` (já feito)
 
-### Issue: Monitoramento (Sentry) + error boundaries
-- **Labels:** `ops`, `reliability`
+### Issue: Monitoramento (Sentry) + error boundaries *(feito — #33)*
+- **Escopo:** `@sentry/nextjs`, `instrumentation.ts`, `global-error.tsx`, capture em `(app)/error.tsx`
+- **Ativar:** definir `NEXT_PUBLIC_SENTRY_DSN` no `.env.local` / Vercel
 
 ### Issue: Gerar types Supabase via CI
 - **Labels:** `dx`, `database`

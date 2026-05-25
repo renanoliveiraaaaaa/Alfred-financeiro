@@ -3,7 +3,8 @@
 import { useState, useMemo, useCallback, useLayoutEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import ModalShell from '@/components/ModalShell'
-import { useI18n } from '@/lib/i18n'
+import { useI18n, type Locale } from '@/lib/i18n'
+import { formatMessage } from '@/lib/i18nFormat'
 import {
   X,
   Loader2,
@@ -62,13 +63,19 @@ interface Props {
   fileName: string
 }
 
-const MONTH_NAMES = [
-  'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun',
-  'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez',
-]
+function monthLabel(key: string, locale: Locale): string {
+  if (!key || !/^\d{4}-\d{2}$/.test(key)) return '—'
+  const [year, month] = key.split('-')
+  const mi = parseInt(month, 10)
+  if (!year || Number.isNaN(mi) || mi < 1 || mi > 12) return '—'
+  const localeTag = locale === 'en' ? 'en-US' : 'pt-BR'
+  const short = new Date(parseInt(year, 10), mi - 1, 1).toLocaleDateString(localeTag, { month: 'short' })
+  return `${short}/${year}`
+}
 
-function fmtAmount(v: number) {
-  return v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+function fmtAmount(v: number, locale: Locale) {
+  const localeTag = locale === 'en' ? 'en-US' : 'pt-BR'
+  return v.toLocaleString(localeTag, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
 function fmtDate(iso: string) {
@@ -78,14 +85,6 @@ function fmtDate(iso: string) {
 
 function monthKey(iso: string) {
   return iso.substring(0, 7) // YYYY-MM
-}
-
-function monthLabel(key: string) {
-  if (!key || !/^\d{4}-\d{2}$/.test(key)) return '—'
-  const [year, month] = key.split('-')
-  const mi = parseInt(month, 10)
-  if (!year || Number.isNaN(mi) || mi < 1 || mi > 12) return '—'
-  return `${MONTH_NAMES[mi - 1]}/${year}`
 }
 
 function mapToRows(transactions: ReviewTransaction[]): TransactionRow[] {
@@ -108,7 +107,7 @@ type SavedStats = {
 export default function ImportReviewModal({ open, onClose, transactions, bank, fileName }: Props) {
   const router = useRouter()
   const { toast, toastError } = useToast()
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const pronoun = useGreetingPronoun()
   const categoryLabels = useMemo(() => buildCategoryLabelsMap(t), [t])
   const paymentLabels = useMemo(() => buildPaymentLabelsMap(t), [t])
@@ -189,7 +188,7 @@ export default function ImportReviewModal({ open, onClose, transactions, bank, f
 
   const doConfirm = async (selected: TransactionRow[]) => {
     if (selected.length === 0) {
-      setImportError('Nenhuma transação selecionada.')
+      setImportError(t('import.review.noSelection'))
       return
     }
 
@@ -217,8 +216,8 @@ export default function ImportReviewModal({ open, onClose, transactions, bank, f
       })
 
       if (!result.success) {
-        setImportError(result.error ?? 'Erro ao importar. Tente novamente.')
-        toastError(result.error ?? 'Erro ao importar.')
+        setImportError(result.error ?? t('error.importFailed'))
+        toastError(result.error ?? t('error.importFailed'))
         return
       }
 
@@ -227,7 +226,7 @@ export default function ImportReviewModal({ open, onClose, transactions, bank, f
       setSavedStats({ expenses: expCount, revenues: revCount, total: selected.length })
       setSaved(true)
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Erro inesperado ao importar.'
+      const msg = err instanceof Error ? err.message : t('error.importUnexpected')
       setImportError(msg)
       toastError(msg)
     } finally {
@@ -374,7 +373,7 @@ export default function ImportReviewModal({ open, onClose, transactions, bank, f
                       : 'text-muted hover:text-main hover:bg-background'
                   }`}
                 >
-                  {monthLabel(m)}
+                  {monthLabel(m, locale)}
                 </button>
               ))}
               <button
@@ -389,17 +388,17 @@ export default function ImportReviewModal({ open, onClose, transactions, bank, f
             {/* ── Month summary ── */}
             <div className="grid grid-cols-3 gap-3 px-5 py-3 border-b border-border bg-background/50 shrink-0 text-xs">
               <div>
-                <span className="text-muted">Receitas</span>
-                <p className="font-semibold text-emerald-400">R$ {fmtAmount(totalSelectedInMonth.revenues)}</p>
+                <span className="text-muted">{t('import.review.summaryRevenues')}</span>
+                <p className="font-semibold text-emerald-400">R$ {fmtAmount(totalSelectedInMonth.revenues, locale)}</p>
               </div>
               <div>
-                <span className="text-muted">Despesas</span>
-                <p className="font-semibold text-red-400">R$ {fmtAmount(totalSelectedInMonth.expenses)}</p>
+                <span className="text-muted">{t('import.review.summaryExpenses')}</span>
+                <p className="font-semibold text-red-400">R$ {fmtAmount(totalSelectedInMonth.expenses, locale)}</p>
               </div>
               <div>
-                <span className="text-muted">Balanço</span>
+                <span className="text-muted">{t('import.review.summaryBalance')}</span>
                 <p className={`font-semibold ${totalSelectedInMonth.balance >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                  R$ {fmtAmount(Math.abs(totalSelectedInMonth.balance))}
+                  R$ {fmtAmount(Math.abs(totalSelectedInMonth.balance), locale)}
                 </p>
               </div>
             </div>
@@ -418,12 +417,12 @@ export default function ImportReviewModal({ open, onClose, transactions, bank, f
                     )}
                   </button>
                 </div>
-                <div className="w-16">Data</div>
-                <div className="flex-1">Descrição</div>
-                <div className="w-24">Valor</div>
-                <div className="w-24">Tipo</div>
-                <div className="w-32">Categoria</div>
-                <div className="w-28">Pagamento</div>
+                <div className="w-16">{t('import.review.colDate')}</div>
+                <div className="flex-1">{t('import.review.colDescription')}</div>
+                <div className="w-24">{t('import.review.colAmount')}</div>
+                <div className="w-24">{t('import.review.colType')}</div>
+                <div className="w-32">{t('import.review.colCategory')}</div>
+                <div className="w-28">{t('import.review.colPayment')}</div>
               </div>
 
               <div className="divide-y divide-border">
@@ -435,6 +434,8 @@ export default function ImportReviewModal({ open, onClose, transactions, bank, f
                     cls={cls}
                     categoryLabels={categoryLabels}
                     paymentLabels={paymentLabels}
+                    t={t}
+                    locale={locale}
                   />
                 ))}
               </div>
@@ -454,11 +455,11 @@ export default function ImportReviewModal({ open, onClose, transactions, bank, f
               )}
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                 <p className="text-xs text-muted">
-                  <span className="text-main font-medium">{grandTotal.count}</span> transações selecionadas
+                  <span className="text-main font-medium">{formatMessage(t('import.review.selectedCount'), { count: grandTotal.count })}</span>
                   {' · '}
-                  Total:{' '}
+                  {t('import.review.footerTotal')}{' '}
                   <span className={grandTotal.total >= 0 ? 'text-emerald-400' : 'text-red-400'}>
-                    R$ {fmtAmount(Math.abs(grandTotal.total))}
+                    R$ {fmtAmount(Math.abs(grandTotal.total), locale)}
                   </span>
                 </p>
                 <div className="flex gap-2 w-full sm:w-auto">
@@ -468,7 +469,7 @@ export default function ImportReviewModal({ open, onClose, transactions, bank, f
                     className="flex-1 sm:flex-none min-h-[40px] inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium border border-border text-muted hover:bg-background disabled:opacity-40 transition-colors"
                   >
                     {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-                    {t('import.review.confirmMonth').replace('{month}', monthLabel(activeMonth))}
+                    {t('import.review.confirmMonth').replace('{month}', monthLabel(activeMonth, locale))}
                   </button>
                   <button
                     onClick={handleConfirmAll}
@@ -495,9 +496,11 @@ interface RowProps {
   cls: { input: string; select: string }
   categoryLabels: Record<string, string>
   paymentLabels: Record<string, string>
+  t: (key: string) => string
+  locale: Locale
 }
 
-function TransactionRowItem({ row, onUpdate, cls, categoryLabels, paymentLabels }: RowProps) {
+function TransactionRowItem({ row, onUpdate, cls, categoryLabels, paymentLabels, t, locale }: RowProps) {
   return (
     <>
       {/* Desktop row */}
@@ -537,7 +540,7 @@ function TransactionRowItem({ row, onUpdate, cls, categoryLabels, paymentLabels 
         </div>
 
         <div className={`w-24 text-sm font-medium shrink-0 ${row.editedType === 'expense' ? 'text-red-400' : 'text-emerald-400'}`}>
-          {row.editedType === 'expense' ? '-' : '+'}R$ {row.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+          {row.editedType === 'expense' ? '-' : '+'}R$ {row.amount.toLocaleString(locale === 'en' ? 'en-US' : 'pt-BR', { minimumFractionDigits: 2 })}
         </div>
 
         <div className="w-24 shrink-0">
@@ -554,9 +557,9 @@ function TransactionRowItem({ row, onUpdate, cls, categoryLabels, paymentLabels 
             }`}
           >
             {row.editedType === 'expense' ? (
-              <><ArrowDownLeft className="h-3 w-3" /> Despesa</>
+              <><ArrowDownLeft className="h-3 w-3" /> {t('import.review.typeExpense')}</>
             ) : (
-              <><ArrowUpRight className="h-3 w-3" /> Receita</>
+              <><ArrowUpRight className="h-3 w-3" /> {t('import.review.typeRevenue')}</>
             )}
           </button>
         </div>
@@ -616,7 +619,7 @@ function TransactionRowItem({ row, onUpdate, cls, categoryLabels, paymentLabels 
             <div className="flex items-center justify-between gap-2">
               <span className="text-xs text-muted shrink-0">{fmtDate(row.date)}</span>
               <span className={`text-sm font-semibold shrink-0 ${row.editedType === 'expense' ? 'text-red-400' : 'text-emerald-400'}`}>
-                {row.editedType === 'expense' ? '-' : '+'}R$ {row.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                {row.editedType === 'expense' ? '-' : '+'}R$ {row.amount.toLocaleString(locale === 'en' ? 'en-US' : 'pt-BR', { minimumFractionDigits: 2 })}
               </span>
             </div>
 
@@ -647,9 +650,9 @@ function TransactionRowItem({ row, onUpdate, cls, categoryLabels, paymentLabels 
                 }`}
               >
                 {row.editedType === 'expense' ? (
-                  <><ArrowDownLeft className="h-3 w-3" /> Despesa</>
+                  <><ArrowDownLeft className="h-3 w-3" /> {t('import.review.typeExpense')}</>
                 ) : (
-                  <><ArrowUpRight className="h-3 w-3" /> Receita</>
+                  <><ArrowUpRight className="h-3 w-3" /> {t('import.review.typeRevenue')}</>
                 )}
               </button>
 

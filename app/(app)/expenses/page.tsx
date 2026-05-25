@@ -786,8 +786,10 @@ export default function ExpensesPage() {
       {/* Danger modal for batch delete */}
       <ConfirmDangerModal
         open={dangerModal.open}
-        title="Atenção, Senhor."
-        description={`Tem certeza que deseja apagar permanentemente ${dangerModal.ids.length} registro${dangerModal.ids.length !== 1 ? 's' : ''}? Esta ação é irreversível e afetará os relatórios.`}
+        description={formatMessage(
+          dangerModal.ids.length === 1 ? t('modal.danger.batchDescriptionOne') : t('modal.danger.batchDescriptionMany'),
+          { count: dangerModal.ids.length },
+        )}
         loading={dangerModal.loading}
         onConfirm={confirmBatchDelete}
         onCancel={() => setDangerModal({ open: false, ids: [], loading: false })}

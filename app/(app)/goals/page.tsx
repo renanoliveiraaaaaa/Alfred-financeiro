@@ -115,7 +115,7 @@ export default function GoalsPage() {
 
     const activeOrgId = await resolveActiveOrganizationIdForClient(supabase, userData.user.id)
     if (!activeOrgId) {
-      setFormError('Não foi possível determinar a organização ativa.')
+      setFormError(t('error.orgNotFoundShort'))
       setSaving(false)
       return
     }
@@ -178,7 +178,7 @@ export default function GoalsPage() {
       if (error) throw error
       setGoals((prev) => prev.filter((g) => g.id !== deleteTargetId))
     } catch (err: unknown) {
-      toastError(isConnectionError(err) ? CONNECTION_ERROR_MSG : (err instanceof Error ? err.message : 'Erro ao excluir.'))
+      toastError(isConnectionError(err) ? CONNECTION_ERROR_MSG : (err instanceof Error ? err.message : t('error.deleteFailed')))
     } finally {
       setDeletingGoal(false)
       setDeleteTargetId(null)

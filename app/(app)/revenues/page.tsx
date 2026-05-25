@@ -551,8 +551,11 @@ export default function RevenuesPage() {
 
       <ConfirmDangerModal
         open={dangerModal.open}
-        title="Excluir receitas"
-        description={`Tem certeza que deseja apagar permanentemente ${dangerModal.ids.length} registro${dangerModal.ids.length !== 1 ? 's' : ''} de receita? Esta ação é irreversível.`}
+        title={t('modal.danger.deleteRevenuesTitle')}
+        description={formatMessage(
+          dangerModal.ids.length === 1 ? t('modal.danger.deleteRevenuesOne') : t('modal.danger.deleteRevenuesMany'),
+          { count: dangerModal.ids.length },
+        )}
         loading={dangerModal.loading}
         onConfirm={confirmBatchDelete}
         onCancel={() => setDangerModal({ open: false, ids: [], loading: false })}

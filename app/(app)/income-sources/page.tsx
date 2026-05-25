@@ -115,7 +115,7 @@ export default function IncomeSourcesPage() {
 
     const activeOrgId = await resolveActiveOrganizationIdForClient(supabase, userData.user.id)
     if (!activeOrgId) {
-      setFormError('Não foi possível determinar a organização ativa.')
+      setFormError(t('error.orgNotFoundShort'))
       setSaving(false)
       return
     }
@@ -169,7 +169,7 @@ export default function IncomeSourcesPage() {
       if (error) throw error
     } catch (err: unknown) {
       setSources((prev) => prev.map((s) => s.id === id ? { ...s, active: current } : s))
-      toastError(isConnectionError(err) ? CONNECTION_ERROR_MSG : (err instanceof Error ? err.message : 'Erro ao atualizar.'))
+      toastError(isConnectionError(err) ? CONNECTION_ERROR_MSG : (err instanceof Error ? err.message : t('error.updateFailed')))
     } finally {
       setTogglingId(null)
     }

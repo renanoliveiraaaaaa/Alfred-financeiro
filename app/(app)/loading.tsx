@@ -1,4 +1,10 @@
+'use client'
+
+import { useI18n } from '@/lib/i18n'
+
 export default function AppLoading() {
+  const { t } = useI18n()
+
   return (
     <div className="flex min-h-[50vh] w-full flex-col items-center justify-center gap-5">
       <div className="relative flex h-14 w-14 items-center justify-center">
@@ -16,7 +22,7 @@ export default function AppLoading() {
           aria-hidden
         />
       </div>
-      <p className="text-xs font-medium tracking-wide text-muted">A preparar o salão…</p>
+      <p className="text-xs font-medium tracking-wide text-muted">{t('common.loadingSalon')}</p>
     </div>
   )
 }

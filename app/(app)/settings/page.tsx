@@ -133,7 +133,7 @@ export default function SettingsPage() {
       setSuccess(t('settings.success.budgetUpdated'))
       setEditId(null)
     } catch (err: unknown) {
-      const msg = isConnectionError(err) ? CONNECTION_ERROR_MSG : (err instanceof Error ? err.message : 'Erro ao atualizar.')
+      const msg = isConnectionError(err) ? CONNECTION_ERROR_MSG : (err instanceof Error ? err.message : t('error.updateFailed'))
       setError(msg)
       toastError(msg)
     } finally {

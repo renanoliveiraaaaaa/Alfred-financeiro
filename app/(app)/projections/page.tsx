@@ -86,7 +86,7 @@ export default function ProjectionsPage() {
         setProjExp(0)
         setActualRevenues(0)
         setActualExpenses(0)
-        setError('Não foi possível determinar a organização ativa. Tente recarregar a página.')
+        setError(t('error.orgNotFound'))
         return
       }
 
@@ -155,7 +155,7 @@ export default function ProjectionsPage() {
 
       const activeOrgId = await resolveActiveOrganizationIdForClient(supabase, userData.user.id)
       if (!activeOrgId) {
-        throw new Error('Não foi possível determinar a organização ativa. Tente recarregar a página.')
+        throw new Error(t('error.orgNotFound'))
       }
 
       const payload = {

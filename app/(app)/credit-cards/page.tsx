@@ -245,7 +245,7 @@ export default function CreditCardsPage() {
       if (!userData.user) { setSaving(false); return }
       const activeOrgId = await resolveActiveOrganizationIdForClient(supabase, userData.user.id)
       if (!activeOrgId) {
-        setFormError('Não foi possível determinar a organização ativa.')
+        setFormError(t('error.orgNotFoundShort'))
         setSaving(false)
         return
       }

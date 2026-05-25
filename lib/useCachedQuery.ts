@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useI18n } from '@/lib/i18n'
 
 type CacheEntry<T> = { data: T; ts: number }
 
@@ -27,6 +28,7 @@ export function useCachedQuery<T>(
   options: UseCachedQueryOptions = {},
 ): UseCachedQueryResult<T> {
   const { ttl = 60_000, revalidateOnMount = true } = options
+  const { t } = useI18n()
   const fetcherRef = useRef(fetcher)
   fetcherRef.current = fetcher
 
@@ -59,12 +61,12 @@ export function useCachedQuery<T>(
         globalCache.set(key, { data: result, ts: Date.now() })
         setData(result)
       } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : 'Erro ao carregar dados.')
+        setError(err instanceof Error ? err.message : t('error.loadFailed'))
       } finally {
         setLoading(false)
       }
     },
-    [key, ttl],
+    [key, ttl, t],
   )
 
   useEffect(() => {

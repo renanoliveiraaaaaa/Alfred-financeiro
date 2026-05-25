@@ -6,5 +6,13 @@
   "error.saveFailed": "Falha ao salvar.",
   "error.unexpected": "Ocorreu um erro inesperado. Tente novamente.",
   "error.authFailed": "Falha na autenticação.",
-  "error.exportEmpty": "Nenhum dado para exportar."
+  "error.exportEmpty": "Nenhum dado para exportar.",
+  "error.boundary.message": "Perdoe-me, Senhor. Houve um contratempo de comunicação com os servidores.",
+  "error.boundary.hint": "Se o incômodo persistir, recarregue a página ou tente novamente em instantes.",
+  "error.boundary.retry": "Tentar novamente",
+  "error.orgNotFoundShort": "Não foi possível determinar a organização ativa.",
+  "error.deleteFailed": "Erro ao excluir.",
+  "error.updateFailed": "Erro ao atualizar.",
+  "error.importFailed": "Erro ao importar. Tente novamente.",
+  "error.importUnexpected": "Erro inesperado ao importar."
 }

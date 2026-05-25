@@ -3,5 +3,10 @@
   "modal.danger.description": "Are you sure you want to permanently delete this record(s)? This action is irreversible and will affect reports.",
   "modal.danger.confirm": "Yes, Delete",
   "modal.danger.cancel": "Cancel",
-  "modal.danger.loading": "Deleting..."
+  "modal.danger.loading": "Deleting...",
+  "modal.danger.batchDescriptionOne": "Are you sure you want to permanently delete {count} record? This action is irreversible and will affect reports.",
+  "modal.danger.batchDescriptionMany": "Are you sure you want to permanently delete {count} records? This action is irreversible and will affect reports.",
+  "modal.danger.deleteRevenuesTitle": "Delete income",
+  "modal.danger.deleteRevenuesOne": "Are you sure you want to permanently delete {count} income record? This action is irreversible.",
+  "modal.danger.deleteRevenuesMany": "Are you sure you want to permanently delete {count} income records? This action is irreversible."
 }

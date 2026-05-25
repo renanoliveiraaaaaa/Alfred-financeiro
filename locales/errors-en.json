@@ -6,5 +6,13 @@
   "error.saveFailed": "Failed to save.",
   "error.unexpected": "An unexpected error occurred. Please try again.",
   "error.authFailed": "Authentication failed.",
-  "error.exportEmpty": "No data to export."
+  "error.exportEmpty": "No data to export.",
+  "error.boundary.message": "Forgive me, Sir. There was a communication setback with the servers.",
+  "error.boundary.hint": "If the issue persists, reload the page or try again in a moment.",
+  "error.boundary.retry": "Try again",
+  "error.orgNotFoundShort": "Could not determine active organization.",
+  "error.deleteFailed": "Error deleting.",
+  "error.updateFailed": "Error updating.",
+  "error.importFailed": "Import failed. Please try again.",
+  "error.importUnexpected": "Unexpected error while importing."
 }

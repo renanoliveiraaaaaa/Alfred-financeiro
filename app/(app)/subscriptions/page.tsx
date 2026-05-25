@@ -157,7 +157,7 @@ export default function SubscriptionsPage() {
 
     const activeOrgId = await resolveActiveOrganizationIdForClient(supabase, userData.user.id)
     if (!activeOrgId) {
-      setFormError('Não foi possível determinar a organização ativa.')
+      setFormError(t('error.orgNotFoundShort'))
       setSaving(false)
       return
     }
@@ -213,7 +213,7 @@ export default function SubscriptionsPage() {
       if (error) throw error
     } catch (err: unknown) {
       setSubs((prev) => prev.map((s) => s.id === id ? { ...s, active: current } : s))
-      toastError(isConnectionError(err) ? CONNECTION_ERROR_MSG : (err instanceof Error ? err.message : 'Erro ao atualizar.'))
+      toastError(isConnectionError(err) ? CONNECTION_ERROR_MSG : (err instanceof Error ? err.message : t('error.updateFailed')))
     } finally {
       setTogglingId(null)
     }
@@ -227,7 +227,7 @@ export default function SubscriptionsPage() {
       if (error) throw error
       setSubs((prev) => prev.filter((s) => s.id !== deleteTargetId))
     } catch (err: unknown) {
-      toastError(isConnectionError(err) ? CONNECTION_ERROR_MSG : (err instanceof Error ? err.message : 'Erro ao excluir.'))
+      toastError(isConnectionError(err) ? CONNECTION_ERROR_MSG : (err instanceof Error ? err.message : t('error.deleteFailed')))
     } finally {
       setDeletingSub(false)
       setDeleteTargetId(null)

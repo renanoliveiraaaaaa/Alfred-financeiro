@@ -110,7 +110,7 @@ export default function ReportsPage() {
           setExpenses([])
           setYearRevenues([])
           setYearExpenses([])
-          setError('Não foi possível determinar a organização ativa. Tente recarregar a página.')
+          setError(t('error.orgNotFound'))
           return
         }
 
