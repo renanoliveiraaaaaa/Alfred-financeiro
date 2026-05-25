@@ -1,7 +1,13 @@
+import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { createSupabaseServerClient } from '@/lib/supabaseServer'
 import AdminSidebar from '@/components/admin/AdminSidebar'
 import AdminTopbar from '@/components/admin/AdminTopbar'
+import { createPageMetadata } from '@/lib/serverI18n'
+
+export async function generateMetadata(): Promise<Metadata> {
+  return createPageMetadata('seo.admin')
+}
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const supabase = createSupabaseServerClient()

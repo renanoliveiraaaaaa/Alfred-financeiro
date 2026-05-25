@@ -19,5 +19,20 @@
   "nav.importHistory": "History",
   "nav.planning": "Planning",
   "nav.statements": "Statements",
-  "nav.adminPanel": "Admin Panel"
+  "nav.adminPanel": "Admin Panel",
+  "seo.expenses": "Expenses",
+  "seo.revenues": "Revenues",
+  "seo.creditCards": "Credit cards",
+  "seo.settings": "Settings",
+  "seo.projections": "Budget",
+  "seo.reports": "Reports",
+  "seo.importStatement": "Import statement",
+  "seo.importHistory": "History",
+  "seo.profile": "Profile",
+  "seo.goals": "Vaults",
+  "seo.subscriptions": "Subscriptions",
+  "seo.incomeSources": "Income sources",
+  "seo.expired": "Access expired",
+  "seo.dashboard": "Home",
+  "seo.admin": "Admin panel"
 }

@@ -19,5 +19,20 @@
   "nav.importHistory": "Histórico",
   "nav.planning": "Planejamento",
   "nav.statements": "Extratos",
-  "nav.adminPanel": "Painel Admin"
+  "nav.adminPanel": "Painel Admin",
+  "seo.expenses": "Despesas",
+  "seo.revenues": "Receitas",
+  "seo.creditCards": "Cartões",
+  "seo.settings": "Configurações",
+  "seo.projections": "Orçamento",
+  "seo.reports": "Relatórios",
+  "seo.importStatement": "Importar Extrato",
+  "seo.importHistory": "Histórico",
+  "seo.profile": "Perfil",
+  "seo.goals": "Cofres",
+  "seo.subscriptions": "Assinaturas",
+  "seo.incomeSources": "Fontes de Renda",
+  "seo.expired": "Acesso Expirado",
+  "seo.dashboard": "Início",
+  "seo.admin": "Painel Admin"
 }
