@@ -41,16 +41,18 @@ Use este arquivo como base para criar issues no GitHub depois (`gh issue create`
 | 31 | **i18n export reports + detalhe cartão** | export CSV por locale; `/credit-cards/[id]` completo; labels de mês via `Intl` |
 | 32 | **i18n varredura P0** | error/loading boundaries; org ativa; ImportReviewModal; bulk delete modals; fallbacks erro |
 | 33 | **Sentry + error boundaries** | `@sentry/nextjs`, `global-error.tsx`, capture em `(app)/error.tsx`; DSN opcional |
+| 34 | **i18n CardStatementImportModal** | modal fatura PDF completo; `import.card.*`; `Intl` para mês/moeda |
 
 ---
 
 ## 🔴 Alta prioridade (criar issues)
 
 ### Issue: i18n resíduos *(parcial — ver varredura abaixo)*
-- **Pendente P0:** `CardStatementImportModal` (~50 strings), landing/auth (`LandingAuthForm`, `app/page.tsx`)
+- **Pendente P0:** landing/auth (`LandingAuthForm`, `app/page.tsx`)
 - **Pendente P4:** painel admin (~80 strings)
 - **Pendente P5:** `metadata.title` em ~13 layouts
 - **Feito (#32):** boundaries, org ativa, ImportReview, bulk delete, fallbacks genéricos
+- **Feito (#34):** `CardStatementImportModal` (~50 strings, meses/moeda via `Intl`)
 
 ### Issue: i18n páginas secundárias *(concluído — #27–#31)*
 - **Labels:** `i18n`, `enhancement`

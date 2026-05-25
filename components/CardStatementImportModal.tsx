@@ -3,7 +3,8 @@
 import { useState, useRef, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import ModalShell from '@/components/ModalShell'
-import { useI18n } from '@/lib/i18n'
+import { useI18n, type Locale } from '@/lib/i18n'
+import { formatMessage } from '@/lib/i18nFormat'
 import {
   X, Upload, Loader2, CheckCircle2, AlertCircle, FileText,
   CreditCard, ChevronDown, ChevronUp, Check, Minus,
@@ -35,22 +36,26 @@ type Props = {
   onSuccess: () => void
 }
 
-const MONTH_NAMES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
 function fmtDate(iso: string) {
   const [, m, d] = iso.split('-')
   return `${d}/${m}`
 }
-function fmtMonthYear(iso: string) {
+function fmtMonthYear(iso: string, locale: Locale) {
   const [y, m] = iso.split('-')
-  return `${MONTH_NAMES[parseInt(m) - 1]}/${y}`
+  const mi = parseInt(m, 10)
+  if (!y || Number.isNaN(mi) || mi < 1 || mi > 12) return iso
+  const localeTag = locale === 'en' ? 'en-US' : 'pt-BR'
+  const short = new Date(parseInt(y, 10), mi - 1, 1).toLocaleDateString(localeTag, { month: 'short' })
+  return `${short}/${y}`
 }
-function fmtCurrency(n: number) {
-  return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+function fmtCurrency(n: number, locale: Locale) {
+  const localeTag = locale === 'en' ? 'en-US' : 'pt-BR'
+  return n.toLocaleString(localeTag, { style: 'currency', currency: 'BRL' })
 }
 
 export default function CardStatementImportModal({ open, onClose, existingCards, onSuccess }: Props) {
   const { toast, toastError } = useToast()
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const categoryLabels = useMemo(() => buildCategoryLabelsMap(t), [t])
   const router = useRouter()
 
@@ -100,7 +105,7 @@ export default function CardStatementImportModal({ open, onClose, existingCards,
   const handleFileChange = (f: File | null) => {
     if (!f) return
     if (f.type !== 'application/pdf') {
-      setParseError('Apenas arquivos PDF são suportados.')
+      setParseError(t('import.card.onlyPdf'))
       return
     }
     setFile(f)
@@ -162,7 +167,7 @@ export default function CardStatementImportModal({ open, onClose, existingCards,
       )
       setStep('review')
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Erro ao processar PDF.'
+      const msg = err instanceof Error ? err.message : t('import.card.processError')
       setParseError(msg)
       setStep('upload')
     }
@@ -186,7 +191,7 @@ export default function CardStatementImportModal({ open, onClose, existingCards,
 
     const input: ConfirmStatementInput = {
       card_id: selectedCardId === '__new__' ? null : selectedCardId,
-      card_name: cardName.trim() || parsed?.card_name || 'Cartão importado',
+      card_name: cardName.trim() || parsed?.card_name || t('import.card.defaultName'),
       credit_limit: creditLimit ? Number(creditLimit) : null,
       closing_day: closingDay ? Number(closingDay) : null,
       due_day: dueDay ? Number(dueDay) : null,
@@ -229,14 +234,14 @@ export default function CardStatementImportModal({ open, onClose, existingCards,
               <FileText className="h-4.5 w-4.5 text-brand" />
             </div>
             <div>
-              <h2 id="card-import-title" className="text-sm font-semibold text-main">Importar fatura em PDF</h2>
+              <h2 id="card-import-title" className="text-sm font-semibold text-main">{t('import.card.title')}</h2>
               <p className="text-xs text-muted">
-                {step === 'upload' && 'Selecione o PDF da fatura do cartão'}
-                {step === 'parsing' && parsePhase === 'extract' && 'A extrair texto do PDF no seu dispositivo…'}
-                {step === 'parsing' && parsePhase === 'server' && 'A processar no servidor…'}
-                {step === 'review' && `${transactions.length} transações encontradas — revise e confirme`}
-                {step === 'confirming' && 'Salvando...'}
-                {step === 'done' && 'Importação concluída!'}
+                {step === 'upload' && t('import.card.stepUpload')}
+                {step === 'parsing' && parsePhase === 'extract' && t('import.card.stepExtract')}
+                {step === 'parsing' && parsePhase === 'server' && t('import.card.stepServer')}
+                {step === 'review' && formatMessage(t('import.card.stepReview'), { count: transactions.length })}
+                {step === 'confirming' && t('import.card.stepConfirming')}
+                {step === 'done' && t('import.card.stepDone')}
               </p>
             </div>
           </div>
@@ -281,8 +286,8 @@ export default function CardStatementImportModal({ open, onClose, existingCards,
                       <Upload className="h-6 w-6 text-brand" />
                     </div>
                     <div>
-                      <p className="text-sm font-semibold text-main">Arraste o PDF aqui ou clique para selecionar</p>
-                      <p className="text-xs text-muted mt-1">Fatura de qualquer banco · apenas PDF</p>
+                      <p className="text-sm font-semibold text-main">{t('import.card.dragPdf')}</p>
+                      <p className="text-xs text-muted mt-1">{t('import.card.dragHint')}</p>
                     </div>
                   </>
                 )}
@@ -302,13 +307,13 @@ export default function CardStatementImportModal({ open, onClose, existingCards,
                   <div>
                     <p className="text-sm font-semibold text-main">
                       {parsePhase === 'extract'
-                        ? 'A extrair texto do PDF…'
-                        : 'A validar e analisar no servidor…'}
+                        ? t('import.card.parsingExtractTitle')
+                        : t('import.card.parsingServerTitle')}
                     </p>
                     <p className="text-xs text-muted mt-0.5">
                       {parsePhase === 'extract'
-                        ? 'pdf.js no browser — depois enviamos só o necessário ao servidor'
-                        : 'Heurística local ou IA, conforme o PDF'}
+                        ? t('import.card.parsingExtractDesc')
+                        : t('import.card.parsingServerDesc')}
                     </p>
                   </div>
                 </div>
@@ -322,11 +327,11 @@ export default function CardStatementImportModal({ open, onClose, existingCards,
 
               {/* Dados do cartão */}
               <div className="p-5 space-y-4">
-                <p className="text-xs font-semibold text-muted uppercase tracking-wider">Dados do cartão</p>
+                <p className="text-xs font-semibold text-muted uppercase tracking-wider">{t('import.card.cardData')}</p>
 
                 {/* Vincular a cartão existente ou criar novo */}
                 <div>
-                  <label className="block text-xs font-medium text-muted mb-1">Cartão</label>
+                  <label className="block text-xs font-medium text-muted mb-1">{t('import.card.fieldCard')}</label>
                   <select
                     value={selectedCardId}
                     onChange={(e) => {
@@ -342,7 +347,7 @@ export default function CardStatementImportModal({ open, onClose, existingCards,
                     }}
                     className="w-full rounded-lg border border-border bg-background text-sm text-main px-3 py-2 focus:outline-none focus:ring-1 focus:ring-brand"
                   >
-                    <option value="__new__">+ Criar novo cartão</option>
+                    <option value="__new__">{t('import.card.createNew')}</option>
                     {existingCards.map((c) => (
                       <option key={c.id} value={c.id}>{c.name}</option>
                     ))}
@@ -351,16 +356,16 @@ export default function CardStatementImportModal({ open, onClose, existingCards,
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-medium text-muted mb-1">Nome do cartão</label>
+                    <label className="block text-xs font-medium text-muted mb-1">{t('creditCards.field.name')}</label>
                     <input
                       value={cardName}
                       onChange={(e) => setCardName(e.target.value)}
                       className="w-full rounded-lg border border-border bg-background text-sm text-main px-3 py-2 focus:outline-none focus:ring-1 focus:ring-brand"
-                      placeholder="Ex: Nubank Platinum"
+                      placeholder={t('creditCards.field.namePlaceholder')}
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-muted mb-1">Limite (R$)</label>
+                    <label className="block text-xs font-medium text-muted mb-1">{t('creditCards.field.limit')}</label>
                     <input
                       type="number"
                       value={creditLimit}
@@ -370,7 +375,7 @@ export default function CardStatementImportModal({ open, onClose, existingCards,
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-muted mb-1">Dia de fechamento</label>
+                    <label className="block text-xs font-medium text-muted mb-1">{t('creditCards.field.closingDay')}</label>
                     <input
                       type="number"
                       min={1} max={31}
@@ -381,7 +386,7 @@ export default function CardStatementImportModal({ open, onClose, existingCards,
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-muted mb-1">Dia de vencimento</label>
+                    <label className="block text-xs font-medium text-muted mb-1">{t('creditCards.field.dueDay')}</label>
                     <input
                       type="number"
                       min={1} max={31}
@@ -397,17 +402,17 @@ export default function CardStatementImportModal({ open, onClose, existingCards,
                 <div className="grid grid-cols-3 gap-3 pt-1">
                   <div className="rounded-xl bg-background/60 border border-border p-3 text-center">
                     <Calendar className="h-4 w-4 text-muted mx-auto mb-1" />
-                    <p className="text-[10px] text-muted">Fatura</p>
-                    <p className="text-xs font-bold text-main">{fmtMonthYear(parsed.invoice_month + '-01')}</p>
+                    <p className="text-[10px] text-muted">{t('import.card.statement')}</p>
+                    <p className="text-xs font-bold text-main">{fmtMonthYear(parsed.invoice_month + '-01', locale)}</p>
                   </div>
                   <div className="rounded-xl bg-background/60 border border-border p-3 text-center">
                     <TrendingDown className="h-4 w-4 text-red-400 mx-auto mb-1" />
-                    <p className="text-[10px] text-muted">Total fatura</p>
-                    <p className="text-xs font-bold text-main">{fmtCurrency(parsed.invoice_total)}</p>
+                    <p className="text-[10px] text-muted">{t('import.card.statementTotal')}</p>
+                    <p className="text-xs font-bold text-main">{fmtCurrency(parsed.invoice_total, locale)}</p>
                   </div>
                   <div className="rounded-xl bg-background/60 border border-border p-3 text-center">
                     <Layers className="h-4 w-4 text-brand mx-auto mb-1" />
-                    <p className="text-[10px] text-muted">Transações</p>
+                    <p className="text-[10px] text-muted">{t('import.card.transactionsLabel')}</p>
                     <p className="text-xs font-bold text-main">{transactions.length}</p>
                   </div>
                 </div>
@@ -417,13 +422,16 @@ export default function CardStatementImportModal({ open, onClose, existingCards,
               <div className="p-5 space-y-3">
                 <div className="flex items-center justify-between">
                   <p className="text-xs font-semibold text-muted uppercase tracking-wider">
-                    Transações ({selectedCount}/{transactions.length} selecionadas)
+                    {formatMessage(t('import.card.transactionsSelected'), {
+                      selected: selectedCount,
+                      total: transactions.length,
+                    })}
                   </p>
                   <button
                     onClick={toggleAll}
                     className="text-xs font-medium text-brand hover:underline"
                   >
-                    {transactions.every((t) => t.selected) ? 'Desmarcar todas' : 'Marcar todas'}
+                    {transactions.every((tx) => tx.selected) ? t('import.card.deselectAll') : t('import.card.selectAll')}
                   </button>
                 </div>
 
@@ -457,7 +465,9 @@ export default function CardStatementImportModal({ open, onClose, existingCards,
                                 {tx.installment_current}/{tx.installment_total}x
                                 {tx.installment_total - (tx.installment_current ?? 1) > 0 && (
                                   <span className="text-brand ml-1">
-                                    (+{tx.installment_total - (tx.installment_current ?? 1)} futuras)
+                                    {formatMessage(t('import.card.futureInstallments'), {
+                                      count: tx.installment_total - (tx.installment_current ?? 1),
+                                    })}
                                   </span>
                                 )}
                               </span>
@@ -473,7 +483,7 @@ export default function CardStatementImportModal({ open, onClose, existingCards,
                       </div>
 
                       <span className="text-sm font-semibold text-main tabular-nums shrink-0">
-                        {fmtCurrency(tx.amount)}
+                        {fmtCurrency(tx.amount, locale)}
                       </span>
                     </button>
                   ))}
@@ -484,9 +494,9 @@ export default function CardStatementImportModal({ open, onClose, existingCards,
                       className="w-full flex items-center justify-center gap-1.5 py-2 text-xs text-brand hover:underline"
                     >
                       {showAllTx ? (
-                        <><ChevronUp className="h-3.5 w-3.5" /> Mostrar menos</>
+                        <><ChevronUp className="h-3.5 w-3.5" /> {t('import.card.showLess')}</>
                       ) : (
-                        <><ChevronDown className="h-3.5 w-3.5" /> Ver mais {transactions.length - 8} transações</>
+                        <><ChevronDown className="h-3.5 w-3.5" /> {formatMessage(t('import.card.showMore'), { count: transactions.length - 8 })}</>
                       )}
                     </button>
                   )}
@@ -497,7 +507,10 @@ export default function CardStatementImportModal({ open, onClose, existingCards,
                   <div className="flex items-start gap-2 rounded-lg bg-brand/5 border border-brand/20 px-4 py-3">
                     <Layers className="h-4 w-4 text-brand shrink-0 mt-0.5" />
                     <p className="text-xs text-main">
-                      <span className="font-semibold">{projectedCount} parcelas futuras</span> serão projetadas automaticamente com base no ciclo do cartão.
+                      <span className="font-semibold">
+                        {formatMessage(t('import.card.projectedCount'), { count: projectedCount })}
+                      </span>{' '}
+                      {t('import.card.projectedHintSuffix')}
                     </p>
                   </div>
                 )}
@@ -521,8 +534,14 @@ export default function CardStatementImportModal({ open, onClose, existingCards,
               <div>
                 <h3 className="text-lg font-bold text-main">{t('import.card.doneTitle')}</h3>
                 <p className="text-sm text-muted mt-1">
-                  {doneStats.imported} transações importadas
-                  {doneStats.projected > 0 && ` · ${doneStats.projected} parcelas futuras projetadas`}
+                  {formatMessage(
+                    doneStats.imported === 1 ? t('import.card.doneImportedOne') : t('import.card.doneImportedMany'),
+                    { count: doneStats.imported },
+                  )}
+                  {doneStats.projected > 0 && formatMessage(
+                    doneStats.projected === 1 ? t('import.card.doneProjectedOne') : t('import.card.doneProjectedMany'),
+                    { count: doneStats.projected },
+                  )}
                 </p>
               </div>
               <div className="flex gap-3">
@@ -549,7 +568,8 @@ export default function CardStatementImportModal({ open, onClose, existingCards,
           <div className="px-6 py-4 border-t border-border shrink-0 flex items-center justify-between gap-3">
             {step === 'review' && (
               <p className="text-xs text-muted">
-                Total selecionado: <span className="font-semibold text-main">{fmtCurrency(selectedTotal)}</span>
+                {t('import.card.selectedTotal')}{' '}
+                <span className="font-semibold text-main">{fmtCurrency(selectedTotal, locale)}</span>
               </p>
             )}
             {(step === 'upload' || step === 'parsing') && <div />}
@@ -560,7 +580,7 @@ export default function CardStatementImportModal({ open, onClose, existingCards,
                   onClick={() => { setStep('upload'); setParsed(null) }}
                   className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-muted hover:bg-hover transition-colors"
                 >
-                  Voltar
+                  {t('common.back')}
                 </button>
               )}
               {(step === 'upload' || step === 'parsing') && (
@@ -580,7 +600,12 @@ export default function CardStatementImportModal({ open, onClose, existingCards,
                   className="inline-flex items-center gap-2 rounded-lg bg-brand px-5 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-40 transition-opacity"
                 >
                   {step === 'confirming' && <Loader2 className="h-4 w-4 animate-spin" />}
-                  {step === 'confirming' ? 'Salvando…' : `Importar ${selectedCount} transações`}
+                  {step === 'confirming'
+                    ? t('common.saving')
+                    : formatMessage(
+                        selectedCount === 1 ? t('import.card.importCountOne') : t('import.card.importCountMany'),
+                        { count: selectedCount },
+                      )}
                 </button>
               )}
             </div>
