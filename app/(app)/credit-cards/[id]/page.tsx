@@ -25,7 +25,8 @@ import {
 import type { Database } from '@/types/supabase'
 import { resolveActiveOrganizationIdForClient } from '@/lib/activeOrganizationClient'
 import { useActiveOrganizationRevision } from '@/lib/useActiveOrganizationRevision'
-import { useI18n } from '@/lib/i18n'
+import { useI18n, type Locale } from '@/lib/i18n'
+import { formatMessage } from '@/lib/i18nFormat'
 import { buildCategoryLabelsMap } from '@/lib/categoryI18n'
 
 type Card = Database['public']['Tables']['credit_cards']['Row']
@@ -46,11 +47,11 @@ const GRADIENTS: Record<string, string> = {
   orange: 'from-orange-600 via-orange-700 to-amber-800',
 }
 
-const MONTH_NAMES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
-
-function monthLabel(key: string): string {
+function formatMonthKey(key: string, locale: Locale): string {
   const [y, m] = key.split('-')
-  return `${MONTH_NAMES[parseInt(m) - 1].slice(0, 3)} ${y}`
+  const date = new Date(parseInt(y, 10), parseInt(m, 10) - 1, 1)
+  const localeTag = locale === 'en' ? 'en-US' : 'pt-BR'
+  return date.toLocaleDateString(localeTag, { month: 'short', year: 'numeric' })
 }
 
 /** Mês de calendário atual YYYY-MM */
@@ -98,7 +99,7 @@ export default function CreditCardDetailPage() {
   const orgRevision = useActiveOrganizationRevision()
   const { toast, toastError } = useToast()
   const pronoun = useGreetingPronoun()
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const CATEGORY_LABELS = useMemo(() => buildCategoryLabelsMap(t), [t])
   const cardId = params.id as string
 
@@ -166,7 +167,7 @@ export default function CreditCardDetailPage() {
       .sort((a, b) => b[0].localeCompare(a[0]))
       .map(([key, exps]) => ({
         key,
-        label: monthLabel(key),
+        label: formatMonthKey(key, locale),
         total: exps.reduce((s, e) => s + Number(e.amount || 0), 0),
         paid: exps.filter((e) => e.paid).reduce((s, e) => s + Number(e.amount || 0), 0),
         pending: exps.filter((e) => !e.paid).reduce((s, e) => s + Number(e.amount || 0), 0),
@@ -174,7 +175,7 @@ export default function CreditCardDetailPage() {
         allPaid: exps.every((e) => e.paid),
         pendingCount: exps.filter((e) => !e.paid).length,
       }))
-  }, [expenses])
+  }, [expenses, locale])
 
   const [selectedMonth, setSelectedMonth] = useState('')
 
@@ -206,7 +207,7 @@ export default function CreditCardDetailPage() {
       if (error) toastError(isConnectionError(error) ? CONNECTION_ERROR_MSG : error.message)
       else {
         setExpenses((prev) => prev.map((e) => ids.includes(e.id) ? { ...e, paid: true } : e))
-        toast(`Fatura de ${currentGroup.label} quitada.`, 'success')
+        toast(formatMessage(t('creditCards.detail.statementPaidToast'), { month: currentGroup.label }), 'success')
       }
     }
     setPayingAll(false)
@@ -243,8 +244,10 @@ export default function CreditCardDetailPage() {
     return (
       <div className={`${cls.surface} p-12 text-center`}>
         <CreditCard className="h-12 w-12 mx-auto text-muted mb-4" />
-        <p className="text-muted mb-4">Cartão não encontrado{pronoun ? `, ${pronoun}` : ''}.</p>
-        <Link href="/credit-cards" className={cls.btnPrimary}>Voltar à carteira</Link>
+        <p className="text-muted mb-4">
+          {formatMessage(t('creditCards.detail.notFound'), { suffix: pronoun ? `, ${pronoun}` : '' })}
+        </p>
+        <Link href="/credit-cards" className={cls.btnPrimary}>{t('creditCards.detail.backToWallet')}</Link>
       </div>
     )
   }
@@ -266,7 +269,7 @@ export default function CreditCardDetailPage() {
         <div className="flex-1 min-w-0">
           <h1 className="text-xl font-semibold text-main">{card?.name}</h1>
           <p className="text-sm text-muted mt-0.5">
-            {card?.brand || 'Cartão de crédito'}
+            {card?.brand || t('creditCards.detail.defaultBrand')}
           </p>
         </div>
         <Link
@@ -274,7 +277,7 @@ export default function CreditCardDetailPage() {
           className={cls.btnPrimary}
         >
           <Plus className="h-4 w-4" />
-          <span className="hidden sm:inline">Adicionar despesa</span>
+          <span className="hidden sm:inline">{t('creditCards.detail.addExpense')}</span>
         </Link>
       </div>
 
@@ -289,14 +292,14 @@ export default function CreditCardDetailPage() {
               <CardBrandIcon brand={card?.brand} size="md" className="text-white/90" />
             </div>
             <div>
-              <p className="text-xs text-white/50 mb-0.5">Limite total</p>
+              <p className="text-xs text-white/50 mb-0.5">{t('creditCards.detail.totalLimit')}</p>
               <MaskedValue value={Number(card?.credit_limit || 0)} className="text-2xl font-semibold tracking-tight" />
             </div>
             {/* Utilização do mês selecionado */}
             {currentGroup && (
               <div className="space-y-1">
                 <div className="flex justify-between text-[10px] text-white/50">
-                  <span>Fatura {currentGroup.label}</span>
+                  <span>{formatMessage(t('creditCards.detail.statementOf'), { month: currentGroup.label })}</span>
                   <span className={utilPct > 80 ? 'text-red-300' : utilPct > 50 ? 'text-amber-300' : 'text-white/60'}>
                     {utilPct.toFixed(0)}%
                   </span>
@@ -315,20 +318,32 @@ export default function CreditCardDetailPage() {
         {/* Info: fechamento, vencimento, disponível */}
         <div className="flex-1 grid grid-cols-2 sm:grid-cols-1 gap-3">
           <div className={`${cls.surface} px-4 py-3`}>
-            <p className="text-xs text-muted mb-0.5">Próximo fechamento</p>
-            <p className="text-sm font-semibold text-main">Dia {card?.closing_day}</p>
+            <p className="text-xs text-muted mb-0.5">{t('creditCards.detail.nextClosing')}</p>
+            <p className="text-sm font-semibold text-main">
+              {formatMessage(t('creditCards.card.closesDay'), { day: String(card?.closing_day) })}
+            </p>
             {daysToClose !== null && (
               <p className="text-xs text-muted mt-0.5">
-                em <span className="text-brand font-medium">{daysToClose} dia{daysToClose !== 1 ? 's' : ''}</span>
+                <span className="text-brand font-medium">
+                  {daysToClose === 1
+                    ? formatMessage(t('creditCards.detail.inDays'), { count: daysToClose })
+                    : formatMessage(t('creditCards.detail.inDaysMany'), { count: daysToClose })}
+                </span>
               </p>
             )}
           </div>
           <div className={`${cls.surface} px-4 py-3`}>
-            <p className="text-xs text-muted mb-0.5">Próximo vencimento</p>
-            <p className="text-sm font-semibold text-main">Dia {card?.due_day}</p>
+            <p className="text-xs text-muted mb-0.5">{t('creditCards.detail.nextDue')}</p>
+            <p className="text-sm font-semibold text-main">
+              {formatMessage(t('creditCards.card.dueDay'), { day: String(card?.due_day) })}
+            </p>
             {daysToDue !== null && (
               <p className="text-xs text-muted mt-0.5">
-                em <span className={`font-medium ${daysToDue <= 5 ? 'text-red-500' : 'text-brand'}`}>{daysToDue} dia{daysToDue !== 1 ? 's' : ''}</span>
+                <span className={`font-medium ${daysToDue <= 5 ? 'text-red-500' : 'text-brand'}`}>
+                  {daysToDue === 1
+                    ? formatMessage(t('creditCards.detail.inDays'), { count: daysToDue })
+                    : formatMessage(t('creditCards.detail.inDaysMany'), { count: daysToDue })}
+                </span>
               </p>
             )}
           </div>
@@ -338,20 +353,20 @@ export default function CreditCardDetailPage() {
       {/* ── Faturas ── */}
       {monthGroups.length === 0 ? (
         <div className={`${cls.surface} p-12 text-center`}>
-          <p className="text-muted text-sm">Nenhuma despesa vinculada a este cartão.</p>
+          <p className="text-muted text-sm">{t('creditCards.detail.noExpenses')}</p>
         </div>
       ) : (
         <>
           {/* Navegação por fatura (mês): seletor + setas — evita fila longa de botões */}
           <div className={`${cls.surface} px-3 py-3 sm:px-4`}>
             <p className="text-[10px] font-medium text-muted uppercase tracking-wider mb-2">
-              Fatura por competência
+              {t('creditCards.detail.statementNav')}
             </p>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center justify-center gap-2 w-full sm:w-auto sm:max-w-md">
                 <button
                   type="button"
-                  title="Mês anterior (mais antigo)"
+                  title={t('creditCards.detail.prevMonth')}
                   onClick={() =>
                     currentIdx < monthGroups.length - 1 &&
                     setSelectedMonth(monthGroups[currentIdx + 1].key)
@@ -367,12 +382,12 @@ export default function CreditCardDetailPage() {
                     value={selectedMonth}
                     onChange={(e) => setSelectedMonth(e.target.value)}
                     className="w-full appearance-none rounded-xl border border-border bg-background py-2.5 pl-3 pr-10 text-sm font-semibold text-main text-center sm:text-left focus:outline-none focus:ring-2 focus:ring-brand/40 focus:border-brand transition-colors cursor-pointer"
-                    aria-label="Selecionar mês da fatura"
+                    aria-label={t('creditCards.detail.selectMonth')}
                   >
                     {monthGroups.map((g) => (
                       <option key={g.key} value={g.key}>
                         {g.label}
-                        {!g.allPaid ? ' · aberto' : ' · quitada'}
+                        {!g.allPaid ? t('creditCards.detail.open') : t('creditCards.detail.paidStatement')}
                       </option>
                     ))}
                   </select>
@@ -381,7 +396,7 @@ export default function CreditCardDetailPage() {
 
                 <button
                   type="button"
-                  title="Próximo mês (mais recente)"
+                  title={t('creditCards.detail.nextMonth')}
                   onClick={() =>
                     currentIdx > 0 && setSelectedMonth(monthGroups[currentIdx - 1].key)
                   }
@@ -394,7 +409,7 @@ export default function CreditCardDetailPage() {
               <p className="text-xs text-muted text-center sm:text-right tabular-nums">
                 {currentIdx + 1} / {monthGroups.length}
                 {selectedMonth === currentCalendarMonthKey() && (
-                  <span className="ml-2 text-brand font-medium">· mês atual</span>
+                  <span className="ml-2 text-brand font-medium">{t('creditCards.detail.currentMonth')}</span>
                 )}
               </p>
             </div>
@@ -404,15 +419,15 @@ export default function CreditCardDetailPage() {
           {currentGroup && (
             <div className="grid grid-cols-3 gap-3">
               <div className={`${cls.surface} px-4 py-3 text-center`}>
-                <p className="text-xs text-muted mb-1">Total da fatura</p>
+                <p className="text-xs text-muted mb-1">{t('creditCards.detail.totalStatement')}</p>
                 <MaskedValue value={currentGroup.total} className="text-base font-bold text-main" />
               </div>
               <div className={`${cls.surface} px-4 py-3 text-center`}>
-                <p className="text-xs text-muted mb-1">Pago</p>
+                <p className="text-xs text-muted mb-1">{t('creditCards.detail.paidAmount')}</p>
                 <MaskedValue value={currentGroup.paid} className="text-base font-bold text-emerald-600 dark:text-emerald-400" />
               </div>
               <div className={`${cls.surface} px-4 py-3 text-center`}>
-                <p className="text-xs text-muted mb-1">Pendente</p>
+                <p className="text-xs text-muted mb-1">{t('creditCards.detail.pendingAmount')}</p>
                 <MaskedValue value={currentGroup.pending} className={`text-base font-bold ${currentGroup.pending > 0 ? 'text-red-600 dark:text-red-400' : 'text-muted'}`} />
               </div>
             </div>
@@ -422,7 +437,7 @@ export default function CreditCardDetailPage() {
           {currentGroup?.allPaid ? (
             <div className="flex items-center gap-2 rounded-xl border border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-300">
               <CheckCircle2 className="h-4 w-4 shrink-0" />
-              Fatura de {currentGroup.label} integralmente quitada.
+              {formatMessage(t('creditCards.detail.statementPaid'), { month: currentGroup.label })}
             </div>
           ) : currentGroup && currentGroup.pendingCount > 0 ? (
             <button
@@ -430,7 +445,9 @@ export default function CreditCardDetailPage() {
               className={cls.btnPrimary}
             >
               <CheckCircle2 className="h-4 w-4" />
-              Quitar fatura completa ({currentGroup.pendingCount} pendente{currentGroup.pendingCount !== 1 ? 's' : ''})
+              {currentGroup.pendingCount === 1
+                ? formatMessage(t('creditCards.detail.payAll'), { count: currentGroup.pendingCount })
+                : formatMessage(t('creditCards.detail.payAllMany'), { count: currentGroup.pendingCount })}
             </button>
           ) : null}
 
@@ -439,7 +456,9 @@ export default function CreditCardDetailPage() {
             <div className={cls.surface}>
               <div className="px-5 py-3 border-b border-border">
                 <p className="text-xs font-medium text-muted uppercase tracking-wider">
-                  {currentGroup.expenses.length} lançamento{currentGroup.expenses.length !== 1 ? 's' : ''}
+                  {currentGroup.expenses.length === 1
+                    ? formatMessage(t('creditCards.detail.entriesOne'), { count: currentGroup.expenses.length })
+                    : formatMessage(t('creditCards.detail.entriesMany'), { count: currentGroup.expenses.length })}
                 </p>
               </div>
               <ul className="divide-y divide-border">
@@ -449,7 +468,7 @@ export default function CreditCardDetailPage() {
                     <button
                       onClick={() => handleTogglePaid(exp)}
                       disabled={togglingId === exp.id}
-                      title={exp.paid ? 'Marcar como pendente' : 'Marcar como pago'}
+                      title={exp.paid ? t('creditCards.detail.markPending') : t('creditCards.detail.markPaid')}
                       className="shrink-0 text-muted hover:text-brand transition-colors"
                     >
                       {togglingId === exp.id ? (
@@ -490,7 +509,7 @@ export default function CreditCardDetailPage() {
                         ? 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-400'
                         : 'bg-red-100 dark:bg-red-500/15 text-red-700 dark:text-red-400'
                     }`}>
-                      {exp.paid ? 'Pago' : 'Aberto'}
+                      {exp.paid ? t('creditCards.paid') : t('creditCards.open')}
                     </span>
                   </li>
                 ))}
@@ -503,13 +522,21 @@ export default function CreditCardDetailPage() {
       {/* ── Modal confirmar "Quitar fatura" ── */}
       <ConfirmDangerModal
         open={showPayAllConfirm}
-        title="Quitar fatura completa?"
+        title={t('creditCards.detail.payAllTitle')}
         description={
           currentGroup
-            ? `Isso marcará ${currentGroup.pendingCount} despesa${currentGroup.pendingCount !== 1 ? 's' : ''} da fatura de ${currentGroup.label} como pagas. A ação pode ser desfeita individualmente depois.`
+            ? currentGroup.pendingCount === 1
+              ? formatMessage(t('creditCards.detail.payAllDesc'), {
+                  count: currentGroup.pendingCount,
+                  month: currentGroup.label,
+                })
+              : formatMessage(t('creditCards.detail.payAllDescMany'), {
+                  count: currentGroup.pendingCount,
+                  month: currentGroup.label,
+                })
             : ''
         }
-        confirmLabel="Sim, quitar tudo"
+        confirmLabel={t('creditCards.detail.payAllConfirm')}
         loading={payingAll}
         onConfirm={handlePayAll}
         onCancel={() => setShowPayAllConfirm(false)}

@@ -11,7 +11,7 @@ import { formatCurrency } from '@/lib/format'
 import { formatDateBR, formatCurrencyBR } from '@/lib/exportCsv'
 import ExportMenu from '@/components/ExportMenu'
 import MaskedValue from '@/components/MaskedValue'
-import { useI18n } from '@/lib/i18n'
+import { useI18n, type Locale } from '@/lib/i18n'
 import { formatMessage } from '@/lib/i18nFormat'
 import { buildCategoryLabelsMap } from '@/lib/categoryI18n'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
@@ -34,8 +34,6 @@ const ReportsChartsSection = dynamic(
 type Revenue = Database['public']['Tables']['revenues']['Row']
 type Expense = Database['public']['Tables']['expenses']['Row']
 
-const MONTH_LABELS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
-
 const CATEGORY_COLORS: Record<string, string> = {
   mercado: '#10b981',
   alimentacao: '#f97316',
@@ -50,6 +48,13 @@ const CATEGORY_COLORS: Record<string, string> = {
   moradia: '#64748b',
   fatura_cartao: '#0ea5e9',
   outros: '#6b7280',
+}
+
+function shortMonthLabels(locale: Locale): string[] {
+  const localeTag = locale === 'en' ? 'en-US' : 'pt-BR'
+  return Array.from({ length: 12 }, (_, i) =>
+    new Date(2000, i, 1).toLocaleDateString(localeTag, { month: 'short' }),
+  )
 }
 
 function groupByMonth(items: { amount: number; dateField: string }[]): number[] {
@@ -67,8 +72,9 @@ export default function ReportsPage() {
   const orgRevision = useActiveOrganizationRevision()
   const { resolvedTheme } = useTheme()
   const pronoun = useGreetingPronoun()
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const CATEGORY_LABELS = useMemo(() => buildCategoryLabelsMap(t), [t])
+  const chartMonthLabels = useMemo(() => shortMonthLabels(locale), [locale])
   const [mounted, setMounted] = useState(false)
 
   const currentYear = new Date().getFullYear()
@@ -195,55 +201,71 @@ export default function ReportsPage() {
   const hasYearData = yearRevenues.length > 0 || yearExpenses.length > 0
 
   const exportSheets = useMemo(() => {
+    const localeTag = locale === 'en' ? 'en-US' : 'pt-BR'
     const now = new Date()
-    const monthLabel = now.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
+    const monthLabel = now.toLocaleDateString(localeTag, { month: 'long', year: 'numeric' })
+
+    const col = {
+      indicator: t('reports.export.col.indicator'),
+      value: t('reports.export.col.value'),
+      date: t('reports.export.col.date'),
+      description: t('reports.export.col.description'),
+      amount: t('reports.export.col.amount'),
+      status: t('reports.export.col.status'),
+      category: t('reports.export.col.category'),
+      dueDate: t('reports.export.col.dueDate'),
+      month: t('reports.export.col.month'),
+      balance: t('reports.export.col.balance'),
+      revenuesAmount: t('reports.export.col.revenuesAmount'),
+      expensesAmount: t('reports.export.col.expensesAmount'),
+    }
 
     const resumo = [
-      { Indicador: 'Período mensal', Valor: monthLabel },
-      { Indicador: 'Entradas (mês)', Valor: formatCurrencyBR(totalRevenues) },
-      { Indicador: 'Saídas (mês)', Valor: formatCurrencyBR(totalExpenses) },
-      { Indicador: 'Balanço (mês)', Valor: formatCurrencyBR(totalRevenues - totalExpenses) },
-      { Indicador: 'Ano', Valor: String(year) },
-      { Indicador: 'Entradas (ano)', Valor: formatCurrencyBR(yearTotalRev) },
-      { Indicador: 'Saídas (ano)', Valor: formatCurrencyBR(yearTotalExp) },
-      { Indicador: 'Balanço (ano)', Valor: formatCurrencyBR(yearBalance) },
+      { [col.indicator]: t('reports.export.row.monthPeriod'), [col.value]: monthLabel },
+      { [col.indicator]: t('reports.export.row.monthRevenues'), [col.value]: formatCurrencyBR(totalRevenues) },
+      { [col.indicator]: t('reports.export.row.monthExpenses'), [col.value]: formatCurrencyBR(totalExpenses) },
+      { [col.indicator]: t('reports.export.row.monthBalance'), [col.value]: formatCurrencyBR(totalRevenues - totalExpenses) },
+      { [col.indicator]: t('reports.export.row.year'), [col.value]: String(year) },
+      { [col.indicator]: t('reports.export.row.yearRevenues'), [col.value]: formatCurrencyBR(yearTotalRev) },
+      { [col.indicator]: t('reports.export.row.yearExpenses'), [col.value]: formatCurrencyBR(yearTotalExp) },
+      { [col.indicator]: t('reports.export.row.yearBalance'), [col.value]: formatCurrencyBR(yearBalance) },
     ]
 
     const receitasAno = yearRevenues.map((r) => ({
-      Data: formatDateBR(r.date),
-      Descrição: r.description,
-      'Valor (R$)': formatCurrencyBR(Number(r.amount || 0)),
-      Status: r.received ? 'Recebido' : 'Pendente',
+      [col.date]: formatDateBR(r.date),
+      [col.description]: r.description,
+      [col.amount]: formatCurrencyBR(Number(r.amount || 0)),
+      [col.status]: r.received ? t('reports.export.status.received') : t('reports.export.status.pending'),
     }))
 
     const despesasAno = yearExpenses.map((e) => ({
-      'Data vencimento': formatDateBR(e.due_date),
-      Descrição: e.description,
-      Categoria: CATEGORY_LABELS[e.category] ?? e.category,
-      'Valor (R$)': formatCurrencyBR(Number(e.amount || 0)),
-      Status: e.paid ? 'Pago' : 'Em aberto',
+      [col.dueDate]: formatDateBR(e.due_date),
+      [col.description]: e.description,
+      [col.category]: CATEGORY_LABELS[e.category] ?? e.category,
+      [col.amount]: formatCurrencyBR(Number(e.amount || 0)),
+      [col.status]: e.paid ? t('reports.export.status.paid') : t('reports.export.status.open'),
     }))
 
     const categorias = Object.entries(categoryTotals)
       .sort(([, a], [, b]) => b - a)
       .map(([cat, total]) => ({
-        Categoria: CATEGORY_LABELS[cat] ?? cat,
-        'Valor (R$)': formatCurrencyBR(total),
+        [col.category]: CATEGORY_LABELS[cat] ?? cat,
+        [col.amount]: formatCurrencyBR(total),
       }))
 
-    const evolucao = MONTH_LABELS.map((label, i) => ({
-      Mês: label,
-      'Entradas (R$)': formatCurrencyBR(yearRevMonths[i] ?? 0),
-      'Saídas (R$)': formatCurrencyBR(yearExpMonths[i] ?? 0),
-      'Balanço (R$)': formatCurrencyBR((yearRevMonths[i] ?? 0) - (yearExpMonths[i] ?? 0)),
+    const evolucao = chartMonthLabels.map((label, i) => ({
+      [col.month]: label,
+      [col.revenuesAmount]: formatCurrencyBR(yearRevMonths[i] ?? 0),
+      [col.expensesAmount]: formatCurrencyBR(yearExpMonths[i] ?? 0),
+      [col.balance]: formatCurrencyBR((yearRevMonths[i] ?? 0) - (yearExpMonths[i] ?? 0)),
     }))
 
     return [
-      { name: 'Resumo', rows: resumo },
-      { name: 'Receitas', rows: receitasAno },
-      { name: 'Despesas', rows: despesasAno },
-      { name: 'Categorias', rows: categorias },
-      { name: 'Evolução mensal', rows: evolucao },
+      { name: t('reports.export.sheet.summary'), rows: resumo },
+      { name: t('reports.export.sheet.revenues'), rows: receitasAno },
+      { name: t('reports.export.sheet.expenses'), rows: despesasAno },
+      { name: t('reports.export.sheet.categories'), rows: categorias },
+      { name: t('reports.export.sheet.evolution'), rows: evolucao },
     ]
   }, [
     totalRevenues,
@@ -257,9 +279,16 @@ export default function ReportsPage() {
     categoryTotals,
     yearRevMonths,
     yearExpMonths,
+    chartMonthLabels,
+    CATEGORY_LABELS,
+    t,
+    locale,
   ])
 
-  const exportFilename = `relatorio-${year}-${new Date().toISOString().slice(0, 10)}`
+  const exportFilename = formatMessage(t('reports.export.filename'), {
+    year: String(year),
+    date: new Date().toISOString().slice(0, 10),
+  })
 
   // Chart configs
   const baseTooltip = useMemo(() => ({
@@ -298,7 +327,7 @@ export default function ReportsPage() {
   }), [totalRevenues, totalExpenses, t])
 
   const lineData = useMemo(() => ({
-    labels: MONTH_LABELS,
+    labels: chartMonthLabels,
     datasets: [
       {
         label: t('reports.chart.revenues'),
@@ -327,7 +356,7 @@ export default function ReportsPage() {
         pointHoverRadius: 6,
       },
     ],
-  }), [yearRevMonths, yearExpMonths, isDark, t])
+  }), [yearRevMonths, yearExpMonths, isDark, t, chartMonthLabels])
 
   const baseScales = useMemo(() => ({
     y: {
