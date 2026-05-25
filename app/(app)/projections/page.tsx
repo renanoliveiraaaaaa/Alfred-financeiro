@@ -292,9 +292,11 @@ export default function ProjectionsPage() {
               {projectedRevenues > 0 && (
                 <div>
                   <div className="flex justify-between text-xs text-muted mb-1">
-                    <span>{Math.round(revPercent)}% atingido</span>
+                    <span>{formatMessage(t('projections.percentAchieved'), { pct: Math.round(revPercent) })}</span>
                     <span>
-                      {actualRevenues >= projectedRevenues ? `Meta atingida, ${pronoun}!` : `Restam ${formatCurrency(projectedRevenues - actualRevenues)}`}
+                      {actualRevenues >= projectedRevenues
+                        ? formatMessage(t('projections.goalReached'), { pronoun })
+                        : formatMessage(t('projections.remaining'), { amount: formatCurrency(projectedRevenues - actualRevenues) })}
                     </span>
                   </div>
                   <div className="h-3 w-full rounded-full bg-border overflow-hidden">
@@ -312,13 +314,13 @@ export default function ProjectionsPage() {
               <h2 className="text-sm font-semibold text-main">{t('projections.section.expenses')}</h2>
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted">Limite definido</span>
+                  <span className="text-muted">{t('projections.limitDefined')}</span>
                   <span className="font-medium text-main">
                     {projectedExpenses > 0 ? formatCurrency(projectedExpenses) : '—'}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted">Gasto efetivo</span>
+                  <span className="text-muted">{t('projections.effectiveSpend')}</span>
                   <span className={`font-semibold ${expPercent > 100 ? 'text-red-600 dark:text-red-400' : 'text-main'}`}>
                     {formatCurrency(actualExpenses)}
                   </span>
@@ -327,11 +329,11 @@ export default function ProjectionsPage() {
               {projectedExpenses > 0 && (
                 <div>
                   <div className="flex justify-between text-xs text-muted mb-1">
-                    <span>{Math.round(expPercent)}% consumido</span>
+                    <span>{formatMessage(t('projections.percentUsed'), { pct: Math.round(expPercent) })}</span>
                     <span>
                       {expPercent > 100
-                        ? `Excedido em ${formatCurrency(actualExpenses - projectedExpenses)}`
-                        : `Margem restante: ${formatCurrency(projectedExpenses - actualExpenses)}`}
+                        ? formatMessage(t('projections.exceeded'), { amount: formatCurrency(actualExpenses - projectedExpenses) })
+                        : formatMessage(t('projections.marginRemaining'), { amount: formatCurrency(projectedExpenses - actualExpenses) })}
                     </span>
                   </div>
                   <div className="h-3 w-full rounded-full bg-border overflow-hidden">
@@ -342,12 +344,12 @@ export default function ProjectionsPage() {
                   </div>
                   {expPercent > 80 && expPercent <= 100 && (
                     <p className="mt-2 text-xs font-medium text-amber-600 dark:text-amber-400">
-                      ⚠ Atenção: você já usou {Math.round(expPercent)}% do orçamento.
+                      {formatMessage(t('projections.warning80'), { pct: Math.round(expPercent) })}
                     </p>
                   )}
                   {expPercent > 100 && (
                     <p className="mt-2 text-xs font-medium text-red-600 dark:text-red-400">
-                      🚨 Orçamento ultrapassado em {formatCurrency(actualExpenses - projectedExpenses)}!
+                      {formatMessage(t('projections.overBudget'), { amount: formatCurrency(actualExpenses - projectedExpenses) })}
                     </p>
                   )}
                 </div>
@@ -357,10 +359,10 @@ export default function ProjectionsPage() {
 
           {/* Saldo projetado vs efetivo */}
           <div className="rounded-xl border border-border bg-surface p-6 glass-card">
-            <h2 className="text-sm font-semibold text-main mb-3">Balanço do período</h2>
+            <h2 className="text-sm font-semibold text-main mb-3">{t('projections.balanceTitle')}</h2>
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <p className="text-xs text-muted uppercase tracking-wide">Saldo projetado</p>
+                <p className="text-xs text-muted uppercase tracking-wide">{t('projections.projectedBalance')}</p>
                 <p className={`text-lg font-semibold mt-0.5 ${
                   projectedRevenues - projectedExpenses >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'
                 }`}>
@@ -370,7 +372,7 @@ export default function ProjectionsPage() {
                 </p>
               </div>
               <div>
-                <p className="text-xs text-muted uppercase tracking-wide">Saldo efetivo</p>
+                <p className="text-xs text-muted uppercase tracking-wide">{t('projections.actualBalance')}</p>
                 <p className={`text-lg font-semibold mt-0.5 ${
                   actualRevenues - actualExpenses >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'
                 }`}>
@@ -383,16 +385,18 @@ export default function ProjectionsPage() {
           {/* Formulário de metas */}
           <div className="rounded-xl border border-border bg-surface p-6 space-y-5 glass-card">
             <div>
-              <h2 className="text-sm font-semibold text-main">Definir orçamento</h2>
+              <h2 className="text-sm font-semibold text-main">{t('projections.budgetFormTitle')}</h2>
               <p className="text-xs text-muted mt-0.5">
-                {projection ? 'Ajuste as metas' : 'Estabeleça as metas'} para {label}
+                {projection
+                  ? formatMessage(t('projections.budgetFormAdjust'), { month: label })
+                  : formatMessage(t('projections.budgetFormSet'), { month: label })}
               </p>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <label htmlFor="projRev" className="block text-sm font-medium text-muted mb-1">
-                  Entrada projetada (R$)
+                  {t('projections.field.revenue')}
                 </label>
                 <div className="relative">
                   <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted text-sm">R$</span>
@@ -407,7 +411,7 @@ export default function ProjectionsPage() {
               </div>
               <div>
                 <label htmlFor="projExp" className="block text-sm font-medium text-muted mb-1">
-                  Limite de saídas (R$)
+                  {t('projections.field.expenseLimit')}
                 </label>
                 <div className="relative">
                   <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted text-sm">R$</span>

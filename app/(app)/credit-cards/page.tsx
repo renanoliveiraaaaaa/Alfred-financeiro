@@ -42,20 +42,9 @@ const CARD_GRADIENTS: Record<string, string> = {
   orange: 'from-orange-600 via-orange-700 to-amber-800',
 }
 
-const COLOR_OPTIONS = [
-  { value: 'black', label: 'Ônix' },
-  { value: 'slate', label: 'Platina' },
-  { value: 'gold', label: 'Ouro' },
-  { value: 'navy', label: 'Marinho' },
-  { value: 'sky', label: 'Safira' },
-  { value: 'emerald', label: 'Esmeralda' },
-  { value: 'teal', label: 'Jade' },
-  { value: 'rose', label: 'Rosé' },
-  { value: 'red', label: 'Rubi' },
-  { value: 'purple', label: 'Ametista' },
-  { value: 'indigo', label: 'Índigo' },
-  { value: 'orange', label: 'Bronze' },
-]
+const COLOR_VALUES = [
+  'black', 'slate', 'gold', 'navy', 'sky', 'emerald', 'teal', 'rose', 'red', 'purple', 'indigo', 'orange',
+] as const
 
 const CATEGORY_ICONS: Record<string, React.ReactNode> = {
   mercado: <ShoppingCart className="h-4 w-4" />,
@@ -71,8 +60,8 @@ const CATEGORY_ICONS: Record<string, React.ReactNode> = {
   outros: <Receipt className="h-4 w-4" />,
 }
 
-function fmtCurrency(v: number) {
-  return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+function fmtCurrency(v: number, locale: 'pt' | 'en') {
+  return v.toLocaleString(locale === 'en' ? 'en-US' : 'pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
 function fmtDate(iso: string | null | undefined) {
@@ -86,7 +75,7 @@ export default function CreditCardsPage() {
   const orgRevision = useActiveOrganizationRevision()
   const { toast, toastError } = useToast()
   const pronoun = useGreetingPronoun()
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const CATEGORY_LABELS = useMemo(() => buildCategoryLabelsMap(t), [t])
 
   const [cards, setCards] = useState<Card[]>([])
@@ -234,7 +223,7 @@ export default function CreditCardsPage() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (limit <= 0) { setFormError('Informe um limite maior que zero.'); return }
+    if (limit <= 0) { setFormError(t('creditCards.error.limit')); return }
     setSaving(true); setFormError(null)
 
     const payload = {
@@ -248,7 +237,7 @@ export default function CreditCardsPage() {
       if (error) setFormError(isConnectionError(error) ? CONNECTION_ERROR_MSG : error.message)
       else {
         setCards((prev) => prev.map((c) => c.id === editingCard.id ? { ...c, ...payload } : c))
-        toast('Cartão atualizado.', 'success')
+        toast(t('creditCards.success.updated'), 'success')
         setShowForm(false); resetForm()
       }
     } else {
@@ -266,7 +255,7 @@ export default function CreditCardsPage() {
         organization_id: activeOrgId,
       })
       if (error) setFormError(isConnectionError(error) ? CONNECTION_ERROR_MSG : error.message)
-      else { toast('Cartão adicionado.', 'success'); setShowForm(false); resetForm(); await fetchCards() }
+      else { toast(t('creditCards.success.added'), 'success'); setShowForm(false); resetForm(); await fetchCards() }
     }
     setSaving(false)
   }
@@ -277,12 +266,12 @@ export default function CreditCardsPage() {
     const { error } = await supabase.from('credit_cards').delete().eq('id', deleteTarget.id)
     if (error) {
       const msg = isConnectionError(error) ? CONNECTION_ERROR_MSG
-        : (error.code === '23503' ? 'Existem despesas vinculadas a este cartão.' : error.message)
+        : (error.code === '23503' ? t('creditCards.error.hasExpenses') : error.message)
       setDeleteError(msg)
     } else {
       setCards((prev) => prev.filter((c) => c.id !== deleteTarget.id))
       setDeleteTarget(null); setShowForm(false); resetForm()
-      toast('Cartão removido.', 'success')
+      toast(t('creditCards.success.removed'), 'success')
     }
     setDeleting(false)
   }
@@ -339,9 +328,9 @@ export default function CreditCardsPage() {
           {/* Fatura deste mês */}
           <div className={`${cls.surface} p-5 flex items-center justify-between`}>
             <div>
-              <p className="text-xs text-muted mb-1">Fatura do mês atual</p>
+              <p className="text-xs text-muted mb-1">{t('creditCards.summary.monthlyBill')}</p>
               <MaskedValue value={summary.totalMonthly} className="text-2xl font-bold text-main" />
-              <p className="text-[10px] text-muted mt-0.5">vencimentos este mês</p>
+              <p className="text-[10px] text-muted mt-0.5">{t('creditCards.summary.dueThisMonth')}</p>
             </div>
             <div className="h-11 w-11 rounded-full bg-red-100 dark:bg-red-500/15 flex items-center justify-center shrink-0">
               <Receipt className="h-5 w-5 text-red-600 dark:text-red-400" />
@@ -351,9 +340,9 @@ export default function CreditCardsPage() {
           {/* Limite disponível REAL */}
           <div className={`${cls.surface} p-5 flex items-center justify-between`}>
             <div>
-              <p className="text-xs text-muted mb-1">Limite real disponível</p>
+              <p className="text-xs text-muted mb-1">{t('creditCards.summary.availableLimit')}</p>
               <MaskedValue value={summary.available} className="text-2xl font-bold text-emerald-600 dark:text-emerald-400" />
-              <p className="text-[10px] text-muted mt-0.5">descontando parcelas futuras</p>
+              <p className="text-[10px] text-muted mt-0.5">{t('creditCards.summary.discountFuture')}</p>
             </div>
             <div className="h-11 w-11 rounded-full bg-emerald-100 dark:bg-emerald-500/15 flex items-center justify-center shrink-0">
               <CreditCard className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
@@ -363,12 +352,12 @@ export default function CreditCardsPage() {
           {/* Comprometimento % (sobre total comprometido) */}
           <div className={`${cls.surface} p-5 flex items-center justify-between`}>
             <div>
-              <p className="text-xs text-muted mb-1">Comprometido total</p>
+              <p className="text-xs text-muted mb-1">{t('creditCards.summary.totalCommitted')}</p>
               <div className="flex items-end gap-1.5">
                 <span className={`text-2xl font-bold ${summary.pct > 80 ? 'text-red-600 dark:text-red-400' : summary.pct > 50 ? 'text-amber-600 dark:text-amber-400' : 'text-main'}`}>
                   {summary.pct.toFixed(0)}%
                 </span>
-                <span className="text-xs text-muted mb-1">do limite</span>
+                <span className="text-xs text-muted mb-1">{t('creditCards.summary.ofLimit')}</span>
               </div>
               <div className="w-32 h-1.5 bg-border rounded-full overflow-hidden mt-2">
                 <div
@@ -426,7 +415,7 @@ export default function CreditCardsPage() {
 
                       {/* Centro: FATURA ATUAL (destaque) */}
                       <div className="flex-1 flex flex-col justify-center py-3">
-                        <p className="text-xs text-white/60 mb-0.5">Fatura deste mês</p>
+                        <p className="text-xs text-white/60 mb-0.5">{t('creditCards.card.monthlyBill')}</p>
                         <MaskedValue value={spent} className="text-2xl font-bold tracking-tight" />
 
                         {/* Barra de utilização — baseada em comprometimento total */}
@@ -438,13 +427,14 @@ export default function CreditCardsPage() {
                             />
                           </div>
                           <p className="text-[10px] text-white/50">
-                            Limite real: <span className="text-white/75 font-medium">{fmtCurrency(available)}</span>
-                            {' '}de{' '}
-                            <span className="text-white/60">{fmtCurrency(lim)}</span>
+                            {t('creditCards.card.realLimit')}{' '}
+                            <span className="text-white/75 font-medium">{fmtCurrency(available, locale)}</span>
+                            {' '}{t('creditCards.card.of')}{' '}
+                            <span className="text-white/60">{fmtCurrency(lim, locale)}</span>
                           </p>
                           {committed > monthlyTotal && (
                             <p className="text-[10px] text-amber-300/70">
-                              +{fmtCurrency(committed - monthlyTotal)} em meses futuros
+                              {formatMessage(t('creditCards.card.futureInstallments'), { amount: fmtCurrency(committed - monthlyTotal, locale) })}
                             </p>
                           )}
                         </div>
@@ -453,12 +443,12 @@ export default function CreditCardsPage() {
                       {/* Rodapé: fechamento/vencimento */}
                       <div className="flex items-center justify-between text-[11px] text-white/60 pt-3 border-t border-white/10">
                         <div>
-                          <span className="block text-white/40 text-[10px]">Fecha</span>
-                          <span className="font-semibold text-white/80">Dia {card.closing_day}</span>
+                          <span className="block text-white/40 text-[10px]">{t('creditCards.card.closes')}</span>
+                          <span className="font-semibold text-white/80">{formatMessage(t('creditCards.card.closesDay'), { day: card.closing_day })}</span>
                         </div>
                         <div className="text-right">
-                          <span className="block text-white/40 text-[10px]">Vence</span>
-                          <span className="font-semibold text-white/80">Dia {card.due_day}</span>
+                          <span className="block text-white/40 text-[10px]">{t('creditCards.card.due')}</span>
+                          <span className="font-semibold text-white/80">{formatMessage(t('creditCards.card.dueDay'), { day: card.due_day })}</span>
                         </div>
                       </div>
                     </div>
@@ -467,7 +457,7 @@ export default function CreditCardsPage() {
                   <button
                     onClick={(e) => { e.preventDefault(); openEdit(card) }}
                     className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 h-7 w-7 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center text-white/70 hover:text-white hover:bg-white/20 transition-all"
-                    title="Editar cartão"
+                    title={t('creditCards.editCard')}
                   >
                     <Settings2 className="h-3.5 w-3.5" />
                   </button>
@@ -480,9 +470,9 @@ export default function CreditCardsPage() {
           {recentExpenses.length > 0 && (
             <div className={cls.surface}>
               <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-                <h2 className="text-sm font-semibold text-main">Últimos lançamentos nos cartões</h2>
+                <h2 className="text-sm font-semibold text-main">{t('creditCards.recentExpenses')}</h2>
                 <Link href="/expenses" className="text-xs text-brand hover:underline font-medium">
-                  Ver todos
+                  {t('creditCards.viewAll')}
                 </Link>
               </div>
               <ul className="divide-y divide-border">
@@ -527,7 +517,7 @@ export default function CreditCardsPage() {
                           className="text-sm font-semibold text-main tabular-nums"
                         />
                         <span className={`block text-[10px] mt-0.5 font-medium ${exp.paid ? 'text-emerald-500' : 'text-red-500'}`}>
-                          {exp.paid ? 'Pago' : 'Aberto'}
+                          {exp.paid ? t('creditCards.paid') : t('creditCards.open')}
                         </span>
                       </div>
                     </li>
@@ -545,7 +535,7 @@ export default function CreditCardsPage() {
           <div className={`${cls.surface} w-full max-w-lg p-6 space-y-5 shadow-2xl`}>
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-main">
-                {editingCard ? 'Editar cartão' : 'Novo cartão'}
+                {editingCard ? t('creditCards.modal.edit') : t('creditCards.modal.new')}
               </h2>
               <button onClick={() => { setShowForm(false); resetForm() }} className="text-muted hover:text-main p-1">
                 <X className="h-5 w-5" />
@@ -560,16 +550,16 @@ export default function CreditCardsPage() {
 
             <form onSubmit={handleSave} className="space-y-4">
               <div>
-                <label className={cls.label}>Nome do cartão</label>
-                <input className={cls.input} placeholder="Ex.: Nubank Black" value={name} onChange={(e) => setName(e.target.value)} required />
+                <label className={cls.label}>{t('creditCards.field.name')}</label>
+                <input className={cls.input} placeholder={t('creditCards.field.namePlaceholder')} value={name} onChange={(e) => setName(e.target.value)} required />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className={cls.label}>Limite (R$)</label>
+                  <label className={cls.label}>{t('creditCards.field.limit')}</label>
                   <CurrencyInput value={limit} onChange={setLimit} placeholder="10.000,00" className={cls.input} required />
                 </div>
                 <div>
-                  <label className={cls.label}>Bandeira</label>
+                  <label className={cls.label}>{t('creditCards.field.brand')}</label>
                   <select className={cls.input} value={brand} onChange={(e) => setBrand(e.target.value)}>
                     {BRAND_OPTIONS.map((opt) => (
                       <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -579,23 +569,23 @@ export default function CreditCardsPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className={cls.label}>Dia de fechamento</label>
+                  <label className={cls.label}>{t('creditCards.field.closingDay')}</label>
                   <input type="number" min="1" max="31" className={cls.input} value={closingDay} onChange={(e) => setClosingDay(e.target.value)} required />
                 </div>
                 <div>
-                  <label className={cls.label}>Dia de vencimento</label>
+                  <label className={cls.label}>{t('creditCards.field.dueDay')}</label>
                   <input type="number" min="1" max="31" className={cls.input} value={dueDay} onChange={(e) => setDueDay(e.target.value)} required />
                 </div>
               </div>
               <div>
-                <label className={cls.label}>Cor do cartão</label>
+                <label className={cls.label}>{t('creditCards.field.color')}</label>
                 <div className="flex flex-wrap gap-2 mt-1">
-                  {COLOR_OPTIONS.map((opt) => (
+                  {COLOR_VALUES.map((value) => (
                     <button
-                      key={opt.value} type="button" title={opt.label}
-                      onClick={() => setColor(opt.value)}
-                      className={`h-8 w-8 rounded-full bg-gradient-to-br ${CARD_GRADIENTS[opt.value]} ring-2 ring-offset-2 ring-offset-surface transition-all ${
-                        color === opt.value ? 'ring-brand scale-110' : 'ring-transparent hover:ring-border'
+                      key={value} type="button" title={t(`creditCards.color.${value}`)}
+                      onClick={() => setColor(value)}
+                      className={`h-8 w-8 rounded-full bg-gradient-to-br ${CARD_GRADIENTS[value]} ring-2 ring-offset-2 ring-offset-surface transition-all ${
+                        color === value ? 'ring-brand scale-110' : 'ring-transparent hover:ring-border'
                       }`}
                     />
                   ))}
@@ -609,16 +599,16 @@ export default function CreditCardsPage() {
                       onClick={() => { setShowForm(false); setDeleteTarget(editingCard); setDeleteError(null) }}
                       className="inline-flex items-center gap-1.5 text-xs font-medium text-red-600 dark:text-red-400 hover:underline"
                     >
-                      <X className="h-3.5 w-3.5" /> Excluir cartão
+                      <X className="h-3.5 w-3.5" /> {t('creditCards.deleteCard')}
                     </button>
                   )}
                 </div>
                 <div className="flex gap-3">
                   <button type="button" onClick={() => { setShowForm(false); resetForm() }} className="px-4 py-2.5 rounded-lg text-sm font-medium border border-border text-muted hover:bg-background transition-colors">
-                    Cancelar
+                    {t('common.cancel')}
                   </button>
                   <button type="submit" disabled={saving} className={cls.btnPrimary}>
-                    {saving ? <><Loader2 className="h-4 w-4 animate-spin" /> Salvando...</> : editingCard ? 'Salvar' : 'Adicionar'}
+                    {saving ? <><Loader2 className="h-4 w-4 animate-spin" /> {t('crud.saving')}</> : editingCard ? t('crud.save') : t('settings.categories.add')}
                   </button>
                 </div>
               </div>
@@ -637,20 +627,20 @@ export default function CreditCardsPage() {
                 <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
               </div>
               <div>
-                <h2 className="text-base font-semibold text-main">Excluir cartão?</h2>
+                <h2 className="text-base font-semibold text-main">{t('creditCards.deleteTitle')}</h2>
                 <p className="text-xs text-muted">{deleteTarget.name}</p>
               </div>
             </div>
-            <p className="text-sm text-muted">Esta ação não pode ser desfeita.</p>
+            <p className="text-sm text-muted">{t('creditCards.deleteDesc')}</p>
             {deleteError && (
               <div className="rounded-lg border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 px-3 py-2 text-xs text-red-700 dark:text-red-300">{deleteError}</div>
             )}
             <div className="flex justify-end gap-3 pt-1">
               <button onClick={() => { setDeleteTarget(null); setDeleteError(null) }} className="px-4 py-2 rounded-lg text-sm font-medium border border-border text-muted hover:bg-background transition-colors">
-                Cancelar
+                {t('common.cancel')}
               </button>
               <button onClick={handleDelete} disabled={deleting} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 transition-colors">
-                {deleting ? <><Loader2 className="h-4 w-4 animate-spin" /> Excluindo...</> : 'Excluir'}
+                {deleting ? <><Loader2 className="h-4 w-4 animate-spin" /> {t('crud.processing')}</> : t('crud.delete')}
               </button>
             </div>
           </div>

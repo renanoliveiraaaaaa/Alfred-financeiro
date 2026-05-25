@@ -287,21 +287,21 @@ export default function ReportsPage() {
   }), [categoryTotals, isDark])
 
   const barData = useMemo(() => ({
-    labels: ['Entradas', 'Saídas'],
+    labels: [t('reports.chart.revenues'), t('reports.chart.expenses')],
     datasets: [{
-      label: 'Valor (R$)',
+      label: t('reports.chart.valueLabel'),
       data: [totalRevenues, totalExpenses],
       backgroundColor: ['#10b981', '#ef4444'],
       borderRadius: 6,
       barPercentage: 0.5,
     }],
-  }), [totalRevenues, totalExpenses])
+  }), [totalRevenues, totalExpenses, t])
 
   const lineData = useMemo(() => ({
     labels: MONTH_LABELS,
     datasets: [
       {
-        label: 'Entradas',
+        label: t('reports.chart.revenues'),
         data: yearRevMonths,
         borderColor: '#b59410',
         backgroundColor: 'rgba(181, 148, 16, 0.08)',
@@ -314,7 +314,7 @@ export default function ReportsPage() {
         pointHoverRadius: 6,
       },
       {
-        label: 'Saídas',
+        label: t('reports.chart.expenses'),
         data: yearExpMonths,
         borderColor: isDark ? '#c0c0c0' : '#6b7280',
         backgroundColor: isDark ? 'rgba(192, 192, 192, 0.06)' : 'rgba(107, 114, 128, 0.06)',
@@ -327,7 +327,7 @@ export default function ReportsPage() {
         pointHoverRadius: 6,
       },
     ],
-  }), [yearRevMonths, yearExpMonths, isDark])
+  }), [yearRevMonths, yearExpMonths, isDark, t])
 
   const baseScales = useMemo(() => ({
     y: {
@@ -403,19 +403,19 @@ export default function ReportsPage() {
 
       {/* ── SEÇÃO MENSAL ── */}
       <section className="space-y-4">
-        <h2 className="text-xs font-semibold uppercase tracking-widest text-muted">Período corrente</h2>
+        <h2 className="text-xs font-semibold uppercase tracking-widest text-muted">{t('reports.currentPeriod')}</h2>
 
         <div className="grid gap-4 sm:grid-cols-3">
           <div className={`${cls.card} p-4`}>
-            <p className={cls.label}>Entradas</p>
+            <p className={cls.label}>{t('reports.revenues')}</p>
             <MaskedValue value={totalRevenues} className="mt-1 text-lg font-semibold text-emerald-600 dark:text-emerald-400" />
           </div>
           <div className={`${cls.card} p-4`}>
-            <p className={cls.label}>Saídas</p>
+            <p className={cls.label}>{t('reports.expenses')}</p>
             <MaskedValue value={totalExpenses} className="mt-1 text-lg font-semibold text-red-600 dark:text-red-400" />
           </div>
           <div className={`${cls.card} p-4`}>
-            <p className={cls.label}>Balanço</p>
+            <p className={cls.label}>{t('reports.balance')}</p>
             <MaskedValue value={totalRevenues - totalExpenses} className={`mt-1 text-lg font-semibold ${totalRevenues - totalExpenses >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`} />
           </div>
         </div>
@@ -423,7 +423,7 @@ export default function ReportsPage() {
         {!hasData ? (
           <div className={`${cls.card} p-12 text-center`}>
             <p className="text-muted text-sm">
-              Nenhuma movimentação registrada neste período, senhor.
+              {formatMessage(t('reports.emptyMonth'), { pronoun })}
             </p>
           </div>
         ) : (
@@ -452,8 +452,8 @@ export default function ReportsPage() {
       <section className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-xs font-semibold uppercase tracking-widest text-muted">Evolução do Patrimônio Anual</h2>
-            <p className="text-sm text-muted mt-0.5">O balanço do seu império este ano, {pronoun}</p>
+            <h2 className="text-xs font-semibold uppercase tracking-widest text-muted">{t('reports.yearEvolution')}</h2>
+            <p className="text-sm text-muted mt-0.5">{formatMessage(t('reports.yearSubtitle'), { pronoun })}</p>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -476,15 +476,15 @@ export default function ReportsPage() {
         {/* Year summary cards */}
         <div className="grid gap-4 sm:grid-cols-3">
           <div className={`${cls.card} p-4`}>
-            <p className={cls.label}>Entradas no ano</p>
+            <p className={cls.label}>{t('reports.yearRevenues')}</p>
             <MaskedValue value={yearTotalRev} className="mt-1 text-lg font-semibold text-emerald-600 dark:text-emerald-400" />
           </div>
           <div className={`${cls.card} p-4`}>
-            <p className={cls.label}>Saídas no ano</p>
+            <p className={cls.label}>{t('reports.yearExpenses')}</p>
             <MaskedValue value={yearTotalExp} className="mt-1 text-lg font-semibold text-red-600 dark:text-red-400" />
           </div>
           <div className={`${cls.card} p-4`}>
-            <p className={cls.label}>Balanço total</p>
+            <p className={cls.label}>{t('reports.yearBalance')}</p>
             <MaskedValue value={yearBalance} className={`mt-1 text-lg font-semibold ${yearBalance >= 0 ? 'text-brand' : 'text-red-600 dark:text-red-400'}`} />
           </div>
         </div>
@@ -493,7 +493,7 @@ export default function ReportsPage() {
         {!hasYearData ? (
           <div className={`${cls.card} p-12 text-center`}>
             <p className="text-muted text-sm">
-              Nenhuma movimentação encontrada em {year}, {pronoun}.
+              {formatMessage(t('reports.emptyYear'), { year, pronoun })}
             </p>
           </div>
         ) : (

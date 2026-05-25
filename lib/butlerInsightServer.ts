@@ -44,10 +44,6 @@ export type ButlerInsightData = {
 
 const COOKIE_ORG = 'alfred.activeOrganizationId'
 
-const MORDOMO_SYSTEM_INSTRUCTION = `Você é o Alfred, um mordomo de luxo e consultor financeiro sênior. Analise os dados financeiros do usuário abaixo. Seja formal, use 'Senhor' e forneça um insight curto, analítico e acionável. Diferencie se o contexto é Pessoal ou Business. Considere também o 'Dinheiro Livre' (estilo de vida) e possíveis aumentos em assinaturas para dar o conselho de hoje.
-
-Quando a secção «Suspeitas de contexto» listar despesas que parecem estar na organização errada (Pessoal vs Business), incorpore naturalmente no mesmo parágrafo uma observação acionável: por exemplo, se uma despesa em «Minhas Finanças» parecer custo operacional, diga algo como: «Senhor, notei que a despesa [nome curto] foi registrada em 'Minhas Finanças', mas parece ser um custo operacional. Deseja que eu a mova para a organização Business?» — adapte o nome da organização de destino ao que vier nos dados. Se o gasto parecer pessoal mas estiver no Business, inverta o sentido. Não prometa que moverá sozinho; o utilizador confirma na aplicação. Se não houver suspeitas, ignore este parágrafo extra.`
-
 const CACHE_TAG = 'alfred-butler-gemini'
 const CACHE_REVALIDATE_SECONDS = 86_400 // 24 h
 
@@ -67,9 +63,9 @@ type ButlerFinanceSnapshot = {
   suspeitasContexto: string
 }
 
-function formatCategoryLabel(raw: string): string {
+function formatCategoryLabel(raw: string, locale: Locale): string {
   const t = raw.trim()
-  if (!t) return 'Geral'
+  if (!t) return butlerT('butler.category.general', locale)
   return t
     .split(/[\s_]+/)
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
@@ -89,8 +85,8 @@ function appMessages(locale: Locale): Record<string, string> {
   return (locale === 'en' ? enApp : ptApp) as Record<string, string>
 }
 
-function formatBrl(n: number): string {
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(n)
+function formatMoney(n: number, locale: Locale): string {
+  return new Intl.NumberFormat(locale === 'en' ? 'en-US' : 'pt-BR', { style: 'currency', currency: 'BRL' }).format(n)
 }
 
 function buildMessage(params: {
@@ -116,27 +112,24 @@ function buildMessage(params: {
   return butlerFormat(`butler.fallback.down.${context}`, locale, { category: topCategory, pct: pctAbs })
 }
 
-function buildUserPrompt(snapshot: ButlerFinanceSnapshot): string {
-  return `Resumo financeiro do mês atual (${snapshot.mesReferencia}):
-
-• Contexto da organização ativa: ${snapshot.contextoOrganizacao}
-• Total de gastos (despesas) no mês: ${formatBrl(snapshot.totalGastosMes)}
-• Total de receitas no mês: ${formatBrl(snapshot.totalReceitasMes)}
-• Maior categoria de gasto: ${snapshot.maiorCategoriaGasto}
-• Saldo do mês (receitas − gastos): ${formatBrl(snapshot.saldoMes)}
-• Total de gastos no mês anterior (referência): ${formatBrl(snapshot.totalGastosMesAnterior)}
-• Dinheiro livre (estilo de vida): ${formatBrl(snapshot.dinheiroLivreEstiloVida)} — após essenciais/contas e compromisso mensal estimado das metas
-• Gasto em lazer + outros no mês: ${formatBrl(snapshot.gastoLazerOutrosMes)}
-• Limite de conforto (lazer vs. dinheiro livre): ${snapshot.limiteConforto}
-• Assinaturas (auditoria): ${snapshot.resumoAlertasAssinaturas}
-
-Suspeitas de contexto (despesas que podem pertencer à outra organização):
-${snapshot.suspeitasContexto}
-
-Redija um único parágrafo com o conselho ao Senhor, sem listas numeradas e sem repetir integralmente os números acima, salvo se for essencial à recomendação.`
+function buildUserPrompt(snapshot: ButlerFinanceSnapshot, locale: Locale): string {
+  return butlerFormat('butler.gemini.userPrompt', locale, {
+    month: snapshot.mesReferencia,
+    context: snapshot.contextoOrganizacao,
+    expenses: formatMoney(snapshot.totalGastosMes, locale),
+    revenues: formatMoney(snapshot.totalReceitasMes, locale),
+    topCategory: snapshot.maiorCategoriaGasto,
+    balance: formatMoney(snapshot.saldoMes, locale),
+    prevExpenses: formatMoney(snapshot.totalGastosMesAnterior, locale),
+    freeCash: formatMoney(snapshot.dinheiroLivreEstiloVida, locale),
+    lifestyleSpend: formatMoney(snapshot.gastoLazerOutrosMes, locale),
+    comfort: snapshot.limiteConforto,
+    subAlerts: snapshot.resumoAlertasAssinaturas,
+    suspicions: snapshot.suspeitasContexto,
+  })
 }
 
-async function generateButlerInsightWithGemini(snapshot: ButlerFinanceSnapshot): Promise<string> {
+async function generateButlerInsightWithGemini(snapshot: ButlerFinanceSnapshot, locale: Locale): Promise<string> {
   const apiKey = getGeminiApiKey()
   if (!apiKey) {
     throw new Error('Chave GOOGLE_GEMINI_API_KEY / GEMINI_API_KEY não configurada.')
@@ -145,14 +138,14 @@ async function generateButlerInsightWithGemini(snapshot: ButlerFinanceSnapshot):
   const genAI = new GoogleGenerativeAI(apiKey)
   const model = genAI.getGenerativeModel({
     model: getGeminiModelId(),
-    systemInstruction: MORDOMO_SYSTEM_INSTRUCTION,
+    systemInstruction: butlerT('butler.gemini.system', locale),
     generationConfig: {
       temperature: 0.35,
       maxOutputTokens: 512,
     },
   })
 
-  const result = await model.generateContent(buildUserPrompt(snapshot))
+  const result = await model.generateContent(buildUserPrompt(snapshot, locale))
   const text = result.response.text().trim()
   if (!text) {
     throw new Error('Resposta vazia do Gemini.')
@@ -165,11 +158,11 @@ async function generateButlerInsightWithGemini(snapshot: ButlerFinanceSnapshot):
  * Evita chamadas repetidas ao Gemini em refreshes da página; alteração material dos dados gera novo snapshot JSON e nova chave de cache.
  */
 const getCachedButlerGeminiMessage = unstable_cache(
-  async (userId: string, orgKey: string, monthKey: string, snapshotJson: string) => {
+  async (userId: string, orgKey: string, monthKey: string, locale: Locale, snapshotJson: string) => {
     const snapshot = JSON.parse(snapshotJson) as ButlerFinanceSnapshot
-    return generateButlerInsightWithGemini(snapshot)
+    return generateButlerInsightWithGemini(snapshot, locale)
   },
-  ['alfred-butler-gemini-v2'],
+  ['alfred-butler-gemini-v3'],
   { revalidate: CACHE_REVALIDATE_SECONDS, tags: [CACHE_TAG] },
 )
 
@@ -312,7 +305,7 @@ export async function getButlerInsightData(): Promise<ButlerInsightData | null> 
     for (const [cat, amt] of byCat) {
       if (amt > topAmt) {
         topAmt = amt
-        topCategory = formatCategoryLabel(cat)
+        topCategory = formatCategoryLabel(cat, locale)
       }
     }
     if (topAmt <= 0) topCategory = 'Geral'
@@ -472,6 +465,7 @@ export async function getButlerInsightData(): Promise<ButlerInsightData | null> 
         user.id,
         orgCacheKey,
         monthKey,
+        locale,
         snapshotJson,
       )
       return { context, message, trend, ...conflictsPayload }

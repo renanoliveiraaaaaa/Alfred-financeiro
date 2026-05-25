@@ -36,24 +36,24 @@ const BANK_LABELS: Record<string, string> = {
   generic: 'Banco genérico',
 }
 
-function StatusBadge({ status }: { status: string }) {
+function StatusBadge({ status, t }: { status: string; t: (key: string) => string }) {
   if (status === 'completed') {
     return (
       <span className="inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300">
-        <CheckCircle2 className="h-3 w-3" /> Concluído
+        <CheckCircle2 className="h-3 w-3" /> {t('importHistory.status.completed')}
       </span>
     )
   }
   if (status === 'failed') {
     return (
       <span className="inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-300">
-        <XCircle className="h-3 w-3" /> Falhou
+        <XCircle className="h-3 w-3" /> {t('importHistory.status.failed')}
       </span>
     )
   }
   return (
     <span className="inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300">
-      <Loader2 className="h-3 w-3 animate-spin" /> Processando
+      <Loader2 className="h-3 w-3 animate-spin" /> {t('importHistory.status.processing')}
     </span>
   )
 }
@@ -107,7 +107,7 @@ export default function ImportHistoryPage() {
       if (sessionDel) throw new Error(sessionDel.message)
 
       setSessions((prev) => prev.filter((s) => s.id !== sessionId))
-      toast(`Importação desfeita com sucesso, ${pronoun}.`, 'success')
+      toast(formatMessage(t('importHistory.undoSuccess'), { pronoun }), 'success')
     } catch (err: unknown) {
       toastError(isConnectionError(err) ? CONNECTION_ERROR_MSG : (err instanceof Error ? err.message : t('importHistory.error.undo')))
     } finally {
@@ -174,7 +174,7 @@ export default function ImportHistoryPage() {
                       <p className="text-sm font-semibold text-main truncate max-w-[260px]" title={session.file_name}>
                         {session.file_name}
                       </p>
-                      <StatusBadge status={session.status} />
+                      <StatusBadge status={session.status} t={t} />
                     </div>
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
                       <span className="flex items-center gap-1">
@@ -234,7 +234,11 @@ export default function ImportHistoryPage() {
         title={t('importHistory.undo')}
         description={
           undoTarget
-            ? `Isso excluirá permanentemente todas as ${undoTarget.imported_transactions} transações importadas do arquivo "${undoTarget.file_name}". A operação não pode ser desfeita, ${pronoun}.`
+            ? formatMessage(t('importHistory.undoDesc'), {
+                count: undoTarget.imported_transactions,
+                file: undoTarget.file_name,
+                pronoun,
+              })
             : ''
         }
         loading={undoing}

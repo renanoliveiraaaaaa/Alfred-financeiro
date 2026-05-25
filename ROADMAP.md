@@ -37,16 +37,20 @@ Use este arquivo como base para criar issues no GitHub depois (`gh issue create`
 | 27 | **i18n páginas secundárias** | settings, goals, subs, income, projections; headers+empty em import-history, reports, credit-cards |
 | 28 | **i18n Butler server-side** | fallback, conforto, alertas assinaturas via cookie `alfred_locale` |
 | 29 | **i18n profile + import OFX** | profile completo; import-statement OFX; import-history stats; Butler suspeitas |
+| 30 | **i18n corpo reports/cards/projections** | gráficos, modais, Butler Gemini prompt por locale |
 
 ---
 
 ## 🔴 Alta prioridade (criar issues)
 
-### Issue: i18n páginas secundárias *(parcial — #27)*
+### Issue: i18n páginas secundárias *(quase concluído — #27–#30)*
 - **Labels:** `i18n`, `enhancement`
 - **Escopo:** `settings`, `goals`, `subscriptions`, `income-sources`, `projections`, `import-statement`, `import-history`, `profile`, `credit-cards` (UI além de categorias)
 - **Critério:** zero strings PT hardcoded com locale EN ativo
-- **Pendente:** corpo de reports/credit-cards/projections; prompt Gemini Butler
+- **Pendente:** export CSV reports (colunas PT); página detalhe cartão `/credit-cards/[id]`
+
+### Issue: i18n Butler server-side *(feito — #28–#30)*
+- **Escopo:** `butlerInsightServer.ts` — fallback, conforto, suspeitas, prompt Gemini por `alfred_locale`
 
 ---
 
