@@ -15,7 +15,7 @@ async function requireAdmin(): Promise<
     error: authError,
   } = await supabase.auth.getUser()
   if (authError || !user) {
-    return { ok: false, error: 'Sessão inválida ou expirada.' }
+    return { ok: false, error: 'admin.error.sessionInvalid' }
   }
 
   const { data: me, error: profileError } = await supabase
@@ -25,7 +25,7 @@ async function requireAdmin(): Promise<
     .maybeSingle()
 
   if (profileError || me?.role !== 'admin') {
-    return { ok: false, error: 'Sem permissão de administrador.' }
+    return { ok: false, error: 'admin.error.noPermission' }
   }
 
   return { ok: true, supabase, adminId: user.id }
@@ -47,7 +47,7 @@ export async function updateUserRole(
   if (userId === ctx.adminId && newRole === 'user') {
     return {
       ok: false,
-      error: 'Não é possível rebaixar o seu próprio utilizador de administrador.',
+      error: 'admin.error.cannotDemoteSelf',
     }
   }
 
@@ -67,7 +67,7 @@ export async function deleteUserProfile(userId: string): Promise<AdminActionResu
   if (!ctx.ok) return { ok: false, error: ctx.error }
 
   if (userId === ctx.adminId) {
-    return { ok: false, error: 'Não é possível excluir o seu próprio perfil.' }
+    return { ok: false, error: 'admin.error.cannotDeleteSelf' }
   }
 
   const { error } = await ctx.supabase.from('profiles').delete().eq('id', userId)

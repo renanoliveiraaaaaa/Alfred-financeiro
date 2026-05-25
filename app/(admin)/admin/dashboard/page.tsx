@@ -2,6 +2,8 @@ import { createSupabaseServerClient } from '@/lib/supabaseServer'
 import AdminActivitySection, {
   type DailySignup,
 } from '@/components/admin/AdminActivitySection'
+import { getServerLocale, serverFormat, serverT } from '@/lib/serverI18n'
+import type { Locale } from '@/lib/i18n'
 import {
   Users,
   UserPlus,
@@ -17,7 +19,11 @@ import {
 const PREMIUM_MRR_UNIT_BRL = 19.9
 const BUSINESS_MRR_UNIT_BRL = 49.9
 
-function buildLast30DaysBuckets(): DailySignup[] {
+function localeTag(locale: Locale) {
+  return locale === 'en' ? 'en-US' : 'pt-BR'
+}
+
+function buildLast30DaysBuckets(locale: Locale): DailySignup[] {
   const out: DailySignup[] = []
   const today = new Date()
   today.setUTCHours(0, 0, 0, 0)
@@ -27,7 +33,7 @@ function buildLast30DaysBuckets(): DailySignup[] {
     const dateKey = d.toISOString().slice(0, 10)
     out.push({
       dateKey,
-      label: new Intl.DateTimeFormat('pt-BR', { dateStyle: 'medium' }).format(d),
+      label: new Intl.DateTimeFormat(localeTag(locale), { dateStyle: 'medium' }).format(d),
       count: 0,
     })
   }
@@ -48,6 +54,7 @@ function fillDailySignups(
 }
 
 export default async function AdminDashboardPage() {
+  const locale = await getServerLocale()
   const supabase = createSupabaseServerClient()
 
   const weekAgo = new Date()
@@ -57,7 +64,7 @@ export default async function AdminDashboardPage() {
   thirtyAgo.setUTCDate(thirtyAgo.getUTCDate() - 30)
   const thirtyAgoIso = thirtyAgo.toISOString()
 
-  const buckets = buildLast30DaysBuckets()
+  const buckets = buildLast30DaysBuckets(locale)
 
   const [
     { count: totalUsers, error: errTotal },
@@ -126,63 +133,67 @@ export default async function AdminDashboardPage() {
         : importCount !== null
           ? importCount
           : null
+
   const dataVolumeSubtitle =
     attachmentCount !== null && importCount !== null
-      ? `${attachmentCount} faturas anexadas · ${importCount} importações`
+      ? serverFormat('admin.kpi.dataVolume.both', locale, {
+          attachments: attachmentCount,
+          imports: importCount,
+        })
       : attachmentCount !== null
-        ? `${attachmentCount} faturas anexadas (importações indisponíveis)`
+        ? serverFormat('admin.kpi.dataVolume.attachmentsOnly', locale, { attachments: attachmentCount })
         : importCount !== null
-          ? `${importCount} importações (anexos indisponíveis)`
-          : 'Anexos em despesas + sessões de importação'
+          ? serverFormat('admin.kpi.dataVolume.importsOnly', locale, { imports: importCount })
+          : serverT('admin.kpi.dataVolume.fallback', locale)
 
   const kpisUsers = [
     {
-      title: 'Total de Usuários',
+      title: serverT('admin.kpi.totalUsers.title', locale),
       value: errTotal ? '—' : (totalUsers ?? '—'),
-      subtitle: 'Registos em profiles',
+      subtitle: serverT('admin.kpi.totalUsers.subtitle', locale),
       Icon: Users,
     },
     {
-      title: 'Novos esta semana',
+      title: serverT('admin.kpi.newWeek.title', locale),
       value: errWeek ? '—' : (newThisWeek ?? '—'),
-      subtitle: 'Criados nos últimos 7 dias',
+      subtitle: serverT('admin.kpi.newWeek.subtitle', locale),
       Icon: UserPlus,
     },
     {
-      title: 'Administradores',
+      title: serverT('admin.kpi.admins.title', locale),
       value: errAdmin ? '—' : (adminCount ?? '—'),
-      subtitle: 'Contas com role admin',
+      subtitle: serverT('admin.kpi.admins.subtitle', locale),
       Icon: ShieldCheck,
     },
     {
-      title: 'Taxa de adoção',
+      title: serverT('admin.kpi.adoption.title', locale),
       value: errNamed || errTotal ? '—' : adoptionPct != null ? `${adoptionPct}%` : '—',
-      subtitle: 'Perfis com nome preenchido / total',
+      subtitle: serverT('admin.kpi.adoption.subtitle', locale),
       Icon: Percent,
     },
   ]
 
   const kpisTelemetry = [
     {
-      title: 'Despesas cadastradas',
+      title: serverT('admin.kpi.expenses.title', locale),
       value: errExp ? '—' : (totalExpenses ?? '—'),
-      subtitle: 'Linhas na tabela expenses (todos os utilizadores)',
+      subtitle: serverT('admin.kpi.expenses.subtitle', locale),
       Icon: Receipt,
     },
     {
-      title: 'Receitas cadastradas',
+      title: serverT('admin.kpi.revenues.title', locale),
       value: errRev ? '—' : (totalRevenues ?? '—'),
-      subtitle: 'Linhas na tabela revenues (todos os utilizadores)',
+      subtitle: serverT('admin.kpi.revenues.subtitle', locale),
       Icon: Wallet,
     },
     {
-      title: 'Cartões de crédito',
+      title: serverT('admin.kpi.cards.title', locale),
       value: errCards ? '—' : (totalCards ?? '—'),
-      subtitle: 'Registos em credit_cards',
+      subtitle: serverT('admin.kpi.cards.subtitle', locale),
       Icon: CreditCard,
     },
     {
-      title: 'Volume de dados (estim.)',
+      title: serverT('admin.kpi.dataVolume.title', locale),
       value: dataVolumeTotal ?? '—',
       subtitle: dataVolumeSubtitle,
       Icon: Paperclip,
@@ -195,19 +206,26 @@ export default async function AdminDashboardPage() {
   const nPremium = errPrem ? 0 : (premiumPaying ?? 0)
   const nBusiness = errBus ? 0 : (businessPaying ?? 0)
   const mrrEstimate = nPremium * PREMIUM_MRR_UNIT_BRL + nBusiness * BUSINESS_MRR_UNIT_BRL
-  const mrrFormatted = new Intl.NumberFormat('pt-BR', {
+  const mrrFormatted = new Intl.NumberFormat(localeTag(locale), {
     style: 'currency',
     currency: 'BRL',
   }).format(mrrEstimate)
 
+  const premiumPrice = PREMIUM_MRR_UNIT_BRL.toLocaleString(localeTag(locale), {
+    style: 'currency',
+    currency: 'BRL',
+  })
+  const businessPrice = BUSINESS_MRR_UNIT_BRL.toLocaleString(localeTag(locale), {
+    style: 'currency',
+    currency: 'BRL',
+  })
+
   return (
     <div className="p-4 lg:p-8">
       <h1 className="text-xl font-semibold tracking-tight text-slate-900 lg:text-2xl">
-        Visão Geral do Sistema
+        {serverT('admin.dashboard.title', locale)}
       </h1>
-      <p className="mt-1 text-sm text-slate-500">
-        Indicadores globais de todas as contas (sem filtro de organização do app cliente).
-      </p>
+      <p className="mt-1 text-sm text-slate-500">{serverT('admin.dashboard.subtitle', locale)}</p>
 
       <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {kpisUsers.map(({ title, value, subtitle, Icon }) => (
@@ -229,10 +247,10 @@ export default async function AdminDashboardPage() {
         ))}
       </div>
 
-      <h2 className="mt-10 text-base font-semibold text-slate-800">Uso do sistema</h2>
-      <p className="mt-1 text-sm text-slate-500">
-        Totais globais de transações, cartões e ficheiros referenciados na base de dados.
-      </p>
+      <h2 className="mt-10 text-base font-semibold text-slate-800">
+        {serverT('admin.dashboard.usageTitle', locale)}
+      </h2>
+      <p className="mt-1 text-sm text-slate-500">{serverT('admin.dashboard.usageSubtitle', locale)}</p>
 
       <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {kpisTelemetry.map(({ title, value, subtitle, Icon }) => (
@@ -254,14 +272,14 @@ export default async function AdminDashboardPage() {
         ))}
       </div>
 
-      <h2 className="mt-10 text-base font-semibold text-slate-800">Monetização (estimativa)</h2>
-      <p className="mt-1 text-sm text-slate-500">
-        MRR fictício: soma sobre todos os perfis com plano premium ou business em trial ou ativo.
-      </p>
+      <h2 className="mt-10 text-base font-semibold text-slate-800">
+        {serverT('admin.dashboard.monetizationTitle', locale)}
+      </h2>
+      <p className="mt-1 text-sm text-slate-500">{serverT('admin.dashboard.monetizationSubtitle', locale)}</p>
       <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <div className="rounded-xl border border-emerald-200/80 bg-emerald-50/40 p-5 shadow-sm ring-1 ring-emerald-900/5">
           <div className="flex items-start justify-between gap-3">
-            <p className="text-sm font-medium text-emerald-900">Receita estimada (MRR)</p>
+            <p className="text-sm font-medium text-emerald-900">{serverT('admin.kpi.mrr.title', locale)}</p>
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-800">
               <Banknote className="h-4 w-4" strokeWidth={2} aria-hidden />
             </span>
@@ -270,8 +288,12 @@ export default async function AdminDashboardPage() {
             {mrrFormatted}
           </p>
           <p className="mt-1 text-xs text-emerald-800/90">
-            {nPremium} premium × {PREMIUM_MRR_UNIT_BRL.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} + {nBusiness}{' '}
-            business × {BUSINESS_MRR_UNIT_BRL.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+            {serverFormat('admin.kpi.mrr.breakdown', locale, {
+              premiumCount: nPremium,
+              premiumPrice,
+              businessCount: nBusiness,
+              businessPrice,
+            })}
           </p>
         </div>
       </div>
@@ -279,9 +301,7 @@ export default async function AdminDashboardPage() {
       {!errLatest && !errProf30 ? (
         <AdminActivitySection dailySignups={dailySignups} latestUsers={latestUsers} />
       ) : (
-        <p className="mt-8 text-sm text-slate-500">
-          Não foi possível carregar a secção de atividade recente.
-        </p>
+        <p className="mt-8 text-sm text-slate-500">{serverT('admin.dashboard.activityLoadError', locale)}</p>
       )}
     </div>
   )

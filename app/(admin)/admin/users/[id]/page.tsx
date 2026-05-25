@@ -4,10 +4,16 @@ import { createSupabaseServerClient } from '@/lib/supabaseServer'
 import RoleBadge from '@/components/admin/RoleBadge'
 import AdminEmptyState from '@/components/admin/AdminEmptyState'
 import AdminUserActions from '@/components/admin/AdminUserActions'
+import { getServerLocale, serverFormat, serverT } from '@/lib/serverI18n'
+import type { Locale } from '@/lib/i18n'
 
-function formatDatePt(iso: string) {
+function localeTag(locale: Locale) {
+  return locale === 'en' ? 'en-US' : 'pt-BR'
+}
+
+function formatDate(iso: string, locale: Locale) {
   try {
-    return new Intl.DateTimeFormat('pt-BR', {
+    return new Intl.DateTimeFormat(localeTag(locale), {
       dateStyle: 'long',
       timeStyle: 'short',
     }).format(new Date(iso))
@@ -16,29 +22,29 @@ function formatDatePt(iso: string) {
   }
 }
 
-function planLabel(plan: string | null | undefined) {
+function planLabel(plan: string | null | undefined, locale: Locale) {
   switch (plan) {
     case 'premium':
-      return 'Premium'
+      return serverT('admin.plan.premium', locale)
     case 'business':
-      return 'Business'
+      return serverT('admin.plan.business', locale)
     case 'free':
     default:
-      return 'Free'
+      return serverT('admin.plan.free', locale)
   }
 }
 
-function subStatusLabel(s: string | null | undefined) {
+function subStatusLabel(s: string | null | undefined, locale: Locale) {
   switch (s) {
     case 'active':
-      return 'Ativa'
+      return serverT('admin.subStatus.active', locale)
     case 'past_due':
-      return 'Em atraso'
+      return serverT('admin.subStatus.pastDue', locale)
     case 'canceled':
-      return 'Cancelada'
+      return serverT('admin.subStatus.canceled', locale)
     case 'trial':
     default:
-      return 'Trial'
+      return serverT('admin.subStatus.trial', locale)
   }
 }
 
@@ -47,6 +53,7 @@ type PageProps = {
 }
 
 export default async function AdminUserDetailPage({ params }: PageProps) {
+  const locale = await getServerLocale()
   const supabase = createSupabaseServerClient()
   const {
     data: { user: viewer },
@@ -79,7 +86,7 @@ export default async function AdminUserDetailPage({ params }: PageProps) {
       className="inline-flex items-center gap-2 text-sm font-medium text-slate-600 transition-colors hover:text-slate-900"
     >
       <ArrowLeft className="h-4 w-4 shrink-0" aria-hidden />
-      Voltar à lista
+      {serverT('admin.userDetail.back', locale)}
     </Link>
   )
 
@@ -87,7 +94,7 @@ export default async function AdminUserDetailPage({ params }: PageProps) {
     return (
       <div className="p-4 lg:p-8">
         <div className="mb-6">{back}</div>
-        <AdminEmptyState title="Erro ao carregar" description={error.message} />
+        <AdminEmptyState title={serverT('admin.userDetail.loadError', locale)} description={error.message} />
       </div>
     )
   }
@@ -97,8 +104,8 @@ export default async function AdminUserDetailPage({ params }: PageProps) {
       <div className="p-4 lg:p-8">
         <div className="mb-6">{back}</div>
         <AdminEmptyState
-          title="Usuário não encontrado"
-          description="Não existe nenhum perfil com este identificador, ou não tem permissão para o ver."
+          title={serverT('admin.userDetail.notFound', locale)}
+          description={serverT('admin.userDetail.notFoundDesc', locale)}
         />
       </div>
     )
@@ -121,50 +128,56 @@ export default async function AdminUserDetailPage({ params }: PageProps) {
                 <h1 className="text-xl font-semibold tracking-tight text-slate-900 lg:text-2xl">
                   {displayName}
                 </h1>
-                <p className="mt-1 text-sm text-slate-500">Detalhe do cliente</p>
+                <p className="mt-1 text-sm text-slate-500">{serverT('admin.userDetail.clientDetail', locale)}</p>
               </div>
               <RoleBadge role={role} />
             </div>
 
             <dl className="mt-6 space-y-4 text-sm">
               <div>
-                <dt className="font-medium text-slate-500">Nome</dt>
+                <dt className="font-medium text-slate-500">{serverT('admin.userDetail.fieldName', locale)}</dt>
                 <dd className="mt-0.5 text-slate-900">{displayName}</dd>
               </div>
               <div>
-                <dt className="font-medium text-slate-500">ID</dt>
+                <dt className="font-medium text-slate-500">{serverT('admin.userDetail.fieldId', locale)}</dt>
                 <dd className="mt-0.5 break-all font-mono text-xs text-slate-800">{profile.id}</dd>
               </div>
               <div>
-                <dt className="font-medium text-slate-500">Data de cadastro</dt>
-                <dd className="mt-0.5 tabular-nums text-slate-900">{formatDatePt(profile.created_at)}</dd>
+                <dt className="font-medium text-slate-500">{serverT('admin.userDetail.fieldCreated', locale)}</dt>
+                <dd className="mt-0.5 tabular-nums text-slate-900">{formatDate(profile.created_at, locale)}</dd>
               </div>
               <div>
-                <dt className="font-medium text-slate-500">Plano atual</dt>
+                <dt className="font-medium text-slate-500">{serverT('admin.userDetail.fieldPlan', locale)}</dt>
                 <dd className="mt-0.5 text-slate-900">
-                  {planLabel(subPlan)} — {subStatusLabel(subStatus)}
+                  {planLabel(subPlan, locale)} — {subStatusLabel(subStatus, locale)}
                 </dd>
               </div>
             </dl>
           </div>
 
           <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm ring-1 ring-slate-900/5">
-            <h2 className="text-lg font-semibold text-slate-900">Organizações e negócios</h2>
-            <p className="mt-1 text-sm text-slate-500">
-              Organizações em que este utilizador é membro (inclui a conta pessoal automática).
-            </p>
+            <h2 className="text-lg font-semibold text-slate-900">{serverT('admin.userDetail.orgsTitle', locale)}</h2>
+            <p className="mt-1 text-sm text-slate-500">{serverT('admin.userDetail.orgsSubtitle', locale)}</p>
 
             {!memberRows?.length ? (
-              <p className="mt-4 text-sm text-slate-500">Nenhuma organização encontrada.</p>
+              <p className="mt-4 text-sm text-slate-500">{serverT('admin.userDetail.orgsEmpty', locale)}</p>
             ) : (
               <div className="mt-4 overflow-x-auto rounded-lg border border-slate-100">
                 <table className="w-full min-w-[520px] text-left text-sm">
                   <thead>
                     <tr className="border-b border-slate-100 bg-slate-50/80">
-                      <th className="px-3 py-2 font-semibold text-slate-700">Nome</th>
-                      <th className="px-3 py-2 font-semibold text-slate-700">Slug</th>
-                      <th className="px-3 py-2 font-semibold text-slate-700">Tipo</th>
-                      <th className="px-3 py-2 font-semibold text-slate-700">Papel</th>
+                      <th className="px-3 py-2 font-semibold text-slate-700">
+                        {serverT('admin.userDetail.orgColName', locale)}
+                      </th>
+                      <th className="px-3 py-2 font-semibold text-slate-700">
+                        {serverT('admin.userDetail.orgColSlug', locale)}
+                      </th>
+                      <th className="px-3 py-2 font-semibold text-slate-700">
+                        {serverT('admin.userDetail.orgColType', locale)}
+                      </th>
+                      <th className="px-3 py-2 font-semibold text-slate-700">
+                        {serverT('admin.userDetail.orgColRole', locale)}
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -174,12 +187,15 @@ export default async function AdminUserDetailPage({ params }: PageProps) {
                         return (
                           <tr key={row.organization_id}>
                             <td colSpan={4} className="px-3 py-2 text-slate-500">
-                              Organização {row.organization_id} (sem dados)
+                              {serverFormat('admin.userDetail.orgMissing', locale, { id: row.organization_id })}
                             </td>
                           </tr>
                         )
                       }
-                      const typeLabel = org.type === 'personal' ? 'Pessoal' : 'Empresa (business)'
+                      const typeLabel =
+                        org.type === 'personal'
+                          ? serverT('admin.userDetail.orgTypePersonal', locale)
+                          : serverT('admin.userDetail.orgTypeBusiness', locale)
                       return (
                         <tr key={row.organization_id}>
                           <td className="px-3 py-2 font-medium text-slate-900">{org.name}</td>

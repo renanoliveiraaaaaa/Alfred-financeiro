@@ -44,6 +44,7 @@ Use este arquivo como base para criar issues no GitHub depois (`gh issue create`
 | 34 | **i18n CardStatementImportModal** | modal fatura PDF completo; `import.card.*`; `Intl` para mês/moeda |
 | 35 | **i18n landing/auth** | `LandingAuthForm`, `LandingHero`, boot/erros em `app/page.tsx`; `authErrorI18n` |
 | 36 | **i18n metadata layouts** | `generateMetadata` + `serverI18n` (cookie `alfred_locale`); chaves `seo.*` |
+| 37 | **i18n painel admin** | sidebar, dashboard KPIs, users, actions; `admin-*.json`; erros server |
 
 ---
 
@@ -51,7 +52,7 @@ Use este arquivo como base para criar issues no GitHub depois (`gh issue create`
 
 ### Issue: i18n resíduos *(parcial — ver varredura abaixo)*
 - **Pendente P0:** *(landing/auth concluído — #35)*
-- **Pendente P4:** painel admin (~80 strings)
+- **Pendente P4:** *(painel admin concluído — #37)*
 - **Pendente P5:** *(metadata layouts concluído — #36)*
 - **Feito (#32):** boundaries, org ativa, ImportReview, bulk delete, fallbacks genéricos
 - **Feito (#34):** `CardStatementImportModal` (~50 strings, meses/moeda via `Intl`)

@@ -29,6 +29,8 @@ import ptCategories from "@/locales/categories-pt.json";
 import enCategories from "@/locales/categories-en.json";
 import ptApp from "@/locales/app-pt.json";
 import enApp from "@/locales/app-en.json";
+import ptAdmin from "@/locales/admin-pt.json";
+import enAdmin from "@/locales/admin-en.json";
 
 export const LOCALE_STORAGE_KEY = "alfred_locale";
 
@@ -47,6 +49,7 @@ const MESSAGES: Record<Locale, Record<string, string>> = {
     ...ptCategories,
     ...ptList,
     ...ptSecondary,
+    ...ptAdmin,
   },
   en: {
     ...enBase,
@@ -62,6 +65,7 @@ const MESSAGES: Record<Locale, Record<string, string>> = {
     ...enCategories,
     ...enList,
     ...enSecondary,
+    ...enAdmin,
   },
 };
 

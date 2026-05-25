@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Shield, Trash2 } from 'lucide-react'
 import { ConfirmDangerModal } from '@/components/ConfirmDangerModal'
 import { useToast } from '@/lib/toastContext'
+import { useI18n } from '@/lib/i18n'
 import { deleteUserProfile, updateUserRole } from '@/lib/actions/admin'
 
 type Props = {
@@ -13,9 +14,14 @@ type Props = {
   viewerId: string
 }
 
+function resolveAdminError(message: string, t: (key: string) => string) {
+  return t(message) !== message ? t(message) : message
+}
+
 export default function AdminUserActions({ targetUserId, initialRole, viewerId }: Props) {
   const router = useRouter()
   const { toast, toastError } = useToast()
+  const { t } = useI18n()
   const [role, setRole] = useState<'user' | 'admin'>(initialRole)
   useEffect(() => {
     setRole(initialRole)
@@ -31,11 +37,11 @@ export default function AdminUserActions({ targetUserId, initialRole, viewerId }
     startRoleTransition(async () => {
       const res = await updateUserRole(targetUserId, role)
       if (!res.ok) {
-        toastError(res.error)
+        toastError(resolveAdminError(res.error, t))
         setRole(initialRole)
         return
       }
-      toast('Nível de acesso atualizado.', 'success')
+      toast(t('admin.actions.roleUpdated'), 'success')
       router.refresh()
     })
   }
@@ -44,11 +50,11 @@ export default function AdminUserActions({ targetUserId, initialRole, viewerId }
     startDeleteTransition(async () => {
       const res = await deleteUserProfile(targetUserId)
       if (!res.ok) {
-        toastError(res.error)
+        toastError(resolveAdminError(res.error, t))
         return
       }
       setDeleteOpen(false)
-      toast('Registo do perfil removido.', 'success')
+      toast(t('admin.actions.profileRemoved'), 'success')
       router.push('/admin/users')
       router.refresh()
     })
@@ -59,13 +65,13 @@ export default function AdminUserActions({ targetUserId, initialRole, viewerId }
       <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm ring-1 ring-slate-900/5 lg:max-w-sm">
         <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
           <Shield className="h-4 w-4 text-slate-600" aria-hidden />
-          <h2 className="text-sm font-semibold text-slate-900">Ações de gestão</h2>
+          <h2 className="text-sm font-semibold text-slate-900">{t('admin.actions.title')}</h2>
         </div>
 
         <div className="mt-4 space-y-4">
           <div>
             <label htmlFor="admin-role-select" className="block text-xs font-medium text-slate-500">
-              Alterar nível de acesso
+              {t('admin.actions.changeRole')}
             </label>
             <div className="mt-1.5 flex flex-col gap-2 sm:flex-row sm:items-center">
               <select
@@ -75,8 +81,8 @@ export default function AdminUserActions({ targetUserId, initialRole, viewerId }
                 onChange={(e) => setRole(e.target.value as 'user' | 'admin')}
                 className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                <option value="user">Utilizador (user)</option>
-                <option value="admin">Administrador (admin)</option>
+                <option value="user">{t('admin.actions.roleUser')}</option>
+                <option value="admin">{t('admin.actions.roleAdmin')}</option>
               </select>
               <button
                 type="button"
@@ -84,18 +90,16 @@ export default function AdminUserActions({ targetUserId, initialRole, viewerId }
                 onClick={applyRole}
                 className="shrink-0 rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {pendingRole ? 'A guardar…' : 'Aplicar'}
+                {pendingRole ? t('admin.actions.saving') : t('admin.actions.apply')}
               </button>
             </div>
             {isSelf ? (
-              <p className="mt-2 text-xs text-slate-500">
-                Não pode alterar o papel da sua própria conta aqui.
-              </p>
+              <p className="mt-2 text-xs text-slate-500">{t('admin.actions.cannotChangeSelf')}</p>
             ) : null}
           </div>
 
           <div className="border-t border-slate-100 pt-4">
-            <p className="text-xs font-medium text-red-700">Zona de perigo</p>
+            <p className="text-xs font-medium text-red-700">{t('admin.actions.dangerZone')}</p>
             <button
               type="button"
               disabled={isSelf}
@@ -103,15 +107,12 @@ export default function AdminUserActions({ targetUserId, initialRole, viewerId }
               className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm font-medium text-red-700 transition-colors hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Trash2 className="h-4 w-4 shrink-0" aria-hidden />
-              Excluir registo
+              {t('admin.actions.deleteRecord')}
             </button>
             {isSelf ? (
-              <p className="mt-2 text-xs text-slate-500">Não pode excluir o seu próprio perfil.</p>
+              <p className="mt-2 text-xs text-slate-500">{t('admin.actions.cannotDeleteSelf')}</p>
             ) : (
-              <p className="mt-2 text-xs text-slate-500">
-                Remove a linha em <code className="text-slate-600">profiles</code>. A sessão em
-                autenticação pode persistir até remover o utilizador no Supabase Auth.
-              </p>
+              <p className="mt-2 text-xs text-slate-500">{t('admin.actions.deleteHint')}</p>
             )}
           </div>
         </div>
@@ -119,9 +120,9 @@ export default function AdminUserActions({ targetUserId, initialRole, viewerId }
 
       <ConfirmDangerModal
         open={deleteOpen}
-        title="Excluir perfil do cliente"
-        description="O registo será removido da tabela de perfis. Esta ação não apaga automaticamente a conta de login (auth). Confirma que deseja continuar?"
-        confirmLabel="Sim, excluir registo"
+        title={t('admin.actions.deleteTitle')}
+        description={t('admin.actions.deleteDesc')}
+        confirmLabel={t('admin.actions.deleteConfirm')}
         loading={pendingDelete}
         onConfirm={confirmDelete}
         onCancel={() => setDeleteOpen(false)}
