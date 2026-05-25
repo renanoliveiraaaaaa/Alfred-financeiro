@@ -67,7 +67,7 @@ export default function LandingAuthForm({
       >
         <div className="mb-8 text-center">
           <p className="text-xs font-medium uppercase tracking-[0.25em] text-emerald-400/80">
-            Cofre digital
+            {t('auth.digitalVault')}
           </p>
           <p className="mt-2 text-sm text-slate-400">
             {lastUser && !showEmailForm
@@ -76,7 +76,7 @@ export default function LandingAuthForm({
                 ? t('auth.almostThere')
                 : isLogin
                   ? t('auth.welcomeBack')
-                  : 'Permita-me preparar sua conta.'}
+                  : t('auth.prepareAccount')}
           </p>
         </div>
 
@@ -90,7 +90,7 @@ export default function LandingAuthForm({
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            Acessar
+            {t('auth.login')}
           </button>
           <button
             type="button"
@@ -101,7 +101,7 @@ export default function LandingAuthForm({
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            Solicitar convite
+            {t('auth.register')}
           </button>
         </div>
 
@@ -126,7 +126,7 @@ export default function LandingAuthForm({
                 onClick={onGoToLoginAfterSignup}
                 className="mt-1 w-full rounded-xl bg-gradient-to-br from-emerald-600 via-emerald-800 to-emerald-950 py-2.5 text-sm font-medium text-white shadow-lg shadow-emerald-950/40 transition-all hover:brightness-110 active:scale-[0.99]"
               >
-                Ir para o login
+                {t('auth.goToLogin')}
               </button>
             </div>
           )}
@@ -143,7 +143,7 @@ export default function LandingAuthForm({
                 </div>
                 <div className="min-w-0 flex-1">
                   <label className="mb-0.5 block text-xs font-medium uppercase tracking-wider text-slate-500">
-                    E-mail
+                    {t('auth.email')}
                   </label>
                   <p className="truncate text-sm font-medium text-slate-100">{maskEmail(lastUser.email)}</p>
                 </div>
@@ -152,14 +152,14 @@ export default function LandingAuthForm({
                   onClick={onTrocarConta}
                   className="shrink-0 text-xs font-medium text-emerald-400 transition-colors hover:text-emerald-300"
                 >
-                  Trocar de conta
+                  {t('auth.switchAccount')}
                 </button>
               </div>
             </div>
           ) : !signupEmailPending ? (
             <div className="transition-all">
               <label htmlFor="email" className="mb-1 block text-xs font-medium uppercase tracking-wider text-slate-500">
-                E-mail
+                {t('auth.email')}
               </label>
               <input
                 id="email"
@@ -168,7 +168,7 @@ export default function LandingAuthForm({
                 autoComplete="username"
                 required
                 className={inputClass}
-                placeholder="seu@email.com"
+                placeholder={t('auth.emailPlaceholder')}
                 value={email}
                 onChange={(e) => onEmailChange(e.target.value)}
               />
@@ -178,7 +178,7 @@ export default function LandingAuthForm({
           {!signupEmailPending && (
             <div className="transition-all">
               <label htmlFor="password" className="mb-1 block text-xs font-medium uppercase tracking-wider text-slate-500">
-                {lastUser && !showEmailForm ? 'Digite sua senha' : 'Senha'}
+                {lastUser && !showEmailForm ? t('auth.enterPassword') : t('auth.password')}
               </label>
               <input
                 id="password"
@@ -197,7 +197,7 @@ export default function LandingAuthForm({
           {!isLogin && !signupEmailPending && (
             <div className="transition-all">
               <label htmlFor="gender" className="mb-1 block text-xs font-medium uppercase tracking-wider text-slate-500">
-                Gênero <span className="text-red-400">*</span>
+                {t('auth.gender')} <span className="text-red-400">*</span>
               </label>
               <select
                 id="gender"
@@ -207,9 +207,9 @@ export default function LandingAuthForm({
                 onChange={(e) => onGenderChange(e.target.value as 'M' | 'F' | 'O')}
                 className={selectClass}
               >
-                <option value="O">Prefiro não informar / Outro</option>
-                <option value="M">Masculino</option>
-                <option value="F">Feminino</option>
+                <option value="O">{t('auth.genderOther')}</option>
+                <option value="M">{t('auth.genderMale')}</option>
+                <option value="F">{t('auth.genderFemale')}</option>
               </select>
             </div>
           )}
@@ -221,7 +221,7 @@ export default function LandingAuthForm({
                 disabled={loading}
                 className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-emerald-600 via-emerald-800 to-emerald-950 py-3.5 text-sm font-semibold text-white shadow-xl shadow-emerald-950/50 transition-all hover:brightness-110 active:scale-[0.99] disabled:opacity-50"
               >
-                {loading ? 'Um momento…' : isLogin ? 'Entrar na Mansão' : 'Solicitar acesso'}
+                {loading ? t('auth.loading') : isLogin ? t('auth.signInMansion') : t('auth.requestAccess')}
               </button>
             </div>
           )}

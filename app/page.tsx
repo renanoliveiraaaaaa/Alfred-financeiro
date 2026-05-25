@@ -6,8 +6,11 @@ import { createSupabaseClient } from '@/lib/supabaseClient'
 import { getLastUser, setLastUser, clearLastUser, type LastUser } from '@/lib/lastUserStorage'
 import LandingHero from '@/components/landing/LandingHero'
 import LandingAuthForm from '@/components/landing/LandingAuthForm'
+import { useI18n } from '@/lib/i18n'
+import { resolveAuthErrorKey } from '@/lib/authErrorI18n'
 
 export default function Home() {
+  const { t } = useI18n()
   const [booting, setBooting] = useState(true)
   const [isLogin, setIsLogin] = useState(true)
   const [email, setEmail] = useState('')
@@ -69,7 +72,7 @@ export default function Home() {
 
     try {
       if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-        throw new Error('Variáveis NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY não configuradas.')
+        throw new Error('auth.error.env')
       }
 
       if (isLogin) {
@@ -108,18 +111,8 @@ export default function Home() {
         }
       }
     } catch (err: unknown) {
-      console.error('Erro de autenticação Supabase:', err)
-      const msg =
-        err && typeof err === 'object' && 'message' in err && typeof (err as { message: unknown }).message === 'string'
-          ? (err as { message: string }).message
-          : 'Falha na autenticação. Tente novamente.'
-      if (msg === 'Failed to fetch') {
-        setError(
-          'Não foi possível estabelecer conexão com o servidor. Verifique suas credenciais de ambiente e a disponibilidade do serviço.',
-        )
-      } else {
-        setError(msg)
-      }
+      console.error('Auth error:', err)
+      setError(resolveAuthErrorKey(err))
     } finally {
       setLoading(false)
     }
@@ -161,7 +154,7 @@ export default function Home() {
           className="h-10 w-10 animate-spin rounded-full border-2 border-emerald-500/30 border-t-emerald-400"
           aria-hidden
         />
-        <span className="sr-only">A carregar…</span>
+        <span className="sr-only">{t('auth.bootLoading')}</span>
       </div>
     )
   }

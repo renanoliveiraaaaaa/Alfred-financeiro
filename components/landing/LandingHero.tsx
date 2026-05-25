@@ -1,12 +1,21 @@
-import Image from 'next/image'
+'use client'
 
-const BULLETS = [
-  { title: 'Inteligência Artificial Gemini', hint: 'Insights sob medida para o seu patrimônio.' },
-  { title: 'Multi-Tenant (CPF e CNPJ)', hint: 'Patrimônio pessoal e empresarial, com elegância.' },
-  { title: 'Análise de Estilo de Vida', hint: 'Orçamento e hábitos alinhados ao que você valoriza.' },
-] as const
+import { useMemo } from 'react'
+import Image from 'next/image'
+import { useI18n } from '@/lib/i18n'
 
 export default function LandingHero() {
+  const { t } = useI18n()
+
+  const bullets = useMemo(
+    () => [
+      { title: t('auth.hero.bullet1.title'), hint: t('auth.hero.bullet1.hint') },
+      { title: t('auth.hero.bullet2.title'), hint: t('auth.hero.bullet2.hint') },
+      { title: t('auth.hero.bullet3.title'), hint: t('auth.hero.bullet3.hint') },
+    ],
+    [t],
+  )
+
   return (
     <div className="relative flex min-h-[42vh] flex-col justify-center overflow-hidden px-8 py-12 lg:min-h-0 lg:flex-1 lg:px-12 lg:py-16">
       <div
@@ -24,7 +33,7 @@ export default function LandingHero() {
             <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-lg ring-1 ring-white/10">
               <Image
                 src="/apple-icon.svg"
-                alt="Alfred Financeiro"
+                alt={t('auth.hero.brand')}
                 width={64}
                 height={64}
                 className="h-full w-full object-contain p-2"
@@ -33,19 +42,19 @@ export default function LandingHero() {
             </div>
             <div>
               <p className="text-xs font-medium uppercase tracking-[0.2em] text-emerald-400/90">
-                Alfred Financeiro
+                {t('auth.hero.brand')}
               </p>
-              <p className="text-sm text-slate-400">Mordomo Financeiro de Luxo</p>
+              <p className="text-sm text-slate-400">{t('auth.hero.tagline')}</p>
             </div>
           </div>
 
           <h1 className="text-balance text-3xl font-semibold leading-tight tracking-tight text-white sm:text-4xl lg:text-[2.15rem] xl:text-4xl">
-            O controle patrimonial que o seu estilo de vida exige
+            {t('auth.hero.headline')}
           </h1>
         </div>
 
         <ul className="space-y-5">
-          {BULLETS.map((item, i) => (
+          {bullets.map((item, i) => (
             <li
               key={item.title}
               className="animate-stagger-up"
