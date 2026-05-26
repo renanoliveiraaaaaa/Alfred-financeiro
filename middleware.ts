@@ -12,6 +12,25 @@ function redirectWithSession(request: NextRequest, toPath: string, from: NextRes
 
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname
+  const code = request.nextUrl.searchParams.get('code')
+  const tokenHash = request.nextUrl.searchParams.get('token_hash')
+  const type = request.nextUrl.searchParams.get('type')
+
+  // Supabase envia ?code= para Site URL (/) se redirectTo não estiver autorizado
+  if (code && (pathname === '/' || pathname === '/auth/reset-password')) {
+    const next = request.nextUrl.searchParams.get('next') ?? '/auth/reset-password'
+    const dest = new URL('/auth/callback', request.url)
+    dest.searchParams.set('code', code)
+    dest.searchParams.set('next', next)
+    return NextResponse.redirect(dest)
+  }
+
+  if (tokenHash && type === 'recovery' && pathname === '/') {
+    const dest = new URL('/auth/reset-password', request.url)
+    dest.searchParams.set('token_hash', tokenHash)
+    dest.searchParams.set('type', type)
+    return NextResponse.redirect(dest)
+  }
 
   // Defesa extra: assets e API não devem passar por Supabase (matcher já exclui na maioria dos casos)
   if (
@@ -106,8 +125,8 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // Logado na raiz: admins vão ao painel; demais ao dashboard do cliente
-  if (pathname === '/' && user) {
+  // Logado na raiz (sem ?code= — recovery é redirecionado acima)
+  if (pathname === '/' && user && !code) {
     const { data: homeProfile } = await supabase
       .from('profiles')
       .select('role')
