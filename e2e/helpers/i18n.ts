@@ -1,0 +1,21 @@
+/** Seletores resilientes a PT/EN (cookie `alfred_locale`). */
+export const labels = {
+  loginTab: /Acessar|Sign in/i,
+  registerTab: /Solicitar convite|Request invite/i,
+  signInButton: /Entrar na Mansão|Enter the Mansion/i,
+  requestAccessButton: /Solicitar acesso|Request access/i,
+  forgotLink: /Esqueceu sua senha|Forgot your password/i,
+  forgotSubtitle: /Indique o e-mail|Enter your account email/i,
+  forgotSubmit: /Enviar link|Send link/i,
+  forgotBack: /Voltar ao login|Back to (sign in|login)/i,
+  forgotSentTitle: /Verifique seu e-mail|Check your email/i,
+  goToLogin: /Ir para o login|Go to sign in/i,
+  invalidCredentials: /E-mail ou senha inválidos|Invalid email or password|Falha na autenticação|Authentication failed/i,
+  resetNewPasswordTitle: /Nova senha|New password/i,
+  inviteLoginCta: /Ir para login|Go to login/i,
+  inviteLoginTitle: /Inicie sessão para aceitar|Sign in to accept/i,
+  resetInvalidTitle: /Link inválido ou expirado|Invalid or expired link/i,
+  teamSection: /Equipa|Equipe|Team|Organização|Organization/i,
+  passwordField: '#password',
+  emailField: '#email',
+} as const
