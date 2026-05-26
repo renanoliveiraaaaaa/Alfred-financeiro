@@ -13,6 +13,7 @@ const typesSrc = readFileSync(typesPath, 'utf8')
 /** table → colunas que devem existir no bloco Row da tabela */
 const REQUIRED = {
   profiles: [
+    'created_at',
     'locale',
     'custom_theme',
     'role',
