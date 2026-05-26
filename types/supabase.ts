@@ -270,7 +270,7 @@ export interface Database {
         Row: {
           id: string
           user_id: string
-          organization_id: string | null
+          organization_id: string
           file_name: string
           file_url: string | null
           bank: string
@@ -285,7 +285,7 @@ export interface Database {
         Insert: {
           id?: string
           user_id: string
-          organization_id?: string | null
+          organization_id?: string
           file_name: string
           file_url?: string | null
           bank: string
@@ -300,7 +300,7 @@ export interface Database {
         Update: {
           id?: string
           user_id?: string
-          organization_id?: string | null
+          organization_id?: string
           file_name?: string
           file_url?: string | null
           bank?: string
@@ -317,21 +317,21 @@ export interface Database {
         Row: {
           id: string
           user_id: string
-          organization_id: string | null
+          organization_id: string
           name: string
           monthly_budget?: number | null
         }
         Insert: {
           id?: string
           user_id: string
-          organization_id?: string | null
+          organization_id?: string
           name: string
           monthly_budget?: number | null
         }
         Update: {
           id?: string
           user_id?: string
-          organization_id?: string | null
+          organization_id?: string
           name?: string
           monthly_budget?: number | null
         }

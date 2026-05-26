@@ -53,6 +53,8 @@ Use este arquivo como base para criar issues no GitHub depois (`gh issue create`
 | 43 | **i18n API parse-statement + auth client** | `/api/parse-statement` → `import.api.*`; auth em settings/projections/expense edit |
 | 44 | **org scope import_sessions + categories** | `organization_id` em confirmImport, settings e seedCategories |
 | 45 | **PWA/SW estável em dev** | SW desativado em dev; fallback sempre Response; favicon + cache v3 |
+| 46 | **docs/AUDITORIA_RLS.md** | Modelo multi-org, políticas, gaps colaboração, checklist migrations |
+| 47 | **RLS categories/import_sessions** | NOT NULL + políticas user_id + membership (`20260522140000`) |
 
 ---
 
@@ -114,7 +116,7 @@ Use este arquivo como base para criar issues no GitHub depois (`gh issue create`
 - Paginação server-side quando volume > 1000 linhas
 - Cache offline seletivo (metas, último mês) no PWA
 - Testes E2E Playwright (auth, import, CRUD)
-- Documentar `docs/AUDITORIA_RLS.md` com modelo multi-org
+- ~~Documentar `docs/AUDITORIA_RLS.md` com modelo multi-org~~ *(feito — #46)*
 
 ---
 
