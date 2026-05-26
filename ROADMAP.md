@@ -56,6 +56,11 @@ Use este arquivo como base para criar issues no GitHub depois (`gh issue create`
 | 46 | **docs/AUDITORIA_RLS.md** | Modelo multi-org, políticas, gaps colaboração, checklist migrations |
 | 47 | **RLS categories/import_sessions** | NOT NULL + políticas user_id + membership (`20260522140000`) |
 | 48 | **Colaboração org business** | RLS partilhado business, convites e equipa em settings |
+| 49 | **Esqueceu senha + reset** | `/auth/callback`, `/auth/reset-password`, middleware `/?code=` |
+| 50 | **Página `/privacidade`** | Footer deixou de apontar para `/docs/*.md` (404) |
+| 51 | **Admin `profiles.created_at`** | Migration `20260522160000` |
+| 52 | **Testes E2E Playwright** | Smoke + auth UI; login/CRUD com `E2E_TEST_*` opcional; CI job `e2e` |
+| 53 | **Stripe + checkout `/expired`** | Webhook, planos Premium/Business, portal em settings; `docs/STRIPE.md` |
 
 ---
 
@@ -87,10 +92,10 @@ Use este arquivo como base para criar issues no GitHub depois (`gh issue create`
 
 ## 🟡 Média prioridade
 
-### Issue: Stripe + upgrade pós-trial
+### Issue: Stripe + upgrade pós-trial *(feito — #53)*
 - **Labels:** `product`, `billing`
 - **Escopo:** webhook, planos, liberar `/expired` com checkout
-- **Depende:** definição de preços
+- **Doc:** `docs/STRIPE.md` — criar produtos/preços no Stripe e env vars
 
 ### Issue: Colaboração org business (RLS + convites) *(feito — #48)*
 - **Labels:** `product`, `security`, `database`
@@ -113,10 +118,10 @@ Use este arquivo como base para criar issues no GitHub depois (`gh issue create`
 
 ## 🟢 Backlog
 
-- Admin dashboard com MRR real (Stripe)
+- ~~Admin dashboard com MRR real (Stripe)~~ *(parcial — #53: MRR com preços reais; valor vem de contagem × tarifa)*
 - Paginação server-side quando volume > 1000 linhas
 - Cache offline seletivo (metas, último mês) no PWA
-- Testes E2E Playwright (auth, import, CRUD)
+- ~~Testes E2E Playwright (auth, import, CRUD)~~ *(feito — #52; import PDF pendente)*
 - ~~Documentar `docs/AUDITORIA_RLS.md` com modelo multi-org~~ *(feito — #46)*
 
 ---

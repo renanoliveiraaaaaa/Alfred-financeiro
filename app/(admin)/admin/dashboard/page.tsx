@@ -16,8 +16,8 @@ import {
   Banknote,
 } from 'lucide-react'
 
-const PREMIUM_MRR_UNIT_BRL = 19.9
-const BUSINESS_MRR_UNIT_BRL = 49.9
+const PREMIUM_MRR_UNIT_BRL = 39.9
+const BUSINESS_MRR_UNIT_BRL = 89.9
 
 function localeTag(locale: Locale) {
   return locale === 'en' ? 'en-US' : 'pt-BR'
@@ -111,12 +111,12 @@ export default async function AdminDashboardPage() {
       .from('profiles')
       .select('*', { count: 'exact', head: true })
       .eq('subscription_plan', 'premium')
-      .in('subscription_status', ['active', 'trial']),
+      .eq('subscription_status', 'active'),
     supabase
       .from('profiles')
       .select('*', { count: 'exact', head: true })
       .eq('subscription_plan', 'business')
-      .in('subscription_status', ['active', 'trial']),
+      .eq('subscription_status', 'active'),
   ])
 
   const total = totalUsers ?? 0

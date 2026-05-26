@@ -36,6 +36,9 @@ export interface Database {
           trial_ends_at?: string | null
           subscription_status: 'trial' | 'active' | 'past_due' | 'canceled'
           subscription_plan: 'free' | 'premium' | 'business'
+          subscription_billing_cycle?: 'monthly' | 'yearly' | null
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
           created_at: string
         }
         Insert: {
@@ -53,6 +56,9 @@ export interface Database {
           trial_ends_at?: string | null
           subscription_status?: 'trial' | 'active' | 'past_due' | 'canceled'
           subscription_plan?: 'free' | 'premium' | 'business'
+          subscription_billing_cycle?: 'monthly' | 'yearly' | null
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
           created_at?: string
         }
         Update: {
@@ -70,6 +76,9 @@ export interface Database {
           trial_ends_at?: string | null
           subscription_status?: 'trial' | 'active' | 'past_due' | 'canceled'
           subscription_plan?: 'free' | 'premium' | 'business'
+          subscription_billing_cycle?: 'monthly' | 'yearly' | null
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
           created_at?: string
         }
       }

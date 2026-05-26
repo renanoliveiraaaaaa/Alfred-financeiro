@@ -11,6 +11,7 @@ import { useI18n } from '@/lib/i18n'
 import { formatMessage } from '@/lib/i18nFormat'
 import { resolveActiveOrganizationIdForClient } from '@/lib/activeOrganizationClient'
 import OrgTeamSection from '@/components/settings/OrgTeamSection'
+import BillingManageSection from '@/components/billing/BillingManageSection'
 import { Pencil, Loader2, X } from 'lucide-react'
 import type { Database } from '@/types/supabase'
 
@@ -36,6 +37,8 @@ export default function SettingsPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>(null)
+  const [subscriptionPlan, setSubscriptionPlan] = useState<string | null>(null)
 
   const clearMessages = () => { setError(null); setSuccess(null) }
 
@@ -70,6 +73,25 @@ export default function SettingsPage() {
   }, [supabase, t, toastError])
 
   useEffect(() => { fetchCategories() }, [fetchCategories])
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      const { data: auth } = await supabase.auth.getUser()
+      if (!auth.user || cancelled) return
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('subscription_status, subscription_plan')
+        .eq('id', auth.user.id)
+        .maybeSingle()
+      if (cancelled) return
+      setSubscriptionStatus(profile?.subscription_status ?? null)
+      setSubscriptionPlan(profile?.subscription_plan ?? null)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [supabase])
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -190,6 +212,11 @@ export default function SettingsPage() {
           <button onClick={() => setSuccess(null)} className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-300 ml-4">✕</button>
         </div>
       )}
+
+      <BillingManageSection
+        subscriptionStatus={subscriptionStatus}
+        subscriptionPlan={subscriptionPlan}
+      />
 
       <OrgTeamSection />
 

@@ -10,6 +10,7 @@ import LiquidBackground from '@/components/LiquidBackground'
 import { createSupabaseClient } from '@/lib/supabaseClient'
 import { useUserPreferences } from '@/lib/userPreferencesContext'
 import { usePrivacy } from '@/lib/privacyContext'
+import { isAccessBlocked } from '@/lib/billing/access'
 
 export default function AppLayoutClient({
   children,
@@ -36,17 +37,11 @@ export default function AppLayoutClient({
 
       const { data: profile } = await supabase
         .from('profiles')
-        .select('plan_status, trial_ends_at, hide_balance')
+        .select('plan_status, trial_ends_at, hide_balance, subscription_status, role')
         .eq('id', user.id)
         .maybeSingle()
 
-      const planStatus = profile?.plan_status ?? 'trial'
-      const trialEndsAt = profile?.trial_ends_at ? new Date(profile.trial_ends_at) : null
-
-      const now = new Date()
-      const isExpired = planStatus === 'trial' && trialEndsAt && now > trialEndsAt
-
-      if (isExpired && !isExpiredPage) {
+      if (isAccessBlocked(profile) && !isExpiredPage) {
         router.replace('/expired')
         return
       }

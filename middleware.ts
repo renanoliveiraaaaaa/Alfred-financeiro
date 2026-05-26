@@ -1,5 +1,6 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { isAccessBlocked } from '@/lib/billing/access'
 
 /** Copia cookies definidos na resposta `from` (ex.: refresh Supabase) para redirecionamentos. */
 function redirectWithSession(request: NextRequest, toPath: string, from: NextResponse) {
@@ -109,17 +110,11 @@ export async function middleware(request: NextRequest) {
     if (!pathname.startsWith('/expired')) {
       const { data: trialProfile } = await supabase
         .from('profiles')
-        .select('plan_status, trial_ends_at')
+        .select('plan_status, trial_ends_at, subscription_status, role')
         .eq('id', user.id)
         .maybeSingle()
 
-      const now = new Date()
-      const isExpired =
-        trialProfile?.plan_status === 'trial' &&
-        trialProfile?.trial_ends_at != null &&
-        now > new Date(trialProfile.trial_ends_at)
-
-      if (isExpired) {
+      if (isAccessBlocked(trialProfile)) {
         return redirectWithSession(request, '/expired', response)
       }
     }

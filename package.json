@@ -12,7 +12,10 @@
     "validate:types": "node scripts/validate-supabase-types.mjs",
     "gen:types": "supabase gen types typescript --local > types/supabase.ts",
     "gen:types:remote": "supabase gen types typescript --project-id clqvhuzgyekogyoyxvtp > types/supabase.ts",
-    "gen:icons": "node scripts/generate-apple-icon.js"
+    "gen:icons": "node scripts/generate-apple-icon.js",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:report": "playwright show-report"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
@@ -29,9 +32,11 @@
     "react": "^18.3.1",
     "react-chartjs-2": "^5.3.1",
     "react-dom": "^18.3.1",
+    "stripe": "^22.1.1",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
     "@types/node": "^20.11.0",
     "@types/react": "^18.2.48",
     "@types/react-dom": "^18.2.18",
