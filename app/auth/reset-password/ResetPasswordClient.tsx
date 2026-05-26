@@ -11,14 +11,19 @@ import { resolveAuthErrorKey } from '@/lib/authErrorI18n'
 const inputClass =
   'w-full border-0 border-b border-slate-500/40 bg-transparent px-0 py-3 text-sm text-slate-100 placeholder:text-slate-500 focus:border-emerald-400 focus:outline-none focus:ring-0 transition-colors rounded-none'
 
-export default function ResetPasswordClient() {
+type Props = {
+  initialAuthenticated: boolean
+  urlError: string | null
+}
+
+export default function ResetPasswordClient({ initialAuthenticated, urlError }: Props) {
   const { t } = useI18n()
   const router = useRouter()
   const searchParams = useSearchParams()
   const supabase = createSupabaseClient()
 
   const [ready, setReady] = useState(false)
-  const [allowed, setAllowed] = useState(false)
+  const [allowed, setAllowed] = useState(initialAuthenticated)
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [loading, setLoading] = useState(false)
@@ -34,14 +39,23 @@ export default function ResetPasswordClient() {
 
     const { data: sub } = supabase.auth.onAuthStateChange((event) => {
       if (cancelled) return
-      if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') {
+      if (
+        event === 'PASSWORD_RECOVERY' ||
+        event === 'SIGNED_IN' ||
+        event === 'INITIAL_SESSION'
+      ) {
         allow()
       }
     })
 
     ;(async () => {
-      const urlError = searchParams.get('error')
-      if (urlError) {
+      const queryError = urlError ?? searchParams.get('error')
+      if (queryError) {
+        setReady(true)
+        return
+      }
+
+      if (initialAuthenticated) {
         setReady(true)
         return
       }
@@ -72,10 +86,15 @@ export default function ResetPasswordClient() {
         }
       }
 
-      const { data: sessionData } = await supabase.auth.getSession()
-      if (sessionData.session?.user) {
-        allow()
-      }
+      const { data: userData } = await supabase.auth.getUser()
+      if (userData.user) allow()
+
+      // Aguarda evento PASSWORD_RECOVERY após parse do hash
+      await new Promise((r) => setTimeout(r, 500))
+      if (cancelled) return
+
+      const { data: retryUser } = await supabase.auth.getUser()
+      if (retryUser.user) allow()
 
       if (!cancelled) setReady(true)
     })()
@@ -84,7 +103,7 @@ export default function ResetPasswordClient() {
       cancelled = true
       sub.subscription.unsubscribe()
     }
-  }, [supabase, searchParams])
+  }, [supabase, searchParams, urlError, initialAuthenticated])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -113,6 +132,13 @@ export default function ResetPasswordClient() {
     }
   }
 
+  const invalidMessage = (() => {
+    const code = urlError ?? searchParams.get('error')
+    if (code === 'exchange') return t('auth.reset.errorExchange')
+    if (code === 'missing_code') return t('auth.reset.errorMissingCode')
+    return t('auth.reset.invalidBody')
+  })()
+
   if (!ready) {
     return (
       <div className="flex min-h-[100dvh] items-center justify-center bg-slate-950 text-slate-400">
@@ -125,7 +151,7 @@ export default function ResetPasswordClient() {
     return (
       <div className="flex min-h-[100dvh] flex-col items-center justify-center gap-4 bg-slate-950 px-6 text-center">
         <h1 className="text-xl font-semibold text-slate-100">{t('auth.reset.invalidTitle')}</h1>
-        <p className="text-sm text-slate-400 max-w-md">{t('auth.reset.invalidBody')}</p>
+        <p className="text-sm text-slate-400 max-w-md">{invalidMessage}</p>
         <Link href="/" className="text-sm text-emerald-400 hover:text-emerald-300">
           {t('auth.reset.backLogin')}
         </Link>

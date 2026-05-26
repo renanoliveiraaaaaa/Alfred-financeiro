@@ -93,9 +93,8 @@ export default function Home() {
           return
         }
         const appUrl = (process.env.NEXT_PUBLIC_APP_URL || window.location.origin).replace(/\/$/, '')
-        const nextPath = encodeURIComponent('/auth/reset-password')
         const { error: resetErr } = await supabase.auth.resetPasswordForEmail(targetEmail, {
-          redirectTo: `${appUrl}/auth/callback?next=${nextPath}`,
+          redirectTo: `${appUrl}/auth/callback`,
         })
         if (resetErr) throw resetErr
         setForgotSent(true)

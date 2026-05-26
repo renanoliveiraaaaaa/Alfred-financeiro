@@ -1,5 +1,6 @@
 import { Suspense } from 'react'
 import { Loader2 } from 'lucide-react'
+import { createSupabaseServerClient } from '@/lib/supabaseServer'
 import ResetPasswordClient from './ResetPasswordClient'
 
 function LoadingFallback() {
@@ -10,10 +11,22 @@ function LoadingFallback() {
   )
 }
 
-export default function ResetPasswordPage() {
+type Props = {
+  searchParams: { error?: string; token_hash?: string; type?: string; code?: string }
+}
+
+export default async function ResetPasswordPage({ searchParams }: Props) {
+  const supabase = createSupabaseServerClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
   return (
     <Suspense fallback={<LoadingFallback />}>
-      <ResetPasswordClient />
+      <ResetPasswordClient
+        initialAuthenticated={!!user}
+        urlError={searchParams.error ?? null}
+      />
     </Suspense>
   )
 }

@@ -28,6 +28,8 @@
   "auth.reset.backLogin": "Voltar ao login",
   "auth.reset.invalidTitle": "Link inválido ou expirado",
   "auth.reset.invalidBody": "Solicite um novo link na página de login.",
+  "auth.reset.errorExchange": "Não foi possível validar o link. Confirme que /auth/callback está nas Redirect URLs do Supabase e solicite um novo e-mail.",
+  "auth.reset.errorMissingCode": "Link incompleto. Solicite um novo e-mail de redefinição.",
   "auth.reset.doneTitle": "Senha atualizada",
   "auth.reset.doneBody": "A sua senha foi alterada com sucesso.",
   "auth.reset.redirecting": "A redirecionar para o login…",

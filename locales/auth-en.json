@@ -28,6 +28,8 @@
   "auth.reset.backLogin": "Back to login",
   "auth.reset.invalidTitle": "Invalid or expired link",
   "auth.reset.invalidBody": "Request a new link from the login page.",
+  "auth.reset.errorExchange": "Could not validate the link. Ensure /auth/callback is in Supabase Redirect URLs and request a new email.",
+  "auth.reset.errorMissingCode": "Incomplete link. Request a new reset email.",
   "auth.reset.doneTitle": "Password updated",
   "auth.reset.doneBody": "Your password was changed successfully.",
   "auth.reset.redirecting": "Redirecting to login…",
