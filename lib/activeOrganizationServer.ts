@@ -47,3 +47,51 @@ export async function resolveActiveOrganizationId(): Promise<
 
   return { ok: true, organizationId: personal.id }
 }
+
+export type OrganizationRole = 'owner' | 'admin' | 'member'
+
+export type ActiveOrganizationContext = {
+  organizationId: string
+  type: 'personal' | 'business'
+  role: OrganizationRole
+}
+
+/** Org ativa + tipo + role (server actions / equipa business). */
+export async function resolveActiveOrganizationContext(): Promise<
+  { ok: true; context: ActiveOrganizationContext } | { ok: false; error: string }
+> {
+  const orgRes = await resolveActiveOrganizationId()
+  if (!orgRes.ok) return orgRes
+
+  const supabase = createSupabaseServerClient()
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser()
+  if (authError || !user) return { ok: false, error: 'crud.error.auth' }
+
+  const { data, error } = await supabase
+    .from('organization_members')
+    .select('role, organizations(type)')
+    .eq('organization_id', orgRes.organizationId)
+    .eq('profile_id', user.id)
+    .maybeSingle()
+
+  if (error || !data?.role) {
+    return { ok: false, error: 'error.orgNotFound' }
+  }
+
+  const orgType = (data as { organizations?: { type?: 'personal' | 'business' } }).organizations?.type
+  if (!orgType) {
+    return { ok: false, error: 'error.orgNotFound' }
+  }
+
+  return {
+    ok: true,
+    context: {
+      organizationId: orgRes.organizationId,
+      type: orgType,
+      role: data.role as OrganizationRole,
+    },
+  }
+}

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createSupabaseClient } from '@/lib/supabaseClient'
 import { getLastUser, setLastUser, clearLastUser, type LastUser } from '@/lib/lastUserStorage'
 import LandingHero from '@/components/landing/LandingHero'
@@ -9,8 +9,15 @@ import LandingAuthForm from '@/components/landing/LandingAuthForm'
 import { useI18n } from '@/lib/i18n'
 import { resolveAuthErrorKey } from '@/lib/authErrorI18n'
 
+function safeRedirectPath(path: string | null): string | null {
+  if (!path || !path.startsWith('/') || path.startsWith('//')) return null
+  return path
+}
+
 export default function Home() {
   const { t } = useI18n()
+  const searchParams = useSearchParams()
+  const redirectParam = searchParams.get('redirect')
   const [booting, setBooting] = useState(true)
   const [isLogin, setIsLogin] = useState(true)
   const [email, setEmail] = useState('')
@@ -40,7 +47,9 @@ export default function Home() {
           .maybeSingle()
         if (cancelled) return
         const isAdmin = profile?.role === 'admin'
-        router.replace(isAdmin ? '/admin/dashboard' : '/dashboard')
+        const afterLogin =
+          safeRedirectPath(redirectParam) ?? (isAdmin ? '/admin/dashboard' : '/dashboard')
+        router.replace(afterLogin)
         router.refresh()
         return
       }
@@ -50,7 +59,7 @@ export default function Home() {
     return () => {
       cancelled = true
     }
-  }, [supabase, router])
+  }, [supabase, router, redirectParam])
 
   useEffect(() => {
     const stored = getLastUser()
@@ -92,7 +101,9 @@ export default function Home() {
           })
 
           const isAdmin = profile?.role === 'admin'
-          router.push(isAdmin ? '/admin/dashboard' : '/dashboard')
+          const afterLogin =
+            safeRedirectPath(redirectParam) ?? (isAdmin ? '/admin/dashboard' : '/dashboard')
+          router.push(afterLogin)
           router.refresh()
         }
       } else {
@@ -103,7 +114,8 @@ export default function Home() {
         })
         if (error) throw error
         if (data.session) {
-          router.push('/dashboard')
+          const target = safeRedirectPath(redirectParam) ?? '/dashboard'
+          router.push(target)
           router.refresh()
         } else if (data.user) {
           setSignupEmailPending(true)

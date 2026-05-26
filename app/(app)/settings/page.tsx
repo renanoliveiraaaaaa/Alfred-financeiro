@@ -10,6 +10,7 @@ import { getGreetingSuffix } from '@/lib/greeting'
 import { useI18n } from '@/lib/i18n'
 import { formatMessage } from '@/lib/i18nFormat'
 import { resolveActiveOrganizationIdForClient } from '@/lib/activeOrganizationClient'
+import OrgTeamSection from '@/components/settings/OrgTeamSection'
 import { Pencil, Loader2, X } from 'lucide-react'
 import type { Database } from '@/types/supabase'
 
@@ -50,7 +51,6 @@ export default function SettingsPage() {
     let query = supabase
       .from('categories')
       .select('*')
-      .eq('user_id', userData.user.id)
       .order('name', { ascending: true })
 
     if (orgId) {
@@ -190,6 +190,8 @@ export default function SettingsPage() {
           <button onClick={() => setSuccess(null)} className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-300 ml-4">✕</button>
         </div>
       )}
+
+      <OrgTeamSection />
 
       {/* Card Categorias */}
       <div className="rounded-xl border border-border bg-surface shadow-sm glass-card">

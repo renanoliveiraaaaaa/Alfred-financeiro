@@ -55,6 +55,7 @@ Use este arquivo como base para criar issues no GitHub depois (`gh issue create`
 | 45 | **PWA/SW estável em dev** | SW desativado em dev; fallback sempre Response; favicon + cache v3 |
 | 46 | **docs/AUDITORIA_RLS.md** | Modelo multi-org, políticas, gaps colaboração, checklist migrations |
 | 47 | **RLS categories/import_sessions** | NOT NULL + políticas user_id + membership (`20260522140000`) |
+| 48 | **Colaboração org business** | RLS partilhado business, convites e equipa em settings |
 
 ---
 
@@ -91,10 +92,10 @@ Use este arquivo como base para criar issues no GitHub depois (`gh issue create`
 - **Escopo:** webhook, planos, liberar `/expired` com checkout
 - **Depende:** definição de preços
 
-### Issue: Colaboração org business (RLS + convites)
+### Issue: Colaboração org business (RLS + convites) *(feito — #48)*
 - **Labels:** `product`, `security`, `database`
 - **Escopo:** membros veem dados da org; fluxo de convite por e-mail
-- **Nota:** RLS atual exige `user_id = auth.uid()`
+- **Nota:** org `personal` mantém isolamento por `user_id`
 
 ### Issue: PDF relatório Butler (Gemini ou server-side)
 - **Labels:** `feature`

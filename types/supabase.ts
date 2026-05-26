@@ -152,6 +152,41 @@ export interface Database {
           created_at?: string
         }
       }
+      organization_invites: {
+        Row: {
+          id: string
+          organization_id: string
+          email: string
+          role: 'admin' | 'member'
+          token: string
+          invited_by: string
+          expires_at: string
+          accepted_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          email: string
+          role: 'admin' | 'member'
+          token?: string
+          invited_by: string
+          expires_at?: string
+          accepted_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          email?: string
+          role?: 'admin' | 'member'
+          token?: string
+          invited_by?: string
+          expires_at?: string
+          accepted_at?: string | null
+          created_at?: string
+        }
+      }
       users: {
         Row: {
           id: string
@@ -519,6 +554,12 @@ export interface Database {
           actual_revenues?: number
           created_at?: string
         }
+      }
+    }
+    Functions: {
+      accept_organization_invite: {
+        Args: { p_token: string }
+        Returns: string
       }
     }
   }

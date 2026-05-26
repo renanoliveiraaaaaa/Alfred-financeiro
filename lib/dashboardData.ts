@@ -96,7 +96,6 @@ export async function fetchDashboardData(
       supabase
         .from('subscriptions')
         .select('*')
-        .eq('user_id', user.id)
         .eq('organization_id', activeOrgId)
         .eq('active', true)
         .order('next_billing_date', { ascending: true }),
@@ -107,7 +106,7 @@ export async function fetchDashboardData(
         .eq('active', true)
         .lte('next_receipt_date', today)
         .order('next_receipt_date', { ascending: true }),
-      supabase.from('goals').select('*').eq('user_id', user.id).eq('organization_id', activeOrgId),
+      supabase.from('goals').select('*').eq('organization_id', activeOrgId),
       supabase
         .from('expenses')
         .select('*')

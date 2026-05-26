@@ -31,8 +31,8 @@ export async function seedCategoriesIfEmpty(supabase: ReturnType<typeof createSu
   const { data: existing } = await supabase
     .from('categories')
     .select('id')
-    .eq('user_id', userId)
     .eq('organization_id', organizationId)
+    .limit(1)
 
   if (existing && existing.length > 0) return false
 

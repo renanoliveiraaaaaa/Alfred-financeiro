@@ -210,10 +210,10 @@ export async function getButlerInsightData(): Promise<ButlerInsightData | null> 
       let q = supabase
         .from('expenses')
         .select('id, amount, category, description, due_date, organization_id')
-        .eq('user_id', user.id)
         .gte('due_date', range.start)
         .lte('due_date', range.end)
       if (expenseOrgFilter) q = q.eq('organization_id', expenseOrgFilter)
+      else q = q.eq('user_id', user.id)
       return q
     }
 
@@ -221,10 +221,10 @@ export async function getButlerInsightData(): Promise<ButlerInsightData | null> 
       let q = supabase
         .from('revenues')
         .select('amount')
-        .eq('user_id', user.id)
         .gte('date', range.start)
         .lte('date', range.end)
       if (expenseOrgFilter) q = q.eq('organization_id', expenseOrgFilter)
+      else q = q.eq('user_id', user.id)
       return q
     }
 
@@ -233,19 +233,17 @@ export async function getButlerInsightData(): Promise<ButlerInsightData | null> 
       let q = supabase
         .from('expenses')
         .select('amount, category, description, due_date')
-        .eq('user_id', user.id)
         .gte('due_date', win3.start)
         .lte('due_date', win3.end)
       if (expenseOrgFilter) q = q.eq('organization_id', expenseOrgFilter)
+      else q = q.eq('user_id', user.id)
       return q
     }
 
     const goalsQuery = () => {
-      let q = supabase
-        .from('goals')
-        .select('target_amount, current_amount, deadline')
-        .eq('user_id', user.id)
+      let q = supabase.from('goals').select('target_amount, current_amount, deadline')
       if (expenseOrgFilter) q = q.eq('organization_id', expenseOrgFilter)
+      else q = q.eq('user_id', user.id)
       return q
     }
 
@@ -253,9 +251,9 @@ export async function getButlerInsightData(): Promise<ButlerInsightData | null> 
       let q = supabase
         .from('subscriptions')
         .select('id, name, amount, active, created_at')
-        .eq('user_id', user.id)
         .eq('active', true)
       if (expenseOrgFilter) q = q.eq('organization_id', expenseOrgFilter)
+      else q = q.eq('user_id', user.id)
       return q
     }
 

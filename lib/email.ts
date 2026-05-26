@@ -104,3 +104,35 @@ export function buildDueReminderHtml(params: {
   }
   return `<h2>Lembretes de vencimento</h2><p>Olá, ${params.name}.</p><ul>${rows}</ul>`
 }
+
+export function buildOrgInviteHtml(params: {
+  orgName: string
+  inviteUrl: string
+  role: 'admin' | 'member'
+  locale: 'pt' | 'en'
+}): string {
+  const roleLabel =
+    params.locale === 'en'
+      ? params.role === 'admin'
+        ? 'administrator'
+        : 'member'
+      : params.role === 'admin'
+        ? 'administrador'
+        : 'membro'
+
+  if (params.locale === 'en') {
+    return `
+      <h2>Team invitation — Alfred Finance</h2>
+      <p>You were invited to join <strong>${params.orgName}</strong> as ${roleLabel}.</p>
+      <p><a href="${params.inviteUrl}">Accept invitation</a></p>
+      <p>This link expires in 7 days.</p>
+    `
+  }
+
+  return `
+    <h2>Convite para equipa — Alfred Financeiro</h2>
+    <p>Foi convidado para <strong>${params.orgName}</strong> como ${roleLabel}.</p>
+    <p><a href="${params.inviteUrl}">Aceitar convite</a></p>
+    <p>Este link expira em 7 dias.</p>
+  `
+}

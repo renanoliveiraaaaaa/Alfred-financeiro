@@ -1,15 +1,10 @@
 # Auditoria de Segurança — Row Level Security (RLS)
 
-> Última revisão: maio/2026 · alinhado às migrations até `20260522140000_categories_import_sessions_org_rls.sql`
+> Última revisão: maio/2026 · alinhado às migrations até `20260522150000_org_business_collaboration.sql`
 
 ## Resumo
 
-O Alfred usa **Supabase RLS** para isolar dados entre utilizadores. Desde a migração multi-org (`20260329100000`), a maioria das entidades financeiras exige:
-
-1. **`user_id = auth.uid()`** — só o autor da linha acede (modelo actual *single-owner por linha*)
-2. **`organization_id` + membership** — a linha pertence a uma org da qual o utilizador é membro
-
-Isto permite **contexto Pessoal vs Business** (switcher de org) sem partilha de linhas entre utilizadores da mesma org — ver [Limitações conhecidas](#limitações-conhecidas--próximos-passos).
+O Alfred usa **Supabase RLS** para isolar dados entre utilizadores. Desde a migração multi-org (`20260329100000`), as entidades financeiras exigem **membership na org**. Em orgs **`business`**, todos os membros **veem** os dados da org; **editar/apagar** exige ser autor da linha ou role `owner`/`admin`. Orgs **`personal`** mantêm isolamento por `user_id`.
 
 ---
 
@@ -51,18 +46,18 @@ flowchart TB
 Migrations: `20260401120000`, `20260406120000`, `20260407120000`.
 
 ```sql
--- Exemplo: expenses (padrão repetido em revenues, subscriptions, credit_cards, goals, income_sources, projections)
-USING (
-  auth.uid() = user_id
-  AND EXISTS (
-    SELECT 1 FROM public.organization_members om
-    WHERE om.organization_id = expenses.organization_id
-      AND om.profile_id = auth.uid()
-  )
-);
+-- Exemplo: expenses (padrão repetido nas tabelas financeiras)
+-- SELECT: org business → todos os membros; org personal → só autor
+USING (public.can_view_org_row(organization_id, user_id));
+
+-- INSERT: sempre auth.uid() = user_id + membership
+WITH CHECK (auth.uid() = user_id AND public.is_org_member(organization_id));
+
+-- UPDATE/DELETE: autor ou owner/admin em org business
+USING (public.can_mutate_org_row(organization_id, user_id));
 ```
 
-**Leitura:** o utilizador só vê/edita linhas que **criou** (`user_id`) **e** que pertencem a uma org onde é membro.
+**Helpers:** `is_org_member`, `is_business_org`, `has_org_role`, `can_view_org_row`, `can_mutate_org_row` (`20260522150000`).
 
 ---
 
@@ -157,8 +152,8 @@ Checklist pós-deploy:
 
 | Item | Estado | Issue roadmap |
 |------|--------|---------------|
-| Colaboração real (membros veem dados da org) | ❌ RLS exige `user_id = auth.uid()` | Colaboração org business |
-| Convites por e-mail | ❌ não implementado | Colaboração org business |
+| Colaboração real (membros veem dados da org business) | ✅ `can_view_org_row` | — |
+| Convites por e-mail | ✅ `organization_invites` + `/invite/[token]` | — |
 | RLS `categories` / `import_sessions` por membership | ✅ `20260522140000` | — |
 | Stripe / planos pagos | ❌ depende preços | Stripe pós-trial |
 
@@ -177,6 +172,7 @@ Checklist pós-deploy:
 | `20260522120000_advanced_features.sql` | `activity_logs`, locale/theme |
 | `20260522130000_org_scope_and_activity_check.sql` | Org em import_sessions/categories; CHECK activity |
 | `20260522140000_categories_import_sessions_org_rls.sql` | NOT NULL + RLS membership em categories/import_sessions |
+| `20260522150000_org_business_collaboration.sql` | Helpers RLS, partilha business, convites, colegas |
 
 ---
 

@@ -22,6 +22,7 @@ const REQUIRED = {
   activity_logs: ['organization_id', 'action', 'metadata'],
   organizations: ['owner_id', 'slug', 'type'],
   organization_members: ['organization_id', 'profile_id', 'role'],
+  organization_invites: ['organization_id', 'email', 'role', 'token', 'invited_by', 'expires_at'],
   revenues: ['organization_id', 'import_session_id', 'source'],
   expenses: ['organization_id', 'import_session_id', 'source', 'credit_card_id'],
   import_sessions: ['organization_id', 'bank', 'status'],
