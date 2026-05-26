@@ -196,7 +196,7 @@ export default function ImportStatementPage() {
       const json = await res.json()
 
       if (!res.ok || json.error) {
-        setError(json.error ?? t('import.processError'))
+        setError(resolveServerError(json.error ?? 'import.processError', t))
         return
       }
 

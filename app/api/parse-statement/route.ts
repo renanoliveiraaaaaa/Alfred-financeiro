@@ -11,6 +11,7 @@ import { rateLimit } from '@/lib/rateLimit'
  *   - bank: string (nubank | inter | itau | bradesco | bb | c6 | santander | caixa | generic)
  *
  * Retorna JSON com as transações parseadas (não persiste nada).
+ * Erros devolvem chaves i18n (`import.api.*`) para tradução no cliente.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -20,13 +21,13 @@ export async function POST(request: NextRequest) {
       error: authError,
     } = await supabaseAuth.auth.getUser()
     if (authError || !user) {
-      return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 })
+      return NextResponse.json({ error: 'import.api.unauthorized' }, { status: 401 })
     }
 
     const rl = rateLimit(`parse-statement:${user.id}`, 30, 60_000)
     if (!rl.ok) {
       return NextResponse.json(
-        { error: 'Muitas requisições. Aguarde um momento e tente novamente.' },
+        { error: 'import.api.rateLimit' },
         {
           status: 429,
           headers: rl.retryAfterSec ? { 'Retry-After': String(rl.retryAfterSec) } : {},
@@ -41,23 +42,16 @@ export async function POST(request: NextRequest) {
       formData.get('skip_itau_pix_rule') === '1' || formData.get('skip_itau_pix_rule') === 'true'
 
     if (!file) {
-      return NextResponse.json(
-        { error: 'Nenhum arquivo enviado.' },
-        { status: 400 },
-      )
+      return NextResponse.json({ error: 'import.api.noFile' }, { status: 400 })
     }
 
     const format = detectFormat(file.name)
     if (!format) {
-      return NextResponse.json(
-        { error: 'Formato de arquivo não suportado. Use CSV, OFX ou QFX.' },
-        { status: 400 },
-      )
+      return NextResponse.json({ error: 'import.api.unsupportedFormat' }, { status: 400 })
     }
 
     const content = await file.text()
 
-    // Auto-detecção: se o banco for 'generic' e o arquivo for OFX, tenta inferir pelo conteúdo
     const detectedBank =
       (format === 'ofx' || format === 'qfx') && bank === 'generic'
         ? (detectBankFromOfxContent(content) ?? null)
@@ -72,10 +66,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       transactions,
       total: transactions.length,
-      detected_bank: detectedBank, // informado para a UI poder avisar o usuário
+      detected_bank: detectedBank,
     })
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Erro inesperado ao processar o arquivo.'
-    return NextResponse.json({ error: message }, { status: 500 })
+    console.error('[parse-statement]', err)
+    return NextResponse.json({ error: 'import.api.unexpected' }, { status: 500 })
   }
 }

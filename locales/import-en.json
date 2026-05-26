@@ -51,5 +51,10 @@
   "import.error.noTransactionsToImport": "No transactions to import.",
   "import.error.sessionCreate": "Error creating import session: {detail}",
   "import.error.revenuesFailed": "Error importing income. Please try again.",
-  "import.error.expensesFailed": "Error importing expenses. Please try again."
+  "import.error.expensesFailed": "Error importing expenses. Please try again.",
+  "import.api.unauthorized": "Unauthorized.",
+  "import.api.rateLimit": "Too many requests. Please wait a moment and try again.",
+  "import.api.noFile": "No file uploaded.",
+  "import.api.unsupportedFormat": "Unsupported file format. Use CSV, OFX or QFX.",
+  "import.api.unexpected": "Unexpected error while processing the file."
 }

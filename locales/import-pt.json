@@ -51,5 +51,10 @@
   "import.error.noTransactionsToImport": "Nenhuma transação para importar.",
   "import.error.sessionCreate": "Erro ao criar sessão de importação: {detail}",
   "import.error.revenuesFailed": "Erro ao importar receitas. Tente novamente.",
-  "import.error.expensesFailed": "Erro ao importar despesas. Tente novamente."
+  "import.error.expensesFailed": "Erro ao importar despesas. Tente novamente.",
+  "import.api.unauthorized": "Não autorizado.",
+  "import.api.rateLimit": "Muitas requisições. Aguarde um momento e tente novamente.",
+  "import.api.noFile": "Nenhum arquivo enviado.",
+  "import.api.unsupportedFormat": "Formato de arquivo não suportado. Use CSV, OFX ou QFX.",
+  "import.api.unexpected": "Erro inesperado ao processar o arquivo."
 }

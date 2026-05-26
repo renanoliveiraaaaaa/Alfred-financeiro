@@ -65,7 +65,11 @@ export default function SettingsPage() {
     setSaving(true)
     try {
       const { data: userData, error: authErr } = await supabase.auth.getUser()
-      if (authErr || !userData.user) throw new Error('Usuário não autenticado.')
+      if (authErr || !userData.user) {
+        setError(t('crud.error.auth'))
+        setSaving(false)
+        return
+      }
 
       const { error: insertErr } = await supabase.from('categories').insert({
         user_id: userData.user.id,

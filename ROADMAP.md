@@ -50,6 +50,7 @@ Use este arquivo como base para criar issues no GitHub depois (`gh issue create`
 | 40 | **i18n erros extrato bancário PDF** | `parse-bank-statement-pdf.ts` → `import.error.*`; `html lang` dinâmico no root layout |
 | 41 | **i18n org + CRUD server actions** | `activeOrganizationServer`, `import-statement`, `expenses`/`revenues`/`organizations`; `ExpenseContextMoveButton` |
 | 42 | **Types Supabase sincronizados** | `organization_id` em import_sessions/categories; `validate:types` + CI |
+| 43 | **i18n API parse-statement + auth client** | `/api/parse-statement` → `import.api.*`; auth em settings/projections/expense edit |
 
 ---
 
@@ -65,7 +66,8 @@ Use este arquivo como base para criar issues no GitHub depois (`gh issue create`
 - **Feito (#38):** erros server `parse-card-statement.ts` + Gemini JSON (`errors.gemini.*`, `import.card.error.*`)
 - **Feito (#40):** erros `parse-bank-statement-pdf.ts` (`import.error.*`); `html lang` por cookie locale
 - **Feito (#41):** org ativa + import OFX + CRUD quick-add + mover despesa entre orgs
-- **Resíduo baixa prioridade:** tooltips pontuais (ex.: `ExpenseContextMoveButton`)
+- **Feito (#43):** API `/api/parse-statement` + auth client em settings/projections/expense edit
+- **Resíduo baixa prioridade:** tooltips pontuais (AdminActivitySection chart titles)
 
 ### Issue: i18n páginas secundárias *(concluído — #27–#31)*
 - **Labels:** `i18n`, `enhancement`
