@@ -47,6 +47,7 @@ Use este arquivo como base para criar issues no GitHub depois (`gh issue create`
 | 37 | **i18n painel admin** | sidebar, dashboard KPIs, users, actions; `admin-*.json`; erros server |
 | 38 | **i18n erros import fatura PDF** | `parse-card-statement.ts` → chaves i18n; `resolveServerError`; `errors.gemini.*` |
 | 39 | **CI build + types Supabase** | `.github/workflows/ci.yml`; `npm run gen:types`; `supabase/.temp/` no `.gitignore` |
+| 40 | **i18n erros extrato bancário PDF** | `parse-bank-statement-pdf.ts` → `import.error.*`; `html lang` dinâmico no root layout |
 
 ---
 
@@ -60,7 +61,8 @@ Use este arquivo como base para criar issues no GitHub depois (`gh issue create`
 - **Feito (#34):** `CardStatementImportModal` (~50 strings, meses/moeda via `Intl`)
 - **Feito (#35):** landing/auth (`LandingAuthForm`, `LandingHero`, `app/page.tsx`, erros Supabase)
 - **Feito (#38):** erros server `parse-card-statement.ts` + Gemini JSON (`errors.gemini.*`, `import.card.error.*`)
-- **Resíduo baixa prioridade:** `html lang` dinâmico no root layout; tooltips pontuais
+- **Feito (#40):** erros `parse-bank-statement-pdf.ts` (`import.error.*`); `html lang` por cookie locale
+- **Resíduo baixa prioridade:** tooltips pontuais (ex.: `ExpenseContextMoveButton`)
 
 ### Issue: i18n páginas secundárias *(concluído — #27–#31)*
 - **Labels:** `i18n`, `enhancement`

@@ -39,5 +39,13 @@
   "import.formatOfx": "OFX / QFX — Itaú, Bradesco, Banco do Brasil, Santander, Caixa and others (bank auto-detected)",
   "import.periodHint": "The imported period is what appears in the file (DTSTART / DTEND in OFX). For months outside the range, generate a new statement at your bank.",
   "import.reviewHint": "After processing, you can review, edit and confirm each transaction before importing.",
-  "import.pdfProgress": "Processing pages {current} of {total}..."
+  "import.pdfProgress": "Processing pages {current} of {total}...",
+  "import.error.serverProcess": "Could not process this PDF on the server. Confirm GEMINI_API_KEY on Vercel or use OFX/CSV.",
+  "import.error.invalidFile": "Invalid file. Please upload a PDF.",
+  "import.error.noTransactionsExtract": "Could not extract transactions from the statement.",
+  "import.error.noValidTransactions": "No valid transactions found in the statement.",
+  "import.error.noGeminiKey": "Gemini API key not configured.",
+  "import.error.fileTooLarge": "File too large. Maximum size: 10 MB.",
+  "import.error.noTextHint": "PDF has no selectable text (common with scanned statements). Set GEMINI_API_KEY or GOOGLE_GENERATIVE_AI_API_KEY on Vercel (Production) and redeploy, or export OFX/CSV from your bank.",
+  "import.error.layoutHint": "Layout not recognized. With a Gemini key on Vercel (+ redeploy) AI can help; or use OFX/CSV."
 }

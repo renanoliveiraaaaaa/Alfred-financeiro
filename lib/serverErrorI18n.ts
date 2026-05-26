@@ -7,9 +7,10 @@ export function buildServerI18nError(key: string, params?: Record<string, string
 }
 
 const I18N_KEY_PREFIXES = [
+  'import.error.',
   'import.card.error.',
-  'errors.gemini.',
-  'error.',
+  'import.pdfBlockError',
+  'errors.gemini.',  'error.',
   'crud.error.',
   'list.errors.',
   'auth.error.',

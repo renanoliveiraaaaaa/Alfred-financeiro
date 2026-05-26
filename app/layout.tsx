@@ -3,6 +3,7 @@ import "./globals.css";
 
 import Providers from "@/components/Providers";
 import AppFooter from "@/components/AppFooter";
+import { getServerLocale } from "@/lib/serverI18n";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -36,13 +37,16 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const locale = await getServerLocale();
+  const htmlLang = locale === "en" ? "en" : "pt-BR";
+
   return (
-    <html lang="pt-BR" suppressHydrationWarning>
+    <html lang={htmlLang} suppressHydrationWarning>
       <body>
         <Providers>
           {children}

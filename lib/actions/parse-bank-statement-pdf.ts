@@ -6,7 +6,7 @@ import type { ImportTransaction } from './import-statement'
 import { extractPdfPlainText } from '@/lib/parsers/extractPdfText'
 import { PDFDocument } from 'pdf-lib'
 import { getGeminiApiKey, getGeminiCallErrorKey, getGeminiModelId } from '@/lib/geminiEnv'
-import { parseGeminiJsonResponse, type ParseGeminiJsonResult } from '@/lib/parseGeminiJson'
+import { parseGeminiJsonResponse } from '@/lib/parseGeminiJson'
 import { buildGeminiJsonError } from '@/lib/serverErrorI18n'
 import { extractPlainTextFromEgidePdf } from '@/lib/egideClient'
 import { isEgideConfigured } from '@/lib/egideEnv'
@@ -126,12 +126,12 @@ async function parseWithGemini(
   const parsed = jsonResult.data
 
   if (!parsed.transactions || !Array.isArray(parsed.transactions)) {
-    return { success: false, error: 'Não foi possível extrair transações do extrato.' }
+    return { success: false, error: 'import.error.noTransactionsExtract' }
   }
 
   const transactions = normalizeTransactions(parsed.transactions)
   if (transactions.length === 0) {
-    return { success: false, error: 'Nenhuma transação válida encontrada no extrato.' }
+    return { success: false, error: 'import.error.noValidTransactions' }
   }
 
   const dates = transactions.map((t) => t.date).sort()
@@ -159,8 +159,7 @@ export async function parseBankStatementPdf(
     console.error('[parseBankStatementPdf]', err)
     return {
       success: false,
-      error:
-        'Não foi possível processar este PDF no servidor. Confirme GEMINI_API_KEY na Vercel ou use OFX/CSV.',
+      error: 'import.error.serverProcess',
     }
   }
 }
@@ -174,14 +173,14 @@ async function parseBankStatementPdfImpl(
     data: { user },
     error: authErr,
   } = await supabase.auth.getUser()
-  if (authErr || !user) return { success: false, error: 'Usuário não autenticado.' }
+  if (authErr || !user) return { success: false, error: 'crud.error.auth' }
 
 
   let buffer: Buffer
   try {
     buffer = Buffer.from(pdfBase64, 'base64')
   } catch {
-    return { success: false, error: 'Ficheiro inválido. Envie um PDF.' }
+    return { success: false, error: 'import.error.invalidFile' }
   }
 
   // --- Divisão automática do PDF em blocos de páginas para Gemini ---
@@ -195,7 +194,7 @@ async function parseBankStatementPdfImpl(
     const totalPages = doc.getPageCount()
     const apiKey = getGeminiApiKey()
     if (!apiKey) {
-      return { success: false, error: 'Gemini API Key não configurada.' }
+      return { success: false, error: 'import.error.noGeminiKey' }
     }
     let allTransactions: ImportTransaction[] = []
     let bank = ''
@@ -231,12 +230,12 @@ async function parseBankStatementPdfImpl(
         parse_source: 'gemini',
       }
     }
-    return { success: false, error: 'Não foi possível processar o PDF em blocos. Tente dividir o extrato ou exportar em períodos menores.' }
+    return { success: false, error: 'import.pdfBlockError' }
   }
 
   const MAX_PDF_SIZE = 10 * 1024 * 1024 // 10 MB
   if (buffer.length > MAX_PDF_SIZE) {
-    return { success: false, error: 'Arquivo muito grande. Tamanho máximo: 10 MB.' }
+    return { success: false, error: 'import.error.fileTooLarge' }
   }
 
   let plainText = ''
@@ -318,11 +317,8 @@ async function parseBankStatementPdfImpl(
     }
   }
 
-  const noTextHint =
-    'PDF sem texto selecionável (comum em extratos escaneados). Configure GEMINI_API_KEY ou GOOGLE_GENERATIVE_AI_API_KEY na Vercel (Production) + Redeploy, ou exporte OFX/CSV no banco.'
-
-  const layoutHint =
-    'Layout não reconhecido. Com chave Gemini na Vercel (+ Redeploy) a IA ajuda; ou use OFX/CSV.'
+  const noTextHint = 'import.error.noTextHint'
+  const layoutHint = 'import.error.layoutHint'
 
   return {
     success: false,
