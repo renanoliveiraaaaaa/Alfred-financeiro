@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import ModalShell from '@/components/ModalShell'
 import { useI18n, type Locale } from '@/lib/i18n'
 import { formatMessage } from '@/lib/i18nFormat'
+import { resolveServerError } from '@/lib/serverErrorI18n'
 import {
   X,
   Loader2,
@@ -216,8 +217,9 @@ export default function ImportReviewModal({ open, onClose, transactions, bank, f
       })
 
       if (!result.success) {
-        setImportError(result.error ?? t('error.importFailed'))
-        toastError(result.error ?? t('error.importFailed'))
+        const msg = resolveServerError(result.error ?? 'error.importFailed', t)
+        setImportError(msg)
+        toastError(msg)
         return
       }
 

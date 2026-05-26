@@ -45,6 +45,8 @@ Use este arquivo como base para criar issues no GitHub depois (`gh issue create`
 | 35 | **i18n landing/auth** | `LandingAuthForm`, `LandingHero`, boot/erros em `app/page.tsx`; `authErrorI18n` |
 | 36 | **i18n metadata layouts** | `generateMetadata` + `serverI18n` (cookie `alfred_locale`); chaves `seo.*` |
 | 37 | **i18n painel admin** | sidebar, dashboard KPIs, users, actions; `admin-*.json`; erros server |
+| 38 | **i18n erros import fatura PDF** | `parse-card-statement.ts` → chaves i18n; `resolveServerError`; `errors.gemini.*` |
+| 39 | **CI build + types Supabase** | `.github/workflows/ci.yml`; `npm run gen:types`; `supabase/.temp/` no `.gitignore` |
 
 ---
 
@@ -57,6 +59,8 @@ Use este arquivo como base para criar issues no GitHub depois (`gh issue create`
 - **Feito (#32):** boundaries, org ativa, ImportReview, bulk delete, fallbacks genéricos
 - **Feito (#34):** `CardStatementImportModal` (~50 strings, meses/moeda via `Intl`)
 - **Feito (#35):** landing/auth (`LandingAuthForm`, `LandingHero`, `app/page.tsx`, erros Supabase)
+- **Feito (#38):** erros server `parse-card-statement.ts` + Gemini JSON (`errors.gemini.*`, `import.card.error.*`)
+- **Resíduo baixa prioridade:** `html lang` dinâmico no root layout; tooltips pontuais
 
 ### Issue: i18n páginas secundárias *(concluído — #27–#31)*
 - **Labels:** `i18n`, `enhancement`
@@ -88,9 +92,9 @@ Use este arquivo como base para criar issues no GitHub depois (`gh issue create`
 - **Escopo:** `@sentry/nextjs`, `instrumentation.ts`, `global-error.tsx`, capture em `(app)/error.tsx`
 - **Ativar:** definir `NEXT_PUBLIC_SENTRY_DSN` no `.env.local` / Vercel
 
-### Issue: Gerar types Supabase via CI
-- **Labels:** `dx`, `database`
-- **Comando:** `supabase gen types typescript`
+### Issue: Gerar types Supabase via CI *(feito — #39)*
+- **Escopo:** workflow `ci.yml` (build + lint); job `supabase-types` em PRs; script `npm run gen:types`
+- **Secrets opcionais (remoto):** `SUPABASE_ACCESS_TOKEN` + project ref se preferir `supabase gen types` remoto
 
 ---
 

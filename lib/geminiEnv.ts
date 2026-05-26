@@ -1,3 +1,5 @@
+import { buildServerI18nError } from './serverErrorI18n'
+
 function stripQuotes(s: string): string {
   const t = s.trim()
   if (t.length >= 2) {
@@ -30,7 +32,25 @@ export function getGeminiModelId(): string {
 }
 
 /**
- * Mensagem para o utilizador quando a chamada à API Gemini falha.
+ * Chave i18n para erros de chamada Gemini (server actions com tradução no cliente).
+ */
+export function getGeminiCallErrorKey(err: unknown): string {
+  const msg = err instanceof Error ? err.message : String(err)
+  const lower = msg.toLowerCase()
+  if (
+    lower.includes('429') ||
+    lower.includes('quota') ||
+    lower.includes('too many requests') ||
+    lower.includes('resource_exhausted') ||
+    lower.includes('rate limit')
+  ) {
+    return 'errors.gemini.quota'
+  }
+  return buildServerI18nError('errors.gemini.call', { detail: msg })
+}
+
+/**
+ * Mensagem legível para logs (não i18n).
  * Trata 429 / quota sem expor o corpo técnico completo.
  */
 export function formatGeminiCallError(err: unknown): string {

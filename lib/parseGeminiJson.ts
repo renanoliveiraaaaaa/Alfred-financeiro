@@ -11,7 +11,7 @@ function stripJsonFences(text: string): string {
 
 export type ParseGeminiJsonResult<T> =
   | { ok: true; data: T }
-  | { ok: false; truncated: boolean; hint: string }
+  | { ok: false; truncated: boolean; hintKey: string; hintDetail?: string }
 
 /**
  * Faz parse do texto da resposta Gemini. Deteta JSON truncado (resposta cortada a meio).
@@ -19,7 +19,7 @@ export type ParseGeminiJsonResult<T> =
 export function parseGeminiJsonResponse<T>(text: string): ParseGeminiJsonResult<T> {
   const trimmed = text.trim()
   if (!trimmed) {
-    return { ok: false, truncated: false, hint: 'Resposta vazia do modelo.' }
+    return { ok: false, truncated: false, hintKey: 'errors.gemini.empty' }
   }
 
   const inner = stripJsonFences(trimmed)
@@ -54,9 +54,14 @@ export function parseGeminiJsonResponse<T>(text: string): ParseGeminiJsonResult<
     (inner.includes('{') && !inner.trimEnd().endsWith('}')) ||
     /unexpected end|unterminated string/i.test(parseErr)
 
-  const hint = truncated
-    ? 'A resposta da IA foi cortada (fatura com muitos lançamentos). Tente de novo; se persistir, importe em partes ou cadastre manualmente.'
-    : `JSON inválido: ${parseErr || 'formato não reconhecido'}`
+  if (truncated) {
+    return { ok: false, truncated: true, hintKey: 'errors.gemini.truncated' }
+  }
 
-  return { ok: false, truncated, hint }
+  return {
+    ok: false,
+    truncated: false,
+    hintKey: 'errors.gemini.invalid',
+    hintDetail: parseErr || 'formato não reconhecido',
+  }
 }

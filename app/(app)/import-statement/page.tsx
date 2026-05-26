@@ -7,6 +7,7 @@ import ImportReviewModal, { ReviewTransaction } from '@/components/ImportReviewM
 import { useGreetingPronoun } from '@/lib/greeting'
 import { useI18n } from '@/lib/i18n'
 import { formatMessage } from '@/lib/i18nFormat'
+import { resolveServerError } from '@/lib/serverErrorI18n'
 import { parseBankStatementPdf } from '@/lib/actions/parse-bank-statement-pdf'
 import type { ImportTransaction } from '@/lib/actions/import-statement'
 
@@ -280,7 +281,7 @@ export default function ImportStatementPage() {
         // PDF pequeno: fluxo normal
         const result = await parseBankStatementPdf(base64, pdfFile.type)
         if (!result.success) {
-          setPdfError(result.error)
+          setPdfError(resolveServerError(result.error, t))
           return
         }
         openModal(pdfImportToReviewRows(result.transactions), result.bank, pdfFile.name)

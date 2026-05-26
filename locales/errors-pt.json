@@ -14,5 +14,11 @@
   "error.deleteFailed": "Erro ao excluir.",
   "error.updateFailed": "Erro ao atualizar.",
   "error.importFailed": "Erro ao importar. Tente novamente.",
-  "error.importUnexpected": "Erro inesperado ao importar."
+  "error.importUnexpected": "Erro inesperado ao importar.",
+  "errors.gemini.empty": "Resposta vazia do modelo.",
+  "errors.gemini.truncated": "A resposta da IA foi cortada (fatura com muitos lançamentos). Tente de novo; se persistir, importe em partes ou cadastre manualmente.",
+  "errors.gemini.invalid": "JSON inválido: {detail}",
+  "errors.gemini.excerpt": "Trecho: {excerpt}",
+  "errors.gemini.quota": "Cota da API Gemini esgotada (limite gratuito ou pedidos por minuto). Aguarde cerca de um minuto e tente de novo, ou ative faturação em Google AI Studio / Google Cloud Billing. Pode também definir GEMINI_MODEL para outro modelo (ex.: gemini-2.5-flash ou gemini-1.5-flash) no .env.local ou na Vercel.",
+  "errors.gemini.call": "Erro ao chamar Gemini: {detail}"
 }

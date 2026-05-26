@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import ModalShell from '@/components/ModalShell'
 import { useI18n, type Locale } from '@/lib/i18n'
 import { formatMessage } from '@/lib/i18nFormat'
+import { resolveServerError } from '@/lib/serverErrorI18n'
 import {
   X, Upload, Loader2, CheckCircle2, AlertCircle, FileText,
   CreditCard, ChevronDown, ChevronUp, Check, Minus,
@@ -140,7 +141,7 @@ export default function CardStatementImportModal({ open, onClose, existingCards,
       const result = await parseCardStatement(base64, file.type, { clientText })
 
       if (!result.success) {
-        setParseError(result.error)
+        setParseError(resolveServerError(result.error, t))
         setStep('upload')
         return
       }
@@ -202,7 +203,7 @@ export default function CardStatementImportModal({ open, onClose, existingCards,
     const result = await confirmCardStatement(input)
 
     if (!result.success) {
-      setConfirmError(result.error)
+      setConfirmError(resolveServerError(result.error, t))
       setStep('review')
       return
     }

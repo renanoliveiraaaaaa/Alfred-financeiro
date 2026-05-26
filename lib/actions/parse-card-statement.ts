@@ -6,10 +6,11 @@ import { createSupabaseServerClient } from '@/lib/supabaseServer'
 import { calculateInstallmentDates, addMonths } from '@/lib/installments'
 import { extractPdfPlainText } from '@/lib/parsers/extractPdfText'
 import { parseCardInvoiceFromPdfText } from '@/lib/parsers/cardInvoicePdfHeuristics'
-import { formatGeminiCallError, getGeminiApiKey, getGeminiModelId } from '@/lib/geminiEnv'
+import { getGeminiApiKey, getGeminiCallErrorKey, getGeminiModelId } from '@/lib/geminiEnv'
 import { parseGeminiJsonResponse } from '@/lib/parseGeminiJson'
 import { extractPlainTextFromEgidePdf } from '@/lib/egideClient'
 import { isEgideConfigured } from '@/lib/egideEnv'
+import { buildGeminiJsonError, buildServerI18nError } from '@/lib/serverErrorI18n'
 
 // ── Tipos exportados ──────────────────────────────────────────────────────────
 
@@ -108,6 +109,12 @@ IMPORTANTE:
 - Retorne SOMENTE o JSON, sem explicações
 `
 
+function mapOrgError(message: string): string {
+  if (message === 'Usuário não autenticado.') return 'crud.error.auth'
+  if (message === 'Nenhuma organização pessoal encontrada para o utilizador.') return 'error.orgNotFound'
+  return message
+}
+
 // ── Server action: parsear fatura ─────────────────────────────────────────────
 
 const MIN_TEXT_LEN = 120
@@ -133,8 +140,7 @@ export async function parseCardStatement(
     console.error('[parseCardStatement]', err)
     return {
       success: false,
-      error:
-        'Não foi possível processar este PDF no servidor. Confirme GEMINI_API_KEY na Vercel, tente outro ficheiro ou cadastre as compras manualmente.',
+      error: 'import.card.error.serverProcess',
     }
   }
 }
@@ -146,13 +152,13 @@ async function parseCardStatementImpl(
 ): Promise<ParseStatementResult> {
   const supabase = createSupabaseServerClient()
   const { data: { user }, error: authErr } = await supabase.auth.getUser()
-  if (authErr || !user) return { success: false, error: 'Usuário não autenticado.' }
+  if (authErr || !user) return { success: false, error: 'crud.error.auth' }
 
   let buffer: Buffer
   try {
     buffer = Buffer.from(pdfBase64, 'base64')
   } catch {
-    return { success: false, error: 'Ficheiro inválido. Envie um PDF.' }
+    return { success: false, error: 'import.card.error.invalidFile' }
   }
 
   const pre = options?.clientText?.trim() ?? ''
@@ -207,14 +213,13 @@ async function parseCardStatementImpl(
       if (!jsonResult.ok) {
         return {
           success: false,
-          error:
-            `${jsonResult.hint}${jsonResult.truncated ? '' : `\n\nTrecho: ${text.slice(0, 280)}`}`,
+          error: buildGeminiJsonError(jsonResult, text.slice(0, 280)),
         }
       }
       const parsed = jsonResult.data
 
       if (!parsed.transactions || !Array.isArray(parsed.transactions)) {
-        return { success: false, error: 'Não foi possível extrair transações da fatura.' }
+        return { success: false, error: 'import.card.error.noTransactions' }
       }
 
       const fallbackDate =
@@ -232,7 +237,7 @@ async function parseCardStatementImpl(
 
       return { success: true, data: parsed, parse_source: 'gemini' }
     } catch (err: unknown) {
-      return { success: false, error: formatGeminiCallError(err) }
+      return { success: false, error: getGeminiCallErrorKey(err) }
     }
   }
 
@@ -245,13 +250,8 @@ async function parseCardStatementImpl(
     }
   }
 
-  const noKeyHint =
-    'Este PDF não tem texto selecionável (muito comum em faturas escaneadas). ' +
-    'Para ler com IA: em aistudio.google.com crie uma API key; na Vercel (Settings → Environment Variables) adicione GEMINI_API_KEY ou GOOGLE_GENERATIVE_AI_API_KEY para Production e faça Redeploy. ' +
-    'Em desenvolvimento use .env.local. Alternativa: cadastre os lançamentos manualmente.'
-
-  const layoutHint =
-    'Há texto no PDF mas o layout não foi reconhecido. Com GEMINI_API_KEY na Vercel (+ Redeploy) a IA costuma resolver; ou cadastre manualmente.'
+  const noKeyHint = 'import.card.error.noKeyHint'
+  const layoutHint = 'import.card.error.layoutHint'
 
   return {
     success: false,
@@ -278,10 +278,10 @@ export async function confirmCardStatement(
 ): Promise<ConfirmStatementResult> {
   const supabase = createSupabaseServerClient()
   const { data: { user }, error: authErr } = await supabase.auth.getUser()
-  if (authErr || !user) return { success: false, error: 'Usuário não autenticado.' }
+  if (authErr || !user) return { success: false, error: 'crud.error.auth' }
 
   const orgRes = await resolveActiveOrganizationId()
-  if (!orgRes.ok) return { success: false, error: orgRes.error }
+  if (!orgRes.ok) return { success: false, error: mapOrgError(orgRes.error) }
   const organizationId = orgRes.organizationId
 
   // 1. Criar ou atualizar cartão
@@ -305,7 +305,10 @@ export async function confirmCardStatement(
       .single()
 
     if (cardErr || !newCard) {
-      return { success: false, error: `Erro ao criar cartão: ${cardErr?.message}` }
+      return {
+        success: false,
+        error: buildServerI18nError('import.card.error.createCard', { detail: cardErr?.message ?? '' }),
+      }
     }
     cardId = newCard.id
   } else {
@@ -321,7 +324,7 @@ export async function confirmCardStatement(
   }
 
   if (!cardId) {
-    return { success: false, error: 'Não foi possível obter o cartão para importação.' }
+    return { success: false, error: 'import.card.error.noCardId' }
   }
 
   // 2. Importar transações selecionadas
@@ -401,12 +404,15 @@ export async function confirmCardStatement(
   }
 
   if (rows.length === 0) {
-    return { success: false, error: 'Nenhuma transação selecionada.' }
+    return { success: false, error: 'import.card.error.noSelection' }
   }
 
   const { error: insertErr } = await supabase.from('expenses').insert(rows)
   if (insertErr) {
-    return { success: false, error: `Erro ao salvar despesas: ${insertErr.message}` }
+    return {
+      success: false,
+      error: buildServerI18nError('import.card.error.saveExpenses', { detail: insertErr.message }),
+    }
   }
 
   return {

@@ -14,5 +14,11 @@
   "error.deleteFailed": "Error deleting.",
   "error.updateFailed": "Error updating.",
   "error.importFailed": "Import failed. Please try again.",
-  "error.importUnexpected": "Unexpected error while importing."
+  "error.importUnexpected": "Unexpected error while importing.",
+  "errors.gemini.empty": "Empty model response.",
+  "errors.gemini.truncated": "The AI response was cut off (statement with many entries). Try again; if it persists, import in parts or enter manually.",
+  "errors.gemini.invalid": "Invalid JSON: {detail}",
+  "errors.gemini.excerpt": "Excerpt: {excerpt}",
+  "errors.gemini.quota": "Gemini API quota exhausted (free tier or requests per minute). Wait about a minute and try again, or enable billing in Google AI Studio / Google Cloud Billing. You can also set GEMINI_MODEL to another model (e.g. gemini-2.5-flash or gemini-1.5-flash) in .env.local or Vercel.",
+  "errors.gemini.call": "Error calling Gemini: {detail}"
 }

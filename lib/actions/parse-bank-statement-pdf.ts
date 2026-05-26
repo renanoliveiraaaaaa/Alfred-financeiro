@@ -5,8 +5,9 @@ import { createSupabaseServerClient } from '@/lib/supabaseServer'
 import type { ImportTransaction } from './import-statement'
 import { extractPdfPlainText } from '@/lib/parsers/extractPdfText'
 import { PDFDocument } from 'pdf-lib'
-import { formatGeminiCallError, getGeminiApiKey, getGeminiModelId } from '@/lib/geminiEnv'
-import { parseGeminiJsonResponse } from '@/lib/parseGeminiJson'
+import { getGeminiApiKey, getGeminiCallErrorKey, getGeminiModelId } from '@/lib/geminiEnv'
+import { parseGeminiJsonResponse, type ParseGeminiJsonResult } from '@/lib/parseGeminiJson'
+import { buildGeminiJsonError } from '@/lib/serverErrorI18n'
 import { extractPlainTextFromEgidePdf } from '@/lib/egideClient'
 import { isEgideConfigured } from '@/lib/egideEnv'
 import {
@@ -119,8 +120,7 @@ async function parseWithGemini(
   if (!jsonResult.ok) {
     return {
       success: false,
-      error:
-        `${jsonResult.hint}${jsonResult.truncated ? '' : `\n\nTrecho: ${text.slice(0, 280)}`}`,
+      error: buildGeminiJsonError(jsonResult, text.slice(0, 280)),
     }
   }
   const parsed = jsonResult.data
@@ -290,7 +290,7 @@ async function parseBankStatementPdfImpl(
     try {
       return await parseWithGemini(pdfBase64, mimeType, apiKey)
     } catch (err: unknown) {
-      return { success: false, error: formatGeminiCallError(err) }
+      return { success: false, error: getGeminiCallErrorKey(err) }
     }
   }
 
