@@ -1,16 +1,25 @@
-const CACHE_NAME = 'alfred-finance-v2'
+const CACHE_NAME = 'alfred-finance-v3'
 const OFFLINE_URL = '/offline'
 
-/** Só URLs públicas — rotas autenticadas (/dashboard) não entram no precache. */
+/** Só URLs públicas — rotas autenticadas não entram no precache. */
 const PRECACHE = ['/', '/offline', '/manifest.json', '/favicon.ico', '/apple-icon.png']
+
+function offlineResponse() {
+  return caches.match(OFFLINE_URL).then(
+    (hit) =>
+      hit ||
+      new Response('Offline', {
+        status: 503,
+        headers: { 'Content-Type': 'text/html; charset=utf-8' },
+      }),
+  )
+}
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches
       .open(CACHE_NAME)
-      .then((cache) =>
-        Promise.allSettled(PRECACHE.map((url) => cache.add(url))).then(() => undefined),
-      )
+      .then((cache) => Promise.allSettled(PRECACHE.map((url) => cache.add(url))))
       .then(() => self.skipWaiting()),
   )
 })
@@ -41,22 +50,25 @@ self.addEventListener('fetch', (event) => {
           }
           return res
         })
-        .catch(() => caches.match(req).then((hit) => hit || caches.match(OFFLINE_URL))),
+        .catch(() =>
+          caches.match(req).then((hit) => (hit ? hit : offlineResponse())),
+        ),
     )
     return
   }
 
-  event.respondWith(
-    caches.match(req).then(
-      (hit) =>
-        hit ||
-        fetch(req).then((res) => {
-          if (res.ok && url.pathname.startsWith('/_next/static')) {
+  if (url.pathname.startsWith('/_next/static')) {
+    event.respondWith(
+      caches.match(req).then((hit) => {
+        if (hit) return hit
+        return fetch(req).then((res) => {
+          if (res.ok) {
             const copy = res.clone()
             caches.open(CACHE_NAME).then((cache) => cache.put(req, copy))
           }
           return res
-        }),
-    ),
-  )
+        })
+      }),
+    )
+  }
 })
