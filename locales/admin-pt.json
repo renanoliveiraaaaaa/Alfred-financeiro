@@ -39,6 +39,7 @@
   "admin.activity.latestTitle": "5 últimos cadastros",
   "admin.activity.viewProfile": "Perfil",
   "admin.activity.anonymousId": "ID {id}…",
+  "admin.activity.chartBar": "{label}: {count}",
   "admin.users.title": "Gestão de Clientes",
   "admin.users.subtitle": "Lista de perfis ordenados pelo registo mais recente. Volume de dados = despesas + receitas por utilizador.",
   "admin.users.loadError": "Erro ao carregar utilizadores: {message}",

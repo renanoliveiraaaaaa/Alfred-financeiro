@@ -9,6 +9,7 @@ import { useToast, CONNECTION_ERROR_MSG, isConnectionError } from '@/lib/toastCo
 import { getGreetingSuffix } from '@/lib/greeting'
 import { useI18n } from '@/lib/i18n'
 import { formatMessage } from '@/lib/i18nFormat'
+import { resolveActiveOrganizationIdForClient } from '@/lib/activeOrganizationClient'
 import { Pencil, Loader2, X } from 'lucide-react'
 import type { Database } from '@/types/supabase'
 
@@ -38,10 +39,25 @@ export default function SettingsPage() {
   const clearMessages = () => { setError(null); setSuccess(null) }
 
   const fetchCategories = useCallback(async () => {
-    const { data, error: fetchErr } = await supabase
+    const { data: userData, error: authErr } = await supabase.auth.getUser()
+    if (authErr || !userData.user) {
+      setLoading(false)
+      return
+    }
+
+    const orgId = await resolveActiveOrganizationIdForClient(supabase, userData.user.id)
+
+    let query = supabase
       .from('categories')
       .select('*')
+      .eq('user_id', userData.user.id)
       .order('name', { ascending: true })
+
+    if (orgId) {
+      query = query.eq('organization_id', orgId)
+    }
+
+    const { data, error: fetchErr } = await query
 
     if (fetchErr) {
       const msg = isConnectionError(fetchErr) ? CONNECTION_ERROR_MSG : t('settings.error.load')
@@ -51,7 +67,7 @@ export default function SettingsPage() {
       setCategories((data ?? []) as Category[])
     }
     setLoading(false)
-  }, [supabase])
+  }, [supabase, t, toastError])
 
   useEffect(() => { fetchCategories() }, [fetchCategories])
 
@@ -71,8 +87,16 @@ export default function SettingsPage() {
         return
       }
 
+      const orgId = await resolveActiveOrganizationIdForClient(supabase, userData.user.id)
+      if (!orgId) {
+        setError(t('error.orgNotFound'))
+        setSaving(false)
+        return
+      }
+
       const { error: insertErr } = await supabase.from('categories').insert({
         user_id: userData.user.id,
+        organization_id: orgId,
         name: trimmed,
         monthly_budget: newBudget > 0 ? newBudget : null,
       })

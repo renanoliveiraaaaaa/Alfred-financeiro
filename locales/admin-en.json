@@ -39,6 +39,7 @@
   "admin.activity.latestTitle": "5 latest signups",
   "admin.activity.viewProfile": "Profile",
   "admin.activity.anonymousId": "ID {id}…",
+  "admin.activity.chartBar": "{label}: {count}",
   "admin.users.title": "Client Management",
   "admin.users.subtitle": "Profiles sorted by most recent signup. Data volume = expenses + income per user.",
   "admin.users.loadError": "Error loading users: {message}",

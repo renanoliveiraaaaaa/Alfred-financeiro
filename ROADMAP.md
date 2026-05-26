@@ -51,6 +51,8 @@ Use este arquivo como base para criar issues no GitHub depois (`gh issue create`
 | 41 | **i18n org + CRUD server actions** | `activeOrganizationServer`, `import-statement`, `expenses`/`revenues`/`organizations`; `ExpenseContextMoveButton` |
 | 42 | **Types Supabase sincronizados** | `organization_id` em import_sessions/categories; `validate:types` + CI |
 | 43 | **i18n API parse-statement + auth client** | `/api/parse-statement` → `import.api.*`; auth em settings/projections/expense edit |
+| 44 | **org scope import_sessions + categories** | `organization_id` em confirmImport, settings e seedCategories |
+| 45 | **PWA/SW estável em dev** | SW desativado em dev; fallback sempre Response; favicon + cache v3 |
 
 ---
 
@@ -67,7 +69,8 @@ Use este arquivo como base para criar issues no GitHub depois (`gh issue create`
 - **Feito (#40):** erros `parse-bank-statement-pdf.ts` (`import.error.*`); `html lang` por cookie locale
 - **Feito (#41):** org ativa + import OFX + CRUD quick-add + mover despesa entre orgs
 - **Feito (#43):** API `/api/parse-statement` + auth client em settings/projections/expense edit
-- **Resíduo baixa prioridade:** tooltips pontuais (AdminActivitySection chart titles)
+- **Feito (#44):** i18n resíduos admin (chart tooltip); org scope em categories/import_sessions
+- **Issue i18n resíduos:** *(concluído — #32–#44)*
 
 ### Issue: i18n páginas secundárias *(concluído — #27–#31)*
 - **Labels:** `i18n`, `enhancement`

@@ -60,7 +60,7 @@ export default function AdminActivitySection({ dailySignups, latestUsers }: Prop
                 <div
                   key={day.dateKey}
                   className="group flex min-w-0 flex-1 flex-col items-center justify-end"
-                  title={`${day.label}: ${day.count}`}
+                  title={formatMessage(t('admin.activity.chartBar'), { label: day.label, count: day.count })}
                 >
                   <span className="mb-1 text-[10px] font-medium tabular-nums text-slate-600 opacity-0 transition-opacity group-hover:opacity-100 sm:text-xs">
                     {day.count > 0 ? day.count : ''}

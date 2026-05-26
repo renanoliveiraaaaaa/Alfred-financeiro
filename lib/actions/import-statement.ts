@@ -78,6 +78,7 @@ export async function confirmImport(input: ConfirmImportInput): Promise<ActionRe
     .from('import_sessions')
     .insert({
       user_id: user.id,
+      organization_id: organizationId,
       file_name: input.file_name,
       bank: input.bank,
       period_start: periodStart,
