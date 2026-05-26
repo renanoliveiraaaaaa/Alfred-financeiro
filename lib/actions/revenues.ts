@@ -2,6 +2,7 @@
 
 import { resolveActiveOrganizationId } from '@/lib/activeOrganizationServer'
 import { createSupabaseServerClient } from '@/lib/supabaseServer'
+import { buildServerI18nError } from '@/lib/serverErrorI18n'
 
 export type CreateRevenueInput = {
   amount: number
@@ -14,14 +15,14 @@ export type CreateRevenueInput = {
 export type ActionResult = { success: true } | { success: false; error: string }
 
 export async function createRevenue(input: CreateRevenueInput): Promise<ActionResult> {
-  if (input.amount <= 0) return { success: false, error: 'Valor deve ser maior que zero.' }
-  if (!input.description.trim()) return { success: false, error: 'Descrição é obrigatória.' }
-  if (!input.date) return { success: false, error: 'Data efetiva é obrigatória.' }
+  if (input.amount <= 0) return { success: false, error: 'crud.error.amount' }
+  if (!input.description.trim()) return { success: false, error: 'crud.error.description' }
+  if (!input.date) return { success: false, error: 'crud.error.effectiveDate' }
 
   const supabase = createSupabaseServerClient()
 
   const { data: { user }, error: authError } = await supabase.auth.getUser()
-  if (authError || !user) return { success: false, error: 'Usuário não autenticado.' }
+  if (authError || !user) return { success: false, error: 'crud.error.auth' }
 
   const orgRes = await resolveActiveOrganizationId()
   if (!orgRes.ok) return { success: false, error: orgRes.error }
@@ -36,6 +37,11 @@ export async function createRevenue(input: CreateRevenueInput): Promise<ActionRe
     received: input.received,
   })
 
-  if (insertError) return { success: false, error: insertError.message }
+  if (insertError) {
+    return {
+      success: false,
+      error: buildServerI18nError('crud.error.saveRevenue', { detail: insertError.message }),
+    }
+  }
   return { success: true }
 }

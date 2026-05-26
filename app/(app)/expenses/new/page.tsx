@@ -11,6 +11,7 @@ import { useActiveOrganizationRevision } from '@/lib/useActiveOrganizationRevisi
 import { useToast, CONNECTION_ERROR_MSG, isConnectionError } from '@/lib/toastContext'
 import { useI18n } from '@/lib/i18n'
 import { formatMessage } from '@/lib/i18nFormat'
+import { resolveServerError } from '@/lib/serverErrorI18n'
 import {
   buildDefaultCategories,
   buildPaymentMethods,
@@ -270,7 +271,7 @@ export default function NewExpensePage() {
         credit_card_id: isCredito && creditCardId ? creditCardId : null,
       })
 
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new Error(resolveServerError(result.error, t))
 
       setSuccess(true)
       setTimeout(() => router.push('/expenses'), 800)

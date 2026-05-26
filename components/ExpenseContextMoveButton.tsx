@@ -4,6 +4,9 @@ import { useState } from 'react'
 import { ArrowRightLeft, Loader2 } from 'lucide-react'
 import { moveTransaction } from '@/lib/actions/expenses'
 import { useToast } from '@/lib/toastContext'
+import { useI18n } from '@/lib/i18n'
+import { formatMessage } from '@/lib/i18nFormat'
+import { resolveServerError } from '@/lib/serverErrorI18n'
 
 type Props = {
   expenseId: string
@@ -26,6 +29,7 @@ export default function ExpenseContextMoveButton({
 }: Props) {
   const [loading, setLoading] = useState(false)
   const { toast, toastError } = useToast()
+  const { t } = useI18n()
 
   const handleClick = async () => {
     if (loading) return
@@ -33,19 +37,19 @@ export default function ExpenseContextMoveButton({
     try {
       const r = await moveTransaction(expenseId, targetOrgId)
       if (!r.ok) {
-        toastError(r.error)
+        toastError(resolveServerError(r.error, t))
         return
       }
-      toast('Despesa movida para o contexto sugerido.', 'success')
+      toast(t('crud.move.success'), 'success')
       onMoved?.()
     } catch (e: unknown) {
-      toastError(e instanceof Error ? e.message : 'Não foi possível mover a despesa.')
+      toastError(e instanceof Error ? e.message : t('crud.move.failed'))
     } finally {
       setLoading(false)
     }
   }
 
-  const label = `Mover para ${targetLabel}`
+  const label = formatMessage(t('crud.move.toOrg'), { label: targetLabel })
 
   return (
     <button

@@ -47,5 +47,9 @@
   "import.error.noGeminiKey": "Gemini API key not configured.",
   "import.error.fileTooLarge": "File too large. Maximum size: 10 MB.",
   "import.error.noTextHint": "PDF has no selectable text (common with scanned statements). Set GEMINI_API_KEY or GOOGLE_GENERATIVE_AI_API_KEY on Vercel (Production) and redeploy, or export OFX/CSV from your bank.",
-  "import.error.layoutHint": "Layout not recognized. With a Gemini key on Vercel (+ redeploy) AI can help; or use OFX/CSV."
+  "import.error.layoutHint": "Layout not recognized. With a Gemini key on Vercel (+ redeploy) AI can help; or use OFX/CSV.",
+  "import.error.noTransactionsToImport": "No transactions to import.",
+  "import.error.sessionCreate": "Error creating import session: {detail}",
+  "import.error.revenuesFailed": "Error importing income. Please try again.",
+  "import.error.expensesFailed": "Error importing expenses. Please try again."
 }

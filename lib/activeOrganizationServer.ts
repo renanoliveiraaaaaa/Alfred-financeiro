@@ -16,7 +16,7 @@ export async function resolveActiveOrganizationId(): Promise<
     error: authError,
   } = await supabase.auth.getUser()
   if (authError || !user) {
-    return { ok: false, error: 'Usuário não autenticado.' }
+    return { ok: false, error: 'crud.error.auth' }
   }
 
   const cookieRaw = cookies().get(ACTIVE_ORG_COOKIE_NAME)?.value?.trim() ?? null
@@ -42,7 +42,7 @@ export async function resolveActiveOrganizationId(): Promise<
     .maybeSingle()
 
   if (!personal?.id) {
-    return { ok: false, error: 'Nenhuma organização pessoal encontrada para o utilizador.' }
+    return { ok: false, error: 'error.orgNotFound' }
   }
 
   return { ok: true, organizationId: personal.id }

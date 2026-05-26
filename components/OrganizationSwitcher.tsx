@@ -10,6 +10,7 @@ import { createBusinessOrganization } from '@/lib/actions/organizations'
 import { useToast } from '@/lib/toastContext'
 import { useUserPreferences } from '@/lib/userPreferencesContext'
 import { useI18n } from '@/lib/i18n'
+import { resolveServerError } from '@/lib/serverErrorI18n'
 import ModalShell from '@/components/ModalShell'
 
 const STORAGE_KEY = 'alfred.activeOrganizationId'
@@ -142,7 +143,7 @@ export default function OrganizationSwitcher({ variant = 'sidebar' }: Props) {
     try {
       const result = await createBusinessOrganization(companyName)
       if (!result.ok) {
-        toastError(result.error)
+        toastError(resolveServerError(result.error, t))
         return
       }
       toast(t('org.created'), 'success')

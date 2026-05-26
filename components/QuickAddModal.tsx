@@ -10,6 +10,7 @@ import { useToast, CONNECTION_ERROR_MSG, isConnectionError } from '@/lib/toastCo
 import { ConfirmDangerModal } from '@/components/ConfirmDangerModal'
 import ModalShell from '@/components/ModalShell'
 import { useI18n } from '@/lib/i18n'
+import { resolveServerError } from '@/lib/serverErrorI18n'
 import { useGreetingPronoun } from '@/lib/greeting'
 import { useUserPreferences } from '@/lib/userPreferencesContext'
 
@@ -93,7 +94,7 @@ export default function QuickAddModal({ open, onClose }: Props) {
           paid,
         })
         if (!result.success) {
-          setError(result.error)
+          setError(resolveServerError(result.error, t))
           setSaving(false)
           return
         }
@@ -106,7 +107,7 @@ export default function QuickAddModal({ open, onClose }: Props) {
           received,
         })
         if (!result.success) {
-          setError(result.error)
+          setError(resolveServerError(result.error, t))
           setSaving(false)
           return
         }

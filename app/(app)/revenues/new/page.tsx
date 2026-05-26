@@ -9,6 +9,7 @@ import { createRevenue } from '@/lib/actions/revenues'
 import { useToast, CONNECTION_ERROR_MSG, isConnectionError } from '@/lib/toastContext'
 import { useI18n } from '@/lib/i18n'
 import { formatMessage } from '@/lib/i18nFormat'
+import { resolveServerError } from '@/lib/serverErrorI18n'
 
 export default function NewRevenuePage() {
   const router = useRouter()
@@ -42,7 +43,7 @@ export default function NewRevenuePage() {
         received,
       })
 
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new Error(resolveServerError(result.error, t))
 
       setSuccess(true)
       setTimeout(() => router.push('/revenues'), 800)

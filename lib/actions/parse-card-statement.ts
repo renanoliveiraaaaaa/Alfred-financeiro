@@ -109,12 +109,6 @@ IMPORTANTE:
 - Retorne SOMENTE o JSON, sem explicações
 `
 
-function mapOrgError(message: string): string {
-  if (message === 'Usuário não autenticado.') return 'crud.error.auth'
-  if (message === 'Nenhuma organização pessoal encontrada para o utilizador.') return 'error.orgNotFound'
-  return message
-}
-
 // ── Server action: parsear fatura ─────────────────────────────────────────────
 
 const MIN_TEXT_LEN = 120
@@ -281,7 +275,7 @@ export async function confirmCardStatement(
   if (authErr || !user) return { success: false, error: 'crud.error.auth' }
 
   const orgRes = await resolveActiveOrganizationId()
-  if (!orgRes.ok) return { success: false, error: mapOrgError(orgRes.error) }
+  if (!orgRes.ok) return { success: false, error: orgRes.error }
   const organizationId = orgRes.organizationId
 
   // 1. Criar ou atualizar cartão

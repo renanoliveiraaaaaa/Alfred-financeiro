@@ -1,6 +1,7 @@
 'use server'
 
 import { createSupabaseServerClient } from '@/lib/supabaseServer'
+import { buildServerI18nError } from '@/lib/serverErrorI18n'
 
 export type CreateBusinessOrgResult =
   | { ok: true; organizationId: string }
@@ -20,10 +21,10 @@ function slugifyBase(name: string): string {
 export async function createBusinessOrganization(companyName: string): Promise<CreateBusinessOrgResult> {
   const trimmed = companyName.trim()
   if (trimmed.length < 2) {
-    return { ok: false, error: 'Indique um nome com pelo menos 2 caracteres.' }
+    return { ok: false, error: 'org.error.nameShort' }
   }
   if (trimmed.length > 120) {
-    return { ok: false, error: 'Nome demasiado longo.' }
+    return { ok: false, error: 'org.error.nameLong' }
   }
 
   const supabase = createSupabaseServerClient()
@@ -32,7 +33,7 @@ export async function createBusinessOrganization(companyName: string): Promise<C
     error: authError,
   } = await supabase.auth.getUser()
   if (authError || !user) {
-    return { ok: false, error: 'Sessão inválida. Inicie sessão novamente.' }
+    return { ok: false, error: 'error.unauthorized' }
   }
 
   const base = slugifyBase(trimmed)
@@ -60,7 +61,10 @@ export async function createBusinessOrganization(companyName: string): Promise<C
 
       if (memErr) {
         await supabase.from('organizations').delete().eq('id', org.id)
-        return { ok: false, error: memErr.message }
+        return {
+          ok: false,
+          error: buildServerI18nError('org.error.memberFailed', { detail: memErr.message }),
+        }
       }
 
       return { ok: true, organizationId: org.id }
@@ -71,8 +75,11 @@ export async function createBusinessOrganization(companyName: string): Promise<C
       continue
     }
 
-    return { ok: false, error: orgErr?.message ?? 'Não foi possível criar a organização.' }
+    return {
+      ok: false,
+      error: buildServerI18nError('org.error.createFailed', { detail: orgErr?.message ?? '' }),
+    }
   }
 
-  return { ok: false, error: 'Não foi possível gerar um identificador único. Tente outro nome.' }
+  return { ok: false, error: 'org.error.slugFailed' }
 }

@@ -2,6 +2,7 @@
 
 import { resolveActiveOrganizationId } from '@/lib/activeOrganizationServer'
 import { createSupabaseServerClient } from '@/lib/supabaseServer'
+import { buildServerI18nError } from '@/lib/serverErrorI18n'
 
 // Valores válidos após a migration consolidada (20260318200000_consolidate_all_pending.sql).
 // Qualquer valor fora dessas listas cai no fallback para nunca violar o CHECK constraint.
@@ -54,7 +55,7 @@ export async function confirmImport(input: ConfirmImportInput): Promise<ActionRe
     error: authError,
   } = await supabase.auth.getUser()
   if (authError || !user) {
-    return { success: false, error: 'Usuário não autenticado.' }
+    return { success: false, error: 'crud.error.auth' }
   }
 
   const orgRes = await resolveActiveOrganizationId()
@@ -64,7 +65,7 @@ export async function confirmImport(input: ConfirmImportInput): Promise<ActionRe
   const organizationId = orgRes.organizationId
 
   if (!input.transactions || input.transactions.length === 0) {
-    return { success: false, error: 'Nenhuma transação para importar.' }
+    return { success: false, error: 'import.error.noTransactionsToImport' }
   }
 
   // Calcula o período com base nas transações, caso não informado
@@ -90,7 +91,12 @@ export async function confirmImport(input: ConfirmImportInput): Promise<ActionRe
     .single()
 
   if (sessionError || !session) {
-    return { success: false, error: sessionError?.message ?? 'Erro ao criar sessão de importação.' }
+    return {
+      success: false,
+      error: buildServerI18nError('import.error.sessionCreate', {
+        detail: sessionError?.message ?? '',
+      }),
+    }
   }
 
   const sessionId = session.id
@@ -149,7 +155,7 @@ export async function confirmImport(input: ConfirmImportInput): Promise<ActionRe
     const { error: revError } = await supabase.from('revenues').insert(revenues)
     if (revError) {
       console.error('[import] Erro ao inserir receitas:', revError)
-      return rollback('Erro ao importar receitas. Tente novamente.')
+      return rollback('import.error.revenuesFailed')
     }
     imported += revenues.length
   }
@@ -160,7 +166,7 @@ export async function confirmImport(input: ConfirmImportInput): Promise<ActionRe
     if (expError) {
       // Receitas já inseridas são desfeitas antes de retornar o erro
       console.error('[import] Erro ao inserir despesas:', expError)
-      return rollback('Erro ao importar despesas. Tente novamente.')
+      return rollback('import.error.expensesFailed')
     }
     imported += expenses.length
   }

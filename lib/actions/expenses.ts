@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { resolveActiveOrganizationId } from '@/lib/activeOrganizationServer'
 import { createSupabaseServerClient } from '@/lib/supabaseServer'
 import { calculateInstallmentDates, addMonths } from '@/lib/installments'
+import { buildServerI18nError } from '@/lib/serverErrorI18n'
 
 type PaymentMethod = 'credito' | 'debito' | 'especie' | 'credito_parcelado' | 'pix'
 
@@ -22,19 +23,19 @@ export type CreateExpenseInput = {
 export type ActionResult = { success: true } | { success: false; error: string }
 
 export async function createExpense(input: CreateExpenseInput): Promise<ActionResult> {
-  if (input.amount <= 0) return { success: false, error: 'Valor deve ser maior que zero.' }
-  if (!input.description.trim()) return { success: false, error: 'Descrição é obrigatória.' }
-  if (!input.due_date) return { success: false, error: 'Data de vencimento é obrigatória.' }
+  if (input.amount <= 0) return { success: false, error: 'crud.error.amount' }
+  if (!input.description.trim()) return { success: false, error: 'crud.error.description' }
+  if (!input.due_date) return { success: false, error: 'crud.error.dueDate' }
 
   const isParcelado = input.payment_method === 'credito_parcelado'
   if (isParcelado && (input.installments < 2 || input.installments > 120)) {
-    return { success: false, error: 'Parcelas devem ser entre 2 e 120.' }
+    return { success: false, error: 'crud.error.installments' }
   }
 
   const supabase = createSupabaseServerClient()
 
   const { data: { user }, error: authError } = await supabase.auth.getUser()
-  if (authError || !user) return { success: false, error: 'Usuário não autenticado.' }
+  if (authError || !user) return { success: false, error: 'crud.error.auth' }
 
   const orgRes = await resolveActiveOrganizationId()
   if (!orgRes.ok) return { success: false, error: orgRes.error }
@@ -87,7 +88,12 @@ export async function createExpense(input: CreateExpenseInput): Promise<ActionRe
     }))
 
     const { error: insertError } = await supabase.from('expenses').insert(rows)
-    if (insertError) return { success: false, error: insertError.message }
+    if (insertError) {
+      return {
+        success: false,
+        error: buildServerI18nError('crud.error.saveExpense', { detail: insertError.message }),
+      }
+    }
   } else {
     const { error: insertError } = await supabase.from('expenses').insert({
       user_id: user.id,
@@ -103,7 +109,12 @@ export async function createExpense(input: CreateExpenseInput): Promise<ActionRe
       invoice_url: input.invoice_url || null,
       credit_card_id: input.credit_card_id || null,
     })
-    if (insertError) return { success: false, error: insertError.message }
+    if (insertError) {
+      return {
+        success: false,
+        error: buildServerI18nError('crud.error.saveExpense', { detail: insertError.message }),
+      }
+    }
   }
 
   return { success: true }
@@ -117,14 +128,14 @@ export type MoveTransactionResult = { ok: true } | { ok: false; error: string }
 export async function moveTransaction(transactionId: string, targetOrgId: string): Promise<MoveTransactionResult> {
   const tid = transactionId?.trim()
   const oid = targetOrgId?.trim()
-  if (!tid || !oid) return { ok: false, error: 'Parâmetros inválidos.' }
+  if (!tid || !oid) return { ok: false, error: 'crud.error.moveInvalidParams' }
 
   const supabase = createSupabaseServerClient()
   const {
     data: { user },
     error: authError,
   } = await supabase.auth.getUser()
-  if (authError || !user) return { ok: false, error: 'Sessão inválida.' }
+  if (authError || !user) return { ok: false, error: 'error.unauthorized' }
 
   const { data: row, error: fetchErr } = await supabase
     .from('expenses')
@@ -132,9 +143,9 @@ export async function moveTransaction(transactionId: string, targetOrgId: string
     .eq('id', tid)
     .maybeSingle()
 
-  if (fetchErr || !row) return { ok: false, error: 'Despesa não encontrada.' }
-  if (row.user_id !== user.id) return { ok: false, error: 'Sem permissão para esta despesa.' }
-  if (row.organization_id === oid) return { ok: false, error: 'A despesa já está nesta organização.' }
+  if (fetchErr || !row) return { ok: false, error: 'crud.error.expenseNotFound' }
+  if (row.user_id !== user.id) return { ok: false, error: 'crud.error.expenseForbidden' }
+  if (row.organization_id === oid) return { ok: false, error: 'crud.error.expenseAlreadyInOrg' }
 
   const { data: membership, error: memErr } = await supabase
     .from('organization_members')
@@ -143,7 +154,7 @@ export async function moveTransaction(transactionId: string, targetOrgId: string
     .eq('organization_id', oid)
     .maybeSingle()
 
-  if (memErr || !membership) return { ok: false, error: 'Não tem acesso à organização de destino.' }
+  if (memErr || !membership) return { ok: false, error: 'crud.error.destOrgAccess' }
 
   const { error: updErr } = await supabase
     .from('expenses')
@@ -151,7 +162,12 @@ export async function moveTransaction(transactionId: string, targetOrgId: string
     .eq('id', tid)
     .eq('user_id', user.id)
 
-  if (updErr) return { ok: false, error: updErr.message }
+  if (updErr) {
+    return {
+      ok: false,
+      error: buildServerI18nError('crud.error.moveFailed', { detail: updErr.message }),
+    }
+  }
 
   revalidatePath('/dashboard')
   revalidatePath('/expenses')
