@@ -1,7 +1,7 @@
 {
-  "name": "Alfred Financeiro",
+  "name": "Alfred — Assistente Financeiro",
   "short_name": "Alfred",
-  "description": "Seu mordomo financeiro pessoal — elegância e controle ao seu dispor.",
+  "description": "Seu assistente financeiro pessoal — elegância e controle ao seu dispor.",
   "start_url": "/dashboard",
   "scope": "/",
   "display": "standalone",

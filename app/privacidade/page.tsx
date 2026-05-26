@@ -2,8 +2,8 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 
 export const metadata: Metadata = {
-  title: 'Privacidade e Termos — Alfred Financeiro',
-  description: 'Política de privacidade e termos de uso do Alfred Financeiro.',
+  title: 'Privacidade e Termos — Alfred — Assistente Financeiro',
+  description: 'Política de privacidade e termos de uso do Alfred — Assistente Financeiro.',
 }
 
 export default function PrivacidadePage() {
@@ -15,7 +15,7 @@ export default function PrivacidadePage() {
         </Link>
 
         <h1 className="mt-6 text-2xl font-semibold">Política de Privacidade e Termos de Uso</h1>
-        <p className="mt-1 text-sm text-muted">Alfred Financeiro · última atualização: 21/05/2026</p>
+        <p className="mt-1 text-sm text-muted">Alfred — Assistente Financeiro · última atualização: 21/05/2026</p>
 
         <section className="mt-8 space-y-4 text-sm leading-relaxed text-main">
           <h2 className="text-lg font-semibold">Política de Privacidade</h2>

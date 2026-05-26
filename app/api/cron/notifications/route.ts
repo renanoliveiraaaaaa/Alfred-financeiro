@@ -78,7 +78,10 @@ export async function GET(request: Request) {
 
       const result = await sendEmail({
         to: email,
-        subject: locale === 'en' ? 'Weekly report — Alfred Finance' : 'Resumo semanal — Alfred Financeiro',
+        subject:
+          locale === 'en'
+            ? 'Weekly report — Alfred Financial Assistant'
+            : 'Resumo semanal — Alfred — Assistente Financeiro',
         html: buildWeeklyReportHtml({ name, totalRevenues, totalExpenses, unpaidCount, locale }),
       })
 

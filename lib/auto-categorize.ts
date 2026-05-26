@@ -2,7 +2,7 @@
  * Auto-categorização de transações importadas de extratos bancários.
  *
  * Mapeia palavras-chave (case-insensitive, sem acentos) para as categorias
- * existentes no sistema Alfred Financeiro.
+ * existentes no sistema Alfred — Assistente Financeiro.
  */
 
 const KEYWORD_MAP: Array<[string, string]> = [

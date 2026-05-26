@@ -17,7 +17,7 @@ export const metadata: Metadata = {
     default: "Alfred",
     template: "%s — Alfred",
   },
-  description: "Seu mordomo financeiro pessoal — elegância e controle ao seu dispor.",
+  description: "Alfred — Assistente Financeiro: elegância e controle ao seu dispor.",
   manifest: "/manifest.json",
   // Padrão moderno (Chrome); appleWebApp continua para Safari / iOS
   other: {

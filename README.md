@@ -1,4 +1,4 @@
-# Alfred Financeiro
+# Alfred — Assistente Financeiro
 
 <p align="center">
   <img src="https://img.shields.io/badge/Next.js-14-black?style=flat-square&logo=next.js" alt="Next.js 14" />
@@ -10,7 +10,7 @@
 
 ---
 
-> **Assistente financeiro pessoal de elite** — inspirado na lealdade e eficiência de um mordomo britânico, o Alfred Financeiro cuida do seu patrimônio com discrição, organização e precisão. Um sistema completo para quem exige excelência na gestão das finanças pessoais.
+> **Assistente financeiro pessoal de elite** — inspirado na lealdade e eficiência de um mordomo britânico, o Alfred — Assistente Financeiro cuida do seu patrimônio com discrição, organização e precisão. Um sistema completo para quem exige excelência na gestão das finanças pessoais.
 
 ---
 
@@ -35,7 +35,7 @@ Leia em [docs/PRIVACIDADE_TERMO_DE_USO.md](docs/PRIVACIDADE_TERMO_DE_USO.md).
 
 ## Visão Geral
 
-O Alfred Financeiro é um SaaS de gestão financeira pessoal que combina interface refinada, funcionalidades avançadas e uma experiência de uso única — a *Voz do Alfred* — que guia o usuário com linguagem formal e cortês em cada interação.
+O Alfred — Assistente Financeiro é um SaaS de gestão financeira pessoal que combina interface refinada, funcionalidades avançadas e uma experiência de uso única — a *Voz do Alfred* — que guia o usuário com linguagem formal e cortês em cada interação.
 
 ---
 
@@ -81,7 +81,7 @@ Referências:
 
 ## Temas Visuais e Personalização
 
-O Alfred Financeiro oferece uma galeria de temas para personalizar a experiência:
+O Alfred — Assistente Financeiro oferece uma galeria de temas para personalizar a experiência:
 
 - **Temas disponíveis**: Padrão, Gala, Classic, Club, Liquid Glass
 - **Tema Liquid Glass**: Superfícies translúcidas, fundo animado com blobs coloridos, efeito glassmorphism moderno
@@ -108,7 +108,7 @@ Referências:
 
 ## Acessibilidade, UX e Internacionalização
 
-O Alfred Financeiro segue boas práticas de acessibilidade e experiência do usuário:
+O Alfred — Assistente Financeiro segue boas práticas de acessibilidade e experiência do usuário:
 
 - Todos os botões e links possuem `aria-label` e foco visível.
 - Empty states possuem foco automático e são lidos por leitores de tela (`aria-live`).

@@ -9,7 +9,7 @@ export type SendEmailResult = { ok: true; id?: string; stub?: boolean } | { ok: 
 
 export async function sendEmail(payload: EmailPayload): Promise<SendEmailResult> {
   const apiKey = process.env.RESEND_API_KEY
-  const from = process.env.EMAIL_FROM ?? 'Alfred Financeiro <noreply@alfred.app>'
+  const from = process.env.EMAIL_FROM ?? 'Alfred — Assistente Financeiro <noreply@alfred.app>'
 
   if (!apiKey) {
     console.info('[email:stub]', payload.to, payload.subject)
@@ -60,7 +60,7 @@ export function buildWeeklyReportHtml(params: {
 
   if (params.locale === 'en') {
     return `
-      <h2>Weekly report — Alfred Finance</h2>
+      <h2>Weekly report — Alfred Financial Assistant</h2>
       <p>Hello, ${params.name}.</p>
       <ul>
         <li>Income this month: <strong>${fmt(params.totalRevenues)}</strong></li>
@@ -73,7 +73,7 @@ export function buildWeeklyReportHtml(params: {
   }
 
   return `
-    <h2>Resumo semanal — Alfred Financeiro</h2>
+    <h2>Resumo semanal — Alfred — Assistente Financeiro</h2>
     <p>Olá, ${params.name}.</p>
     <ul>
       <li>Entradas do mês: <strong>${fmt(params.totalRevenues)}</strong></li>
@@ -122,7 +122,7 @@ export function buildOrgInviteHtml(params: {
 
   if (params.locale === 'en') {
     return `
-      <h2>Team invitation — Alfred Finance</h2>
+      <h2>Team invitation — Alfred Financial Assistant</h2>
       <p>You were invited to join <strong>${params.orgName}</strong> as ${roleLabel}.</p>
       <p><a href="${params.inviteUrl}">Accept invitation</a></p>
       <p>This link expires in 7 days.</p>
@@ -130,7 +130,7 @@ export function buildOrgInviteHtml(params: {
   }
 
   return `
-    <h2>Convite para equipa — Alfred Financeiro</h2>
+    <h2>Convite para equipa — Alfred — Assistente Financeiro</h2>
     <p>Foi convidado para <strong>${params.orgName}</strong> como ${roleLabel}.</p>
     <p><a href="${params.inviteUrl}">Aceitar convite</a></p>
     <p>Este link expira em 7 dias.</p>

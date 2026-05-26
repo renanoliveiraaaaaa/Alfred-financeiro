@@ -158,7 +158,7 @@ export async function createOrgInvite(
 
   const emailRes = await sendEmail({
     to: normalized,
-    subject: `Convite — ${orgName} (Alfred Financeiro)`,
+    subject: `Convite — ${orgName} (Alfred — Assistente Financeiro)`,
     html: buildOrgInviteHtml({ orgName, inviteUrl, role, locale: 'pt' }),
     text: `Foi convidado para ${orgName}. Aceite em: ${inviteUrl}`,
   })
