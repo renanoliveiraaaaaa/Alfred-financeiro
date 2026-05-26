@@ -28,6 +28,8 @@ export default function Home() {
   const [signupEmailPending, setSignupEmailPending] = useState(false)
   const [lastUser, setLastUserState] = useState<LastUser | null>(null)
   const [showEmailForm, setShowEmailForm] = useState(true)
+  const [forgotMode, setForgotMode] = useState(false)
+  const [forgotSent, setForgotSent] = useState(false)
   const router = useRouter()
   const supabase = createSupabaseClient()
 
@@ -82,6 +84,21 @@ export default function Home() {
     try {
       if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
         throw new Error('auth.error.env')
+      }
+
+      if (forgotMode) {
+        const targetEmail = (lastUser && !showEmailForm ? lastUser.email : email).trim()
+        if (!targetEmail) {
+          setError('auth.error.invalid')
+          return
+        }
+        const appUrl = (process.env.NEXT_PUBLIC_APP_URL || window.location.origin).replace(/\/$/, '')
+        const { error: resetErr } = await supabase.auth.resetPasswordForEmail(targetEmail, {
+          redirectTo: `${appUrl}/auth/reset-password`,
+        })
+        if (resetErr) throw resetErr
+        setForgotSent(true)
+        return
       }
 
       if (isLogin) {
@@ -148,6 +165,8 @@ export default function Home() {
 
   const switchToRegister = () => {
     setIsLogin(false)
+    setForgotMode(false)
+    setForgotSent(false)
     setError(null)
     setSignupEmailPending(false)
     setShowEmailForm(true)
@@ -155,8 +174,24 @@ export default function Home() {
 
   const switchToLogin = () => {
     setIsLogin(true)
+    setForgotMode(false)
+    setForgotSent(false)
     setError(null)
     setSignupEmailPending(false)
+  }
+
+  const openForgotPassword = () => {
+    setIsLogin(true)
+    setForgotMode(true)
+    setForgotSent(false)
+    setError(null)
+    setSignupEmailPending(false)
+  }
+
+  const backFromForgot = () => {
+    setForgotMode(false)
+    setForgotSent(false)
+    setError(null)
   }
 
   if (booting) {
@@ -210,6 +245,10 @@ export default function Home() {
             onGoToLoginAfterSignup={goToLoginAfterSignup}
             onTabAccess={switchToLogin}
             onTabInvite={switchToRegister}
+            forgotMode={forgotMode}
+            forgotSent={forgotSent}
+            onForgotClick={openForgotPassword}
+            onBackFromForgot={backFromForgot}
           />
         </div>
       </section>

@@ -22,6 +22,10 @@ export type LandingAuthFormProps = {
   onGoToLoginAfterSignup: () => void
   onTabAccess: () => void
   onTabInvite: () => void
+  forgotMode?: boolean
+  forgotSent?: boolean
+  onForgotClick?: () => void
+  onBackFromForgot?: () => void
 }
 
 const inputClass =
@@ -48,6 +52,10 @@ export default function LandingAuthForm({
   onGoToLoginAfterSignup,
   onTabAccess,
   onTabInvite,
+  forgotMode = false,
+  forgotSent = false,
+  onForgotClick,
+  onBackFromForgot,
 }: LandingAuthFormProps) {
   const { t } = useI18n();
   const displayName = lastUser?.fullName
@@ -70,13 +78,17 @@ export default function LandingAuthForm({
             {t('auth.digitalVault')}
           </p>
           <p className="mt-2 text-sm text-slate-400">
-            {lastUser && !showEmailForm
-              ? t('auth.helloAgain').replace('{name}', displayName)
-              : !isLogin && signupEmailPending
-                ? t('auth.almostThere')
-                : isLogin
-                  ? t('auth.welcomeBack')
-                  : t('auth.prepareAccount')}
+            {forgotMode
+              ? forgotSent
+                ? t('auth.forgot.sentTitle')
+                : t('auth.forgot.subtitle')
+              : lastUser && !showEmailForm
+                ? t('auth.helloAgain').replace('{name}', displayName)
+                : !isLogin && signupEmailPending
+                  ? t('auth.almostThere')
+                  : isLogin
+                    ? t('auth.welcomeBack')
+                    : t('auth.prepareAccount')}
           </p>
         </div>
 
@@ -84,10 +96,11 @@ export default function LandingAuthForm({
           <button
             type="button"
             onClick={onTabAccess}
+            disabled={forgotMode}
             className={`flex-1 rounded-lg py-2.5 text-sm font-medium transition-all ${
-              isLogin
+              isLogin && !forgotMode
                 ? 'bg-gradient-to-b from-emerald-600/90 to-emerald-800/90 text-white shadow-lg shadow-emerald-950/40'
-                : 'text-slate-400 hover:text-slate-200'
+                : 'text-slate-400 hover:text-slate-200 disabled:opacity-50'
             }`}
           >
             {t('auth.login')}
@@ -95,10 +108,11 @@ export default function LandingAuthForm({
           <button
             type="button"
             onClick={onTabInvite}
+            disabled={forgotMode}
             className={`flex-1 rounded-lg py-2.5 text-sm font-medium transition-all ${
-              !isLogin
+              !isLogin && !forgotMode
                 ? 'bg-gradient-to-b from-emerald-600/90 to-emerald-800/90 text-white shadow-lg shadow-emerald-950/40'
-                : 'text-slate-400 hover:text-slate-200'
+                : 'text-slate-400 hover:text-slate-200 disabled:opacity-50'
             }`}
           >
             {t('auth.register')}
@@ -131,7 +145,21 @@ export default function LandingAuthForm({
             </div>
           )}
 
-          {lastUser && !showEmailForm && isLogin ? (
+          {forgotMode && forgotSent && (
+            <div className="animate-fade-in space-y-3 rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-4 py-4 text-sm text-emerald-100">
+              <p className="font-medium">{t('auth.forgot.sentTitle')}</p>
+              <p className="leading-relaxed text-emerald-200/90">{t('auth.forgot.sentBody')}</p>
+              <button
+                type="button"
+                onClick={onBackFromForgot}
+                className="mt-1 w-full rounded-xl bg-gradient-to-br from-emerald-600 via-emerald-800 to-emerald-950 py-2.5 text-sm font-medium text-white shadow-lg shadow-emerald-950/40 transition-all hover:brightness-110 active:scale-[0.99]"
+              >
+                {t('auth.goToLogin')}
+              </button>
+            </div>
+          )}
+
+          {lastUser && !showEmailForm && isLogin && !forgotMode ? (
             <div className="rounded-xl border border-white/10 bg-slate-950/50 p-4">
               <div className="flex items-center gap-3">
                 <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-emerald-500/30 bg-slate-900">
@@ -156,7 +184,7 @@ export default function LandingAuthForm({
                 </button>
               </div>
             </div>
-          ) : !signupEmailPending ? (
+          ) : !signupEmailPending && !forgotSent ? (
             <div className="transition-all">
               <label htmlFor="email" className="mb-1 block text-xs font-medium uppercase tracking-wider text-slate-500">
                 {t('auth.email')}
@@ -175,7 +203,7 @@ export default function LandingAuthForm({
             </div>
           ) : null}
 
-          {!signupEmailPending && (
+          {!signupEmailPending && !forgotSent && !forgotMode && (
             <div className="transition-all">
               <label htmlFor="password" className="mb-1 block text-xs font-medium uppercase tracking-wider text-slate-500">
                 {lastUser && !showEmailForm ? t('auth.enterPassword') : t('auth.password')}
@@ -191,10 +219,19 @@ export default function LandingAuthForm({
                 value={password}
                 onChange={(e) => onPasswordChange(e.target.value)}
               />
+              {isLogin && onForgotClick && (
+                <button
+                  type="button"
+                  onClick={onForgotClick}
+                  className="mt-2 text-xs text-emerald-400/90 transition-colors hover:text-emerald-300"
+                >
+                  {t('auth.forgot.link')}
+                </button>
+              )}
             </div>
           )}
 
-          {!isLogin && !signupEmailPending && (
+          {!isLogin && !signupEmailPending && !forgotMode && (
             <div className="transition-all">
               <label htmlFor="gender" className="mb-1 block text-xs font-medium uppercase tracking-wider text-slate-500">
                 {t('auth.gender')} <span className="text-red-400">*</span>
@@ -214,15 +251,30 @@ export default function LandingAuthForm({
             </div>
           )}
 
-          {!signupEmailPending && (
+          {!signupEmailPending && !forgotSent && (
             <div className="pt-1">
               <button
                 type="submit"
                 disabled={loading}
                 className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-emerald-600 via-emerald-800 to-emerald-950 py-3.5 text-sm font-semibold text-white shadow-xl shadow-emerald-950/50 transition-all hover:brightness-110 active:scale-[0.99] disabled:opacity-50"
               >
-                {loading ? t('auth.loading') : isLogin ? t('auth.signInMansion') : t('auth.requestAccess')}
+                {loading
+                  ? t('auth.loading')
+                  : forgotMode
+                    ? t('auth.forgot.submit')
+                    : isLogin
+                      ? t('auth.signInMansion')
+                      : t('auth.requestAccess')}
               </button>
+              {forgotMode && onBackFromForgot && (
+                <button
+                  type="button"
+                  onClick={onBackFromForgot}
+                  className="mt-3 w-full text-center text-xs text-slate-400 hover:text-slate-200"
+                >
+                  {t('auth.forgot.back')}
+                </button>
+              )}
             </div>
           )}
         </form>
