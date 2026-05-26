@@ -11,7 +11,8 @@
     "lint": "next lint",
     "validate:types": "node scripts/validate-supabase-types.mjs",
     "gen:types": "supabase gen types typescript --local > types/supabase.ts",
-    "gen:types:remote": "supabase gen types typescript --project-id clqvhuzgyekogyoyxvtp > types/supabase.ts"
+    "gen:types:remote": "supabase gen types typescript --project-id clqvhuzgyekogyoyxvtp > types/supabase.ts",
+    "gen:icons": "node scripts/generate-apple-icon.js"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

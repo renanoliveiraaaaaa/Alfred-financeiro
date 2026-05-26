@@ -27,9 +27,13 @@ async function main() {
     .png()
     .toBuffer()
 
-  const outPath = path.join(__dirname, '..', 'public', 'apple-icon.png')
-  fs.writeFileSync(outPath, png)
-  console.log('✓ apple-icon.png gerado em public/')
+  const publicDir = path.join(__dirname, '..', 'public')
+  fs.writeFileSync(path.join(publicDir, 'apple-icon.png'), png)
+
+  const favicon = await sharp(Buffer.from(svg)).resize(32, 32).png().toBuffer()
+  fs.writeFileSync(path.join(publicDir, 'favicon.ico'), favicon)
+
+  console.log('✓ apple-icon.png e favicon.ico gerados em public/')
 }
 
 main().catch((err) => {
