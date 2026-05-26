@@ -14,6 +14,14 @@ export function resolveAuthErrorKey(err: unknown): string {
     if (m.includes('password') && (m.includes('6 characters') || m.includes('at least 6'))) {
       return 'auth.error.weak'
     }
+    if (m.includes('rate limit') || m.includes('too many requests') || m.includes('429')) {
+      return 'auth.error.rateLimit'
+    }
+  }
+
+  if (typeof err === 'object' && err !== null && 'status' in err) {
+    const status = (err as { status?: number }).status
+    if (status === 429) return 'auth.error.rateLimit'
   }
 
   return 'auth.error.generic'

@@ -13,6 +13,7 @@
   "auth.error.invalid": "Invalid email or password.",
   "auth.error.exists": "An account with this email already exists.",
   "auth.error.weak": "Password must be at least 6 characters.",
+  "auth.error.rateLimit": "Email rate limit reached. Wait about an hour before requesting another reset link.",
   "auth.error.passwordMismatch": "Passwords do not match.",
   "auth.forgot.link": "Forgot your password?",
   "auth.forgot.subtitle": "Enter your account email to receive a reset link.",

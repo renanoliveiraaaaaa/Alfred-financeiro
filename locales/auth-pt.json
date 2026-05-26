@@ -13,6 +13,7 @@
   "auth.error.invalid": "E-mail ou senha inválidos.",
   "auth.error.exists": "Já existe uma conta com este e-mail.",
   "auth.error.weak": "A senha deve ter pelo menos 6 caracteres.",
+  "auth.error.rateLimit": "Limite de e-mails atingido. Aguarde cerca de 1 hora antes de pedir outro link de redefinição.",
   "auth.error.passwordMismatch": "As senhas não coincidem.",
   "auth.forgot.link": "Esqueceu sua senha?",
   "auth.forgot.subtitle": "Indique o e-mail da conta para receber o link de redefinição.",
