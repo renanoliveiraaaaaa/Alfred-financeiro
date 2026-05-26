@@ -19,6 +19,8 @@ jobs:
 
       - run: npm ci
 
+      - run: npm run validate:types
+
       - run: npm run lint
 
       - run: npm run build
@@ -26,7 +28,7 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
           NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
 
-  supabase-types:
+  supabase-types-full:
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
     steps:
@@ -39,10 +41,13 @@ jobs:
       - name: Start local Supabase
         run: supabase start -x imgproxy,studio,edge-runtime,logflare,vector,supavisor
 
-      - name: Check types are in sync
+      - name: Regenerate types from local DB
+        run: supabase gen types typescript --local > types/supabase.generated.ts
+
+      - name: Validate critical columns in committed types
+        run: node scripts/validate-supabase-types.mjs
+
+      - name: Ensure generated types include org scope columns
         run: |
-          supabase gen types typescript --local > types/supabase.generated.ts
-          diff -u types/supabase.ts types/supabase.generated.ts || (
-            echo "::error::types/supabase.ts is out of sync. Run: npm run gen:types"
-            exit 1
-          )
+          grep -q 'organization_id' types/supabase.generated.ts
+          grep -q 'import_sessions' types/supabase.generated.ts

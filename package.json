@@ -9,7 +9,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "gen:types": "supabase gen types typescript --local > types/supabase.ts"
+    "validate:types": "node scripts/validate-supabase-types.mjs",
+    "gen:types": "supabase gen types typescript --local > types/supabase.ts",
+    "gen:types:remote": "supabase gen types typescript --project-id clqvhuzgyekogyoyxvtp > types/supabase.ts"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

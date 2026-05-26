@@ -1,6 +1,13 @@
-// Este arquivo será gerado automaticamente pelo Supabase CLI
-// Execute: npx supabase gen types typescript --project-id YOUR_PROJECT_ID > types/supabase.ts
-// Ou preencha manualmente conforme o schema do banco de dados
+// Types do schema Supabase (mantidos alinhados às migrations).
+//
+// Regenerar (requer Docker Desktop):
+//   npm run gen:types
+//
+// Regenerar do projeto remoto (requer `npx supabase login` ou SUPABASE_ACCESS_TOKEN):
+//   npm run gen:types:remote
+//
+// Validar colunas obrigatórias vs manifest:
+//   npm run validate:types
 
 export type Json =
   | string
@@ -263,6 +270,7 @@ export interface Database {
         Row: {
           id: string
           user_id: string
+          organization_id: string | null
           file_name: string
           file_url: string | null
           bank: string
@@ -277,6 +285,7 @@ export interface Database {
         Insert: {
           id?: string
           user_id: string
+          organization_id?: string | null
           file_name: string
           file_url?: string | null
           bank: string
@@ -291,6 +300,7 @@ export interface Database {
         Update: {
           id?: string
           user_id?: string
+          organization_id?: string | null
           file_name?: string
           file_url?: string | null
           bank?: string
@@ -307,18 +317,21 @@ export interface Database {
         Row: {
           id: string
           user_id: string
+          organization_id: string | null
           name: string
           monthly_budget?: number | null
         }
         Insert: {
           id?: string
           user_id: string
+          organization_id?: string | null
           name: string
           monthly_budget?: number | null
         }
         Update: {
           id?: string
           user_id?: string
+          organization_id?: string | null
           name?: string
           monthly_budget?: number | null
         }

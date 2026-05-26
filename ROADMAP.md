@@ -49,6 +49,7 @@ Use este arquivo como base para criar issues no GitHub depois (`gh issue create`
 | 39 | **CI build + types Supabase** | `.github/workflows/ci.yml`; `npm run gen:types`; `supabase/.temp/` no `.gitignore` |
 | 40 | **i18n erros extrato bancário PDF** | `parse-bank-statement-pdf.ts` → `import.error.*`; `html lang` dinâmico no root layout |
 | 41 | **i18n org + CRUD server actions** | `activeOrganizationServer`, `import-statement`, `expenses`/`revenues`/`organizations`; `ExpenseContextMoveButton` |
+| 42 | **Types Supabase sincronizados** | `organization_id` em import_sessions/categories; `validate:types` + CI |
 
 ---
 
