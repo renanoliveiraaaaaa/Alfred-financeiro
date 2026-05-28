@@ -112,7 +112,7 @@ export default function Topbar() {
 
   return (
     <>
-      <header className="sticky top-0 z-40 bg-surface/80 backdrop-blur-md border-b border-border glass-topbar">
+      <header className="sticky top-0 z-40 border-b border-border bg-surface/80 pt-safe backdrop-blur-md glass-topbar standalone-safe-top">
         {showTrialBadge && (
           <div className="px-4 py-1.5 text-center text-xs font-medium bg-amber-500/10 text-amber-700 dark:text-amber-300 border-b border-amber-500/20">
             {t('trial.banner').replace('{label}', trialBadgeLabel!)}
@@ -149,7 +149,7 @@ export default function Topbar() {
 
           <div className="flex items-center gap-1 shrink-0">
             {showTrialBadge && (
-              <span className="inline-flex items-center px-1.5 sm:px-2 py-1 rounded-md text-[10px] sm:text-xs font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400 ring-1 ring-inset ring-amber-500/20 mr-0.5">
+              <span className="mr-0.5 hidden items-center rounded-md bg-amber-500/10 px-1.5 py-1 text-[10px] font-medium text-amber-600 ring-1 ring-inset ring-amber-500/20 sm:inline-flex sm:px-2 sm:text-xs dark:text-amber-400">
                 {trialBadgeLabel}
               </span>
             )}

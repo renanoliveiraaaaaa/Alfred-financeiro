@@ -23,7 +23,7 @@ export default function ExpiredPageClient({ billing }: Props) {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
+    <div className="flex min-h-app flex-col items-center justify-center bg-background px-4 pb-safe pt-safe">
       <div className="w-full max-w-2xl text-center space-y-6">
         <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-500/15 border border-amber-200 dark:border-amber-500/30">
           <Clock className="h-8 w-8 text-amber-600 dark:text-amber-400" />

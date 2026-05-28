@@ -2,7 +2,7 @@
   "name": "Alfred — Assistente Financeiro",
   "short_name": "Alfred",
   "description": "Seu assistente financeiro pessoal — elegância e controle ao seu dispor.",
-  "start_url": "/dashboard",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "background_color": "#0f0f0f",

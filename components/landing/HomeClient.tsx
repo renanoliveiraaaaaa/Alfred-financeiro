@@ -196,7 +196,7 @@ export default function HomeClient() {
 
   if (booting) {
     return (
-      <div className="flex min-h-[100dvh] items-center justify-center bg-slate-950">
+      <div className="flex min-h-app items-center justify-center bg-slate-950">
         <div
           className="h-10 w-10 animate-spin rounded-full border-2 border-emerald-500/30 border-t-emerald-400"
           aria-hidden
@@ -207,8 +207,8 @@ export default function HomeClient() {
   }
 
   return (
-    <div className="flex min-h-[100dvh] h-[100dvh] flex-col overflow-hidden bg-slate-950 lg:flex-row">
-      <section className="relative flex min-h-0 flex-1 flex-col bg-slate-950 lg:w-1/2 lg:max-w-[50%]">
+    <div className="landing-page flex min-h-app flex-col overflow-y-auto overflow-x-hidden bg-slate-950 px-safe pb-safe pt-safe lg:h-app lg:flex-row lg:overflow-hidden">
+      <section className="relative flex shrink-0 flex-col bg-slate-950 lg:min-h-0 lg:w-1/2 lg:max-w-[50%] lg:flex-1">
         <div
           className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_-10%,rgba(16,185,129,0.18),transparent_55%)]"
           aria-hidden
@@ -216,7 +216,7 @@ export default function HomeClient() {
         <LandingHero />
       </section>
 
-      <section className="relative flex flex-1 flex-col items-center justify-center border-t border-white/5 bg-slate-900/40 px-6 py-10 backdrop-blur-xl lg:w-1/2 lg:max-w-[50%] lg:border-l lg:border-t-0 lg:px-10">
+      <section className="relative flex shrink-0 flex-col items-center justify-center border-t border-white/5 bg-slate-900/40 px-6 py-8 backdrop-blur-xl sm:py-10 lg:min-h-0 lg:w-1/2 lg:max-w-[50%] lg:flex-1 lg:border-l lg:border-t-0 lg:px-10 lg:py-10">
         <div
           className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_70%_50%,rgba(255,255,255,0.06),transparent_50%)]"
           aria-hidden

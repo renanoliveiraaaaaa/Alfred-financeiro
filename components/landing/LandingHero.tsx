@@ -17,7 +17,7 @@ export default function LandingHero() {
   )
 
   return (
-    <div className="relative flex min-h-[42vh] flex-col justify-center overflow-hidden px-8 py-12 lg:min-h-0 lg:flex-1 lg:px-12 lg:py-16">
+    <div className="relative flex flex-col justify-center overflow-hidden px-6 py-8 max-lg:max-h-none lg:min-h-0 lg:flex-1 lg:px-12 lg:py-16">
       <div
         className="pointer-events-none absolute -left-1/4 top-1/2 h-[min(120%,800px)] w-[min(120%,800px)] -translate-y-1/2 rounded-full bg-emerald-500/15 blur-[120px]"
         aria-hidden
@@ -53,7 +53,7 @@ export default function LandingHero() {
           </h1>
         </div>
 
-        <ul className="space-y-5">
+        <ul className="hidden space-y-5 lg:block">
           {bullets.map((item, i) => (
             <li
               key={item.title}

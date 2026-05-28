@@ -16,7 +16,7 @@ export default function AdminShell({ children }: Props) {
       <AdminSidebar />
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-14 shrink-0 items-center border-b border-border bg-surface px-4 lg:px-6">
+        <header className="flex h-14 shrink-0 items-center border-b border-border bg-surface px-4 pt-safe standalone-safe-top lg:px-6">
           <span className="text-sm font-medium text-muted">{t('admin.topbar.restricted')}</span>
         </header>
         <main className="flex-1 pb-[calc(5rem+env(safe-area-inset-bottom,0px))] lg:pb-0">

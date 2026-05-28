@@ -1,4 +1,4 @@
-const CACHE_NAME = 'alfred-finance-v3'
+const CACHE_NAME = 'alfred-finance-v4'
 const OFFLINE_URL = '/offline'
 
 /** Só URLs públicas — rotas autenticadas não entram no precache. */

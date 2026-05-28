@@ -67,7 +67,7 @@ export default function LandingAuthForm({
   return (
     <div className="w-full max-w-md">
       <div
-        className="rounded-2xl border border-white/10 bg-slate-950/45 p-8 shadow-2xl backdrop-blur-2xl transition-all duration-500 ease-out"
+        className="rounded-2xl border border-white/10 bg-slate-950/45 p-6 shadow-2xl backdrop-blur-2xl transition-all duration-500 ease-out sm:p-8"
         style={{
           boxShadow:
             '0 0 0 1px rgba(255,255,255,0.06) inset, 0 25px 50px -12px rgba(0,0,0,0.5)',

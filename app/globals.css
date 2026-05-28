@@ -359,6 +359,29 @@ main {
 }
 
 /* ── PWA / iOS Safe Area ── */
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.px-safe {
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+}
+
+.min-h-app {
+  min-height: 100dvh;
+  min-height: -webkit-fill-available;
+}
+
+.h-app {
+  height: 100dvh;
+  height: -webkit-fill-available;
+}
+
 /* Garante que a bottom nav não sobreponha o home indicator no iPhone */
 @supports (padding-bottom: env(safe-area-inset-bottom)) {
   .pb-safe {
@@ -370,6 +393,14 @@ main {
 @supports (height: 100dvh) {
   .app-layout {
     height: 100dvh;
+    height: -webkit-fill-available;
+  }
+}
+
+/* Atalho na tela inicial: mais padding no topo (notch / status bar) */
+@media (display-mode: standalone) {
+  .standalone-safe-top {
+    padding-top: env(safe-area-inset-top, 0px);
   }
 }
 
