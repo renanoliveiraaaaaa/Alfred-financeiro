@@ -1,8 +1,7 @@
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { createSupabaseServerClient } from '@/lib/supabaseServer'
-import AdminSidebar from '@/components/admin/AdminSidebar'
-import AdminTopbar from '@/components/admin/AdminTopbar'
+import AdminShell from '@/components/admin/AdminShell'
 import { createPageMetadata } from '@/lib/serverI18n'
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -30,12 +29,6 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   }
 
   return (
-    <div className="flex min-h-screen bg-slate-50 text-slate-900">
-      <AdminSidebar />
-      <div className="flex min-w-0 flex-1 flex-col">
-        <AdminTopbar />
-        <main className="flex-1">{children}</main>
-      </div>
-    </div>
+    <AdminShell>{children}</AdminShell>
   )
 }

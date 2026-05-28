@@ -163,16 +163,16 @@ export default async function AdminUserDetailPage({ params }: PageProps) {
               <p className="mt-4 text-sm text-slate-500">{serverT('admin.userDetail.orgsEmpty', locale)}</p>
             ) : (
               <div className="mt-4 overflow-x-auto rounded-lg border border-slate-100">
-                <table className="w-full min-w-[520px] text-left text-sm">
+                <table className="w-full min-w-[320px] text-left text-xs sm:min-w-[520px] sm:text-sm">
                   <thead>
                     <tr className="border-b border-slate-100 bg-slate-50/80">
                       <th className="px-3 py-2 font-semibold text-slate-700">
                         {serverT('admin.userDetail.orgColName', locale)}
                       </th>
-                      <th className="px-3 py-2 font-semibold text-slate-700">
+                      <th className="hidden px-3 py-2 font-semibold text-slate-700 md:table-cell">
                         {serverT('admin.userDetail.orgColSlug', locale)}
                       </th>
-                      <th className="px-3 py-2 font-semibold text-slate-700">
+                      <th className="hidden px-3 py-2 font-semibold text-slate-700 sm:table-cell">
                         {serverT('admin.userDetail.orgColType', locale)}
                       </th>
                       <th className="px-3 py-2 font-semibold text-slate-700">
@@ -199,8 +199,8 @@ export default async function AdminUserDetailPage({ params }: PageProps) {
                       return (
                         <tr key={row.organization_id}>
                           <td className="px-3 py-2 font-medium text-slate-900">{org.name}</td>
-                          <td className="px-3 py-2 font-mono text-xs text-slate-600">{org.slug}</td>
-                          <td className="px-3 py-2 text-slate-700">{typeLabel}</td>
+                          <td className="hidden px-3 py-2 font-mono text-xs text-slate-600 md:table-cell">{org.slug}</td>
+                          <td className="hidden px-3 py-2 text-slate-700 sm:table-cell">{typeLabel}</td>
                           <td className="px-3 py-2">
                             <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">
                               {row.role}
@@ -217,11 +217,13 @@ export default async function AdminUserDetailPage({ params }: PageProps) {
         </div>
 
         {viewer ? (
-          <AdminUserActions
-            targetUserId={profile.id}
-            initialRole={role}
-            viewerId={viewer.id}
-          />
+          <div className="w-full shrink-0 lg:w-auto">
+            <AdminUserActions
+              targetUserId={profile.id}
+              initialRole={role}
+              viewerId={viewer.id}
+            />
+          </div>
         ) : null}
       </div>
     </div>

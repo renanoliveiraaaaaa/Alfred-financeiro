@@ -51,7 +51,7 @@ export default function AdminActivitySection({ dailySignups, latestUsers }: Prop
       <p className="mt-1 text-sm text-slate-500">{t('admin.activity.subtitle')}</p>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-5">
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm ring-1 ring-slate-900/5 lg:col-span-3">
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-slate-900/5 sm:p-5 lg:col-span-3">
           <h3 className="text-sm font-medium text-slate-700">{t('admin.activity.chartTitle')}</h3>
           <div className="mt-6 flex h-44 items-end gap-1 sm:gap-0.5">
             {dailySignups.map((day) => {
@@ -80,7 +80,7 @@ export default function AdminActivitySection({ dailySignups, latestUsers }: Prop
           </div>
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm ring-1 ring-slate-900/5 lg:col-span-2">
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-slate-900/5 sm:p-5 lg:col-span-2">
           <h3 className="text-sm font-medium text-slate-700">{t('admin.activity.latestTitle')}</h3>
           <ul className="mt-4 space-y-3">
             {formattedUsers.map((u) => (
@@ -91,7 +91,7 @@ export default function AdminActivitySection({ dailySignups, latestUsers }: Prop
                 </div>
                 <Link
                   href={`/admin/users/${u.id}`}
-                  className="shrink-0 text-xs font-medium text-slate-600 underline-offset-2 hover:text-slate-900 hover:underline"
+                  className="inline-flex min-h-[44px] shrink-0 items-center text-xs font-medium text-slate-600 underline-offset-2 hover:text-slate-900 hover:underline sm:min-h-0"
                 >
                   {t('admin.activity.viewProfile')}
                 </Link>

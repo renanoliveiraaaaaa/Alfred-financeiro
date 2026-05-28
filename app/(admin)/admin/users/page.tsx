@@ -68,23 +68,23 @@ export default async function AdminUsersPage() {
       )}
 
       <div className="mt-8 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm ring-1 ring-slate-900/5">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[720px] border-collapse text-left text-sm">
+        <div className="-mx-px overflow-x-auto">
+          <table className="w-full min-w-[480px] border-collapse text-left text-xs sm:min-w-[640px] sm:text-sm lg:min-w-[720px]">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50/80">
-                <th className="px-4 py-3 font-semibold text-slate-700 lg:px-5">
+                <th className="px-3 py-3 font-semibold text-slate-700 sm:px-4 lg:px-5">
                   {serverT('admin.users.colName', locale)}
                 </th>
-                <th className="px-4 py-3 font-semibold text-slate-700 lg:px-5">
+                <th className="hidden px-3 py-3 font-semibold text-slate-700 md:table-cell sm:px-4 lg:px-5">
                   {serverT('admin.users.colCreated', locale)}
                 </th>
-                <th className="px-4 py-3 font-semibold text-slate-700 lg:px-5">
+                <th className="hidden px-3 py-3 font-semibold text-slate-700 lg:table-cell sm:px-4 lg:px-5">
                   {serverT('admin.users.colRole', locale)}
                 </th>
-                <th className="px-4 py-3 text-center font-semibold text-slate-700 lg:px-5">
+                <th className="hidden px-3 py-3 text-center font-semibold text-slate-700 sm:table-cell sm:px-4 lg:px-5">
                   {serverT('admin.users.colVolume', locale)}
                 </th>
-                <th className="px-4 py-3 font-semibold text-slate-700 lg:px-5 text-right">
+                <th className="px-3 py-3 text-right font-semibold text-slate-700 sm:px-4 lg:px-5">
                   {serverT('admin.users.colActions', locale)}
                 </th>
               </tr>
@@ -108,17 +108,17 @@ export default async function AdminUsersPage() {
                       key={row.id}
                       className="transition-colors hover:bg-slate-50/80"
                     >
-                      <td className="px-4 py-3.5 font-medium text-slate-900 lg:px-5">
+                      <td className="px-3 py-3.5 font-medium text-slate-900 sm:px-4 lg:px-5">
                         {displayName(row.full_name, row.id, locale)}
                       </td>
-                      <td className="px-4 py-3.5 tabular-nums text-slate-600 lg:px-5">
+                      <td className="hidden px-3 py-3.5 tabular-nums text-slate-600 md:table-cell sm:px-4 lg:px-5">
                         {formatDate(row.created_at, locale)}
                       </td>
-                      <td className="px-4 py-3.5 lg:px-5">
+                      <td className="hidden px-3 py-3.5 lg:table-cell sm:px-4 lg:px-5">
                         <RoleBadge role={row.role} />
                       </td>
                       <td
-                        className="px-4 py-3.5 text-center lg:px-5"
+                        className="hidden px-3 py-3.5 text-center sm:table-cell sm:px-4 lg:px-5"
                         title={
                           isPower
                             ? serverT('admin.users.volumeHigh', locale)
@@ -133,10 +133,10 @@ export default async function AdminUsersPage() {
                           {volLabel}
                         </span>
                       </td>
-                      <td className="px-4 py-3.5 text-right lg:px-5">
+                      <td className="px-3 py-3.5 text-right sm:px-4 lg:px-5">
                         <Link
                           href={`/admin/users/${row.id}`}
-                          className="inline-flex items-center rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50"
+                          className="inline-flex min-h-[44px] items-center rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50 sm:min-h-0 sm:py-1.5"
                         >
                           {serverT('admin.users.viewDetails', locale)}
                         </Link>

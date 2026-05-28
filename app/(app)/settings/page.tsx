@@ -12,6 +12,7 @@ import { formatMessage } from '@/lib/i18nFormat'
 import { resolveActiveOrganizationIdForClient } from '@/lib/activeOrganizationClient'
 import OrgTeamSection from '@/components/settings/OrgTeamSection'
 import BillingManageSection from '@/components/billing/BillingManageSection'
+import CurrentPlanBadge, { type PlanBadgeProfile } from '@/components/profile/CurrentPlanBadge'
 import { Pencil, Loader2, X } from 'lucide-react'
 import type { Database } from '@/types/supabase'
 
@@ -39,6 +40,7 @@ export default function SettingsPage() {
   const [success, setSuccess] = useState<string | null>(null)
   const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>(null)
   const [subscriptionPlan, setSubscriptionPlan] = useState<string | null>(null)
+  const [planProfile, setPlanProfile] = useState<PlanBadgeProfile | null>(null)
 
   const clearMessages = () => { setError(null); setSuccess(null) }
 
@@ -81,12 +83,20 @@ export default function SettingsPage() {
       if (!auth.user || cancelled) return
       const { data: profile } = await supabase
         .from('profiles')
-        .select('subscription_status, subscription_plan')
+        .select('subscription_status, subscription_plan, plan_status, trial_ends_at')
         .eq('id', auth.user.id)
         .maybeSingle()
       if (cancelled) return
       setSubscriptionStatus(profile?.subscription_status ?? null)
       setSubscriptionPlan(profile?.subscription_plan ?? null)
+      if (profile) {
+        setPlanProfile({
+          plan_status: profile.plan_status,
+          trial_ends_at: profile.trial_ends_at,
+          subscription_status: profile.subscription_status,
+          subscription_plan: profile.subscription_plan,
+        })
+      }
     })()
     return () => {
       cancelled = true
@@ -212,6 +222,8 @@ export default function SettingsPage() {
           <button onClick={() => setSuccess(null)} className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-300 ml-4">✕</button>
         </div>
       )}
+
+      {planProfile ? <CurrentPlanBadge profile={planProfile} /> : null}
 
       <BillingManageSection
         subscriptionStatus={subscriptionStatus}

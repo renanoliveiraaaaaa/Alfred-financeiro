@@ -5,6 +5,7 @@
   "admin.sidebar.users": "Client management",
   "admin.sidebar.backToApp": "Back to app",
   "admin.topbar.restricted": "Restricted area — operators",
+  "admin.topbar.menu": "Navigation menu",
   "admin.dashboard.title": "System Overview",
   "admin.dashboard.subtitle": "Global indicators across all accounts (no client app organization filter).",
   "admin.dashboard.usageTitle": "System usage",
