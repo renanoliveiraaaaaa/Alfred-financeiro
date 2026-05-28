@@ -1,6 +1,9 @@
 import ExpiredPageClient from './ExpiredPageClient'
+import { getBillingAvailability } from '@/lib/billing/availability'
+
+export const dynamic = 'force-dynamic'
 
 export default function ExpiredPage() {
-  const stripeEnabled = Boolean(process.env.STRIPE_SECRET_KEY?.trim())
-  return <ExpiredPageClient stripeEnabled={stripeEnabled} />
+  const billing = getBillingAvailability()
+  return <ExpiredPageClient billing={billing} />
 }

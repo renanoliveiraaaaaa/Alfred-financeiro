@@ -6,6 +6,7 @@
   "admin.sidebar.backToApp": "Voltar ao app",
   "admin.topbar.restricted": "Área restrita — operadores",
   "admin.topbar.menu": "Menu de navegação",
+  "admin.bottomNav.label": "Navegação administrativa",
   "admin.dashboard.title": "Visão Geral do Sistema",
   "admin.dashboard.subtitle": "Indicadores globais de todas as contas (sem filtro de organização do app cliente).",
   "admin.dashboard.usageTitle": "Uso do sistema",

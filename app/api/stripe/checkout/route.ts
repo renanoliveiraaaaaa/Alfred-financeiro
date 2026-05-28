@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabaseServer'
+import { syncProfileFromStripeSubscription } from '@/lib/billing/stripeSync'
 import { getAppBaseUrl, getStripe, isStripeConfigured } from '@/lib/stripe'
 import { getPlanDefinition, resolveStripePriceId, type BillingInterval, type BillingPlan } from '@/lib/billing/plans'
 
@@ -45,11 +46,38 @@ export async function POST(request: Request) {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('stripe_customer_id, full_name')
+    .select('stripe_customer_id, stripe_subscription_id, subscription_status, full_name')
     .eq('id', user.id)
     .maybeSingle()
 
   const stripe = getStripe()
+  const appUrl = getAppBaseUrl()
+  const hasActiveSubscription =
+    profile?.stripe_subscription_id &&
+    (profile.subscription_status === 'active' || profile.subscription_status === 'past_due')
+
+  if (hasActiveSubscription && profile?.stripe_subscription_id) {
+    const subscription = await stripe.subscriptions.retrieve(profile.stripe_subscription_id)
+    const itemId = subscription.items.data[0]?.id
+    if (!itemId) {
+      return NextResponse.json({ error: 'billing.error.checkoutFailed' }, { status: 500 })
+    }
+
+    const updated = await stripe.subscriptions.update(profile.stripe_subscription_id, {
+      items: [{ id: itemId, price: priceId }],
+      proration_behavior: 'create_prorations',
+      metadata: {
+        supabase_user_id: user.id,
+        plan,
+        interval,
+        plan_label: plan,
+      },
+    })
+
+    await syncProfileFromStripeSubscription(updated, user.id)
+    return NextResponse.json({ updated: true })
+  }
+
   let customerId = profile?.stripe_customer_id ?? null
 
   if (!customerId) {
@@ -63,14 +91,13 @@ export async function POST(request: Request) {
   }
 
   const planDef = getPlanDefinition(plan)
-  const appUrl = getAppBaseUrl()
 
   const session = await stripe.checkout.sessions.create({
     mode: 'subscription',
     customer: customerId,
     line_items: [{ price: priceId, quantity: 1 }],
-    success_url: `${appUrl}/dashboard?billing=success`,
-    cancel_url: `${appUrl}/expired?billing=canceled`,
+    success_url: `${appUrl}/settings/billing?billing=success`,
+    cancel_url: `${appUrl}/settings/billing?billing=canceled`,
     client_reference_id: user.id,
     metadata: {
       supabase_user_id: user.id,

@@ -62,15 +62,15 @@ export default function AdminUserActions({ targetUserId, initialRole, viewerId }
 
   return (
     <>
-      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm ring-1 ring-slate-900/5 lg:max-w-sm">
-        <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-          <Shield className="h-4 w-4 text-slate-600" aria-hidden />
-          <h2 className="text-sm font-semibold text-slate-900">{t('admin.actions.title')}</h2>
+      <section className="rounded-xl border border-border bg-surface p-5 shadow-sm lg:max-w-sm">
+        <div className="flex items-center gap-2 border-b border-border pb-3">
+          <Shield className="h-4 w-4 text-muted" aria-hidden />
+          <h2 className="text-sm font-semibold text-main">{t('admin.actions.title')}</h2>
         </div>
 
         <div className="mt-4 space-y-4">
           <div>
-            <label htmlFor="admin-role-select" className="block text-xs font-medium text-slate-500">
+            <label htmlFor="admin-role-select" className="block text-xs font-medium text-muted">
               {t('admin.actions.changeRole')}
             </label>
             <div className="mt-1.5 flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -79,7 +79,7 @@ export default function AdminUserActions({ targetUserId, initialRole, viewerId }
                 value={role}
                 disabled={isSelf || pendingRole}
                 onChange={(e) => setRole(e.target.value as 'user' | 'admin')}
-                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
+                className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-main shadow-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <option value="user">{t('admin.actions.roleUser')}</option>
                 <option value="admin">{t('admin.actions.roleAdmin')}</option>
@@ -88,31 +88,31 @@ export default function AdminUserActions({ targetUserId, initialRole, viewerId }
                 type="button"
                 disabled={isSelf || !roleDirty || pendingRole}
                 onClick={applyRole}
-                className="shrink-0 rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50 sm:px-3 sm:py-2"
+                className="shrink-0 rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-white transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 sm:px-3 sm:py-2"
               >
                 {pendingRole ? t('admin.actions.saving') : t('admin.actions.apply')}
               </button>
             </div>
             {isSelf ? (
-              <p className="mt-2 text-xs text-slate-500">{t('admin.actions.cannotChangeSelf')}</p>
+              <p className="mt-2 text-xs text-muted">{t('admin.actions.cannotChangeSelf')}</p>
             ) : null}
           </div>
 
-          <div className="border-t border-slate-100 pt-4">
-            <p className="text-xs font-medium text-red-700">{t('admin.actions.dangerZone')}</p>
+          <div className="border-t border-border pt-4">
+            <p className="text-xs font-medium text-red-600 dark:text-red-400">{t('admin.actions.dangerZone')}</p>
             <button
               type="button"
               disabled={isSelf}
               onClick={() => setDeleteOpen(true)}
-              className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm font-medium text-red-700 transition-colors hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+              className="mt-2 inline-flex w-full min-h-[44px] items-center justify-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm font-medium text-red-700 transition-colors hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300 dark:hover:bg-red-500/15"
             >
               <Trash2 className="h-4 w-4 shrink-0" aria-hidden />
               {t('admin.actions.deleteRecord')}
             </button>
             {isSelf ? (
-              <p className="mt-2 text-xs text-slate-500">{t('admin.actions.cannotDeleteSelf')}</p>
+              <p className="mt-2 text-xs text-muted">{t('admin.actions.cannotDeleteSelf')}</p>
             ) : (
-              <p className="mt-2 text-xs text-slate-500">{t('admin.actions.deleteHint')}</p>
+              <p className="mt-2 text-xs text-muted">{t('admin.actions.deleteHint')}</p>
             )}
           </div>
         </div>

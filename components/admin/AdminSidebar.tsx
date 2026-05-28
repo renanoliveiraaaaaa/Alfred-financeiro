@@ -20,9 +20,9 @@ export function AdminSidebarNav({ onNavigate }: NavProps) {
 
   return (
     <>
-      <div className="border-b border-slate-800 px-4 py-5">
-        <p className="text-xs font-medium uppercase tracking-wider text-slate-500">{t('admin.sidebar.panel')}</p>
-        <p className="mt-1 text-sm font-semibold text-slate-50">{t('admin.sidebar.title')}</p>
+      <div className="border-b border-border px-4 py-5">
+        <p className="text-xs font-medium uppercase tracking-wider text-muted">{t('admin.sidebar.panel')}</p>
+        <p className="mt-1 text-sm font-semibold text-main">{t('admin.sidebar.title')}</p>
       </div>
       <nav className="flex flex-1 flex-col gap-0.5 p-3">
         {nav.map(({ href, label, Icon }) => {
@@ -34,8 +34,8 @@ export function AdminSidebarNav({ onNavigate }: NavProps) {
               onClick={onNavigate}
               className={`flex min-h-[44px] items-center gap-2 rounded-md px-3 py-2.5 text-sm font-medium transition-colors ${
                 active
-                  ? 'bg-slate-800 text-white'
-                  : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-100'
+                  ? 'bg-brand/10 text-brand'
+                  : 'text-muted hover:bg-background hover:text-main'
               }`}
             >
               <Icon className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
@@ -44,11 +44,11 @@ export function AdminSidebarNav({ onNavigate }: NavProps) {
           )
         })}
       </nav>
-      <div className="border-t border-slate-800 p-3">
+      <div className="border-t border-border p-3">
         <Link
           href="/dashboard"
           onClick={onNavigate}
-          className="flex min-h-[44px] items-center gap-2 rounded-md px-3 py-2.5 text-sm text-slate-400 transition-colors hover:bg-slate-800/60 hover:text-slate-100"
+          className="flex min-h-[44px] items-center gap-2 rounded-md px-3 py-2.5 text-sm text-muted transition-colors hover:bg-background hover:text-main"
         >
           <ArrowLeft className="h-4 w-4 shrink-0" aria-hidden />
           {t('admin.sidebar.backToApp')}
@@ -60,7 +60,7 @@ export function AdminSidebarNav({ onNavigate }: NavProps) {
 
 export default function AdminSidebar() {
   return (
-    <aside className="hidden w-56 shrink-0 flex-col border-r border-slate-800 bg-slate-900 text-slate-200 lg:flex lg:w-60">
+    <aside className="hidden w-56 shrink-0 flex-col border-r border-border bg-surface text-main lg:flex lg:w-60">
       <AdminSidebarNav />
     </aside>
   )

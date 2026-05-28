@@ -5,14 +5,15 @@ import { createSupabaseClient } from '@/lib/supabaseClient'
 import { Clock, LogOut, Mail } from 'lucide-react'
 import { useI18n } from '@/lib/i18n'
 import BillingCheckout from '@/components/billing/BillingCheckout'
+import type { BillingAvailability } from '@/lib/billing/availability'
 
 const CONTACT_EMAIL = 'contato@alfredfinanceiro.com.br'
 
 type Props = {
-  stripeEnabled: boolean
+  billing: BillingAvailability
 }
 
-export default function ExpiredPageClient({ stripeEnabled }: Props) {
+export default function ExpiredPageClient({ billing }: Props) {
   const supabase = createSupabaseClient()
   const { t } = useI18n()
 
@@ -31,14 +32,14 @@ export default function ExpiredPageClient({ stripeEnabled }: Props) {
         <div>
           <h1 className="text-xl font-semibold text-main">{t('expired.title')}</h1>
           <p className="mt-3 text-sm text-muted leading-relaxed">
-            {stripeEnabled ? t('expired.bodyCheckout') : t('expired.body')}
+            {billing.checkoutAvailable ? t('expired.bodyCheckout') : t('expired.body')}
           </p>
         </div>
 
-        <BillingCheckout stripeEnabled={stripeEnabled} />
+        <BillingCheckout stripeEnabled={billing.checkoutAvailable} />
 
         <div className="flex flex-col gap-3 justify-center pt-2">
-          {!stripeEnabled && (
+          {!billing.checkoutAvailable && (
             <a
               href={`mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent('Solicitação de acesso — Alfred — Assistente Financeiro')}`}
               className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium bg-brand text-white hover:opacity-90 transition-colors min-h-[44px]"
@@ -47,7 +48,7 @@ export default function ExpiredPageClient({ stripeEnabled }: Props) {
               {t('expired.contact')}
             </a>
           )}
-          {stripeEnabled && (
+          {billing.checkoutAvailable && (
             <a
               href={`mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent('Dúvida sobre planos — Alfred — Assistente Financeiro')}`}
               className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium border border-border text-muted hover:bg-background transition-colors min-h-[44px]"

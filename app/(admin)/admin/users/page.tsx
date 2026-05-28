@@ -50,10 +50,10 @@ export default async function AdminUsersPage() {
 
   return (
     <div className="p-4 lg:p-8">
-      <h1 className="text-xl font-semibold tracking-tight text-slate-900 lg:text-2xl">
+      <h1 className="text-xl font-semibold tracking-tight text-main lg:text-2xl">
         {serverT('admin.users.title', locale)}
       </h1>
-      <p className="mt-1 text-sm text-slate-500">{serverT('admin.users.subtitle', locale)}</p>
+      <p className="mt-1 text-sm text-muted">{serverT('admin.users.subtitle', locale)}</p>
 
       {error && (
         <p className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
@@ -67,32 +67,32 @@ export default async function AdminUsersPage() {
         </p>
       )}
 
-      <div className="mt-8 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm ring-1 ring-slate-900/5">
+      <div className="mt-8 overflow-hidden rounded-xl border border-border bg-surface shadow-sm">
         <div className="-mx-px overflow-x-auto">
           <table className="w-full min-w-[480px] border-collapse text-left text-xs sm:min-w-[640px] sm:text-sm lg:min-w-[720px]">
             <thead>
-              <tr className="border-b border-slate-200 bg-slate-50/80">
-                <th className="px-3 py-3 font-semibold text-slate-700 sm:px-4 lg:px-5">
+              <tr className="border-b border-border bg-background/80">
+                <th className="px-3 py-3 font-semibold text-main sm:px-4 lg:px-5">
                   {serverT('admin.users.colName', locale)}
                 </th>
-                <th className="hidden px-3 py-3 font-semibold text-slate-700 md:table-cell sm:px-4 lg:px-5">
+                <th className="hidden px-3 py-3 font-semibold text-main md:table-cell sm:px-4 lg:px-5">
                   {serverT('admin.users.colCreated', locale)}
                 </th>
-                <th className="hidden px-3 py-3 font-semibold text-slate-700 lg:table-cell sm:px-4 lg:px-5">
+                <th className="hidden px-3 py-3 font-semibold text-main lg:table-cell sm:px-4 lg:px-5">
                   {serverT('admin.users.colRole', locale)}
                 </th>
-                <th className="hidden px-3 py-3 text-center font-semibold text-slate-700 sm:table-cell sm:px-4 lg:px-5">
+                <th className="hidden px-3 py-3 text-center font-semibold text-main sm:table-cell sm:px-4 lg:px-5">
                   {serverT('admin.users.colVolume', locale)}
                 </th>
-                <th className="px-3 py-3 text-right font-semibold text-slate-700 sm:px-4 lg:px-5">
+                <th className="px-3 py-3 text-right font-semibold text-main sm:px-4 lg:px-5">
                   {serverT('admin.users.colActions', locale)}
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-border">
               {!profiles?.length && !error ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-10 text-center text-slate-500 lg:px-5">
+                  <td colSpan={5} className="px-4 py-10 text-center text-muted lg:px-5">
                     {serverT('admin.users.empty', locale)}
                   </td>
                 </tr>
@@ -106,12 +106,12 @@ export default async function AdminUsersPage() {
                   return (
                     <tr
                       key={row.id}
-                      className="transition-colors hover:bg-slate-50/80"
+                      className="transition-colors hover:bg-background/80"
                     >
-                      <td className="px-3 py-3.5 font-medium text-slate-900 sm:px-4 lg:px-5">
+                      <td className="px-3 py-3.5 font-medium text-main sm:px-4 lg:px-5">
                         {displayName(row.full_name, row.id, locale)}
                       </td>
-                      <td className="hidden px-3 py-3.5 tabular-nums text-slate-600 md:table-cell sm:px-4 lg:px-5">
+                      <td className="hidden px-3 py-3.5 tabular-nums text-muted md:table-cell sm:px-4 lg:px-5">
                         {formatDate(row.created_at, locale)}
                       </td>
                       <td className="hidden px-3 py-3.5 lg:table-cell sm:px-4 lg:px-5">
@@ -127,7 +127,7 @@ export default async function AdminUsersPage() {
                       >
                         <span
                           className={`inline-flex min-w-[2.5rem] justify-center tabular-nums font-medium ${
-                            isPower ? 'text-amber-800' : 'text-slate-700'
+                            isPower ? 'text-amber-700 dark:text-amber-300' : 'text-main'
                           }`}
                         >
                           {volLabel}
@@ -136,7 +136,7 @@ export default async function AdminUsersPage() {
                       <td className="px-3 py-3.5 text-right sm:px-4 lg:px-5">
                         <Link
                           href={`/admin/users/${row.id}`}
-                          className="inline-flex min-h-[44px] items-center rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50 sm:min-h-0 sm:py-1.5"
+                          className="inline-flex min-h-[44px] items-center rounded-md border border-border bg-background px-3 py-2 text-xs font-medium text-main shadow-sm transition-colors hover:bg-surface sm:min-h-0 sm:py-1.5"
                         >
                           {serverT('admin.users.viewDetails', locale)}
                         </Link>
