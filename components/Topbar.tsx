@@ -14,6 +14,7 @@ import { useGreetingPronoun } from '@/lib/greeting'
 import QuickAddModal from '@/components/QuickAddModal'
 import { useUserPreferences } from '@/lib/userPreferencesContext'
 import { useI18n } from '@/lib/i18n'
+import { formatTrialCountdownLabel, trialDaysLeft as getTrialDaysLeft } from '@/lib/billing/trialLabel'
 
 const PAGE_KEYS: Record<string, string> = {
   '/dashboard': 'page.dashboard',
@@ -95,18 +96,9 @@ export default function Topbar() {
   const pageTitle = getPageTitle(pathname, isBusiness, t)
 
   const trialDaysLeft =
-    planStatus === 'trial' && trialEndsAt
-      ? Math.ceil((new Date(trialEndsAt).getTime() - Date.now()) / 86_400_000)
-      : null
+    planStatus === 'trial' && trialEndsAt ? getTrialDaysLeft(trialEndsAt) : null
 
-  const trialBadgeLabel =
-    trialDaysLeft === null
-      ? null
-      : trialDaysLeft < 1
-        ? t('trial.lastDay')
-        : trialDaysLeft === 1
-          ? t('trial.oneDay')
-          : t('trial.daysLeft').replace('{n}', String(trialDaysLeft))
+  const trialBadgeLabel = formatTrialCountdownLabel(t, trialDaysLeft)
 
   const showTrialBadge =
     trialBadgeLabel !== null && trialDaysLeft !== null && trialDaysLeft >= 0 && trialDaysLeft <= 7

@@ -6,6 +6,7 @@ import { AlertCircle, CheckCircle2 } from 'lucide-react'
 import { createSupabaseClient } from '@/lib/supabaseClient'
 import { useI18n } from '@/lib/i18n'
 import { formatMessage } from '@/lib/i18nFormat'
+import { formatTrialCountdownLabel, trialDaysLeft as getTrialDaysLeft } from '@/lib/billing/trialLabel'
 import CurrentPlanBadge, { type PlanBadgeProfile } from '@/components/profile/CurrentPlanBadge'
 import BillingCheckout from '@/components/billing/BillingCheckout'
 import BillingManageSection from '@/components/billing/BillingManageSection'
@@ -67,15 +68,13 @@ export default function BillingSettingsSection({ billing }: Props) {
 
   const trialDaysLeft = useMemo(() => {
     if (!planProfile || planProfile.plan_status !== 'trial' || !planProfile.trial_ends_at) return null
-    return Math.ceil((new Date(planProfile.trial_ends_at).getTime() - Date.now()) / 86_400_000)
+    return getTrialDaysLeft(planProfile.trial_ends_at)
   }, [planProfile])
 
-  const trialLabel = useMemo(() => {
-    if (trialDaysLeft === null) return null
-    if (trialDaysLeft < 1) return t('trial.lastDay')
-    if (trialDaysLeft === 1) return t('trial.oneDay')
-    return t('trial.daysLeft').replace('{n}', String(trialDaysLeft))
-  }, [trialDaysLeft, t])
+  const trialLabel = useMemo(
+    () => formatTrialCountdownLabel(t, trialDaysLeft),
+    [trialDaysLeft, t],
+  )
 
   const isActive = subscriptionStatus === 'active' || subscriptionStatus === 'past_due'
   const showTrialBanner =

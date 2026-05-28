@@ -10,7 +10,7 @@
   "settings.billing.title": "Plano e pagamentos",
   "settings.billing.subtitle": "Consulte seu plano, assine ou altere a assinatura",
   "settings.billing.trialTitle": "Período de teste",
-  "settings.billing.trialBody": "Seu trial termina em {label}. Escolha um plano abaixo para continuar usando o Alfred.",
+  "settings.billing.trialBody": "Seu trial termina em {label}. Escolha um plano abaixo para continuar.",
   "settings.billing.trialExpired": "Seu trial expirou. Escolha um plano para reativar o acesso.",
   "settings.billing.plansTitle": "Planos disponíveis",
   "settings.billing.plansSubtitle": "Assine um plano ou altere o atual (upgrade/downgrade).",

@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react'
 import { useI18n } from '@/lib/i18n'
-import { formatMessage } from '@/lib/i18nFormat'
+import { formatTrialPlanBadgeLabel, trialDaysLeft } from '@/lib/billing/trialLabel'
 import type { Database } from '@/types/supabase'
 
 export type PlanBadgeProfile = Pick<
@@ -41,11 +41,6 @@ function resolvePlanKind(profile: PlanBadgeProfile): PlanKind {
   return 'free'
 }
 
-function trialDaysLeft(trialEndsAt: string | null | undefined): number | null {
-  if (!trialEndsAt) return null
-  return Math.ceil((new Date(trialEndsAt).getTime() - Date.now()) / 86_400_000)
-}
-
 const BADGE_STYLES: Record<PlanKind, string> = {
   trial:
     'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200',
@@ -77,19 +72,8 @@ export default function CurrentPlanBadge({ profile, className = '' }: Props) {
         return t('planBadge.expired')
       case 'free':
         return t('planBadge.free')
-      case 'trial': {
-        const days = trialDaysLeft(profile.trial_ends_at)
-        if (days === null) return t('planBadge.trial')
-        if (days < 1) {
-          return formatMessage(t('planBadge.trialEnds'), { label: t('trial.lastDay') })
-        }
-        if (days === 1) {
-          return formatMessage(t('planBadge.trialEnds'), { label: t('trial.oneDay') })
-        }
-        return formatMessage(t('planBadge.trialEnds'), {
-          label: t('trial.daysLeft').replace('{n}', String(days)),
-        })
-      }
+      case 'trial':
+        return formatTrialPlanBadgeLabel(t, trialDaysLeft(profile.trial_ends_at))
     }
   }, [kind, profile.trial_ends_at, t])
 
