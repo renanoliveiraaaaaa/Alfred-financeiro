@@ -1,6 +1,6 @@
 'use client'
 
-import { CreditCard, Tags } from 'lucide-react'
+import { Bell, CreditCard, Tags } from 'lucide-react'
 import { useI18n } from '@/lib/i18n'
 import OrgTeamSection from '@/components/settings/OrgTeamSection'
 import SettingsHubLink from '@/components/settings/SettingsHubLink'
@@ -27,6 +27,12 @@ export default function SettingsPage() {
           Icon={Tags}
           title={t('settings.hub.categories.title')}
           description={t('settings.hub.categories.desc')}
+        />
+        <SettingsHubLink
+          href="/settings/notifications"
+          Icon={Bell}
+          title={t('settings.hub.notifications.title')}
+          description={t('settings.hub.notifications.desc')}
         />
       </nav>
 

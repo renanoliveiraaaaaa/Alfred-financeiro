@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { sendEmail, buildWeeklyReportHtml, buildDueReminderHtml } from '@/lib/email'
+import { buildDueReminderPush, buildWeeklyReportPush } from '@/lib/push/messages'
+import { sendPushToUser } from '@/lib/push/send'
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization')
@@ -32,12 +34,13 @@ export async function GET(request: Request) {
     id: string
     full_name: string | null
     weekly_report: boolean
+    push_notifications: boolean
     locale: 'pt' | 'en'
   }
 
   const { data: profiles, error: profErr } = await supabase
     .from('profiles')
-    .select('id, full_name, weekly_report, locale')
+    .select('id, full_name, weekly_report, push_notifications, locale')
 
   if (profErr) {
     return NextResponse.json({ error: profErr.message }, { status: 500 })
@@ -45,6 +48,8 @@ export async function GET(request: Request) {
 
   let weeklySent = 0
   let remindersSent = 0
+  let pushWeeklySent = 0
+  let pushRemindersSent = 0
   const errors: string[] = []
 
   for (const profile of (profiles ?? []) as NotifyProfile[]) {
@@ -87,6 +92,15 @@ export async function GET(request: Request) {
 
       if (result.ok) weeklySent++
       else errors.push(`${email}: ${result.error}`)
+
+      if (profile.push_notifications) {
+        const pushResult = await sendPushToUser(
+          profile.id,
+          buildWeeklyReportPush({ name, totalRevenues, totalExpenses, unpaidCount, locale }),
+        )
+        if (pushResult.ok && pushResult.sent > 0) pushWeeklySent++
+        else if (!pushResult.ok) errors.push(`${profile.id} push weekly: ${pushResult.error}`)
+      }
     }
 
     const { data: dueExpenses } = await supabase
@@ -99,21 +113,28 @@ export async function GET(request: Request) {
       .limit(5)
 
     if (dueExpenses && dueExpenses.length > 0) {
+      const items = dueExpenses.map((e) => ({
+        description: e.description,
+        amount: Number(e.amount || 0),
+        dueDate: e.due_date ?? todayStr,
+      }))
+
       const result = await sendEmail({
         to: email,
         subject: locale === 'en' ? 'Payment reminders — Alfred' : 'Lembretes de vencimento — Alfred',
-        html: buildDueReminderHtml({
-          name,
-          locale,
-          items: dueExpenses.map((e) => ({
-            description: e.description,
-            amount: Number(e.amount || 0),
-            dueDate: e.due_date ?? todayStr,
-          })),
-        }),
+        html: buildDueReminderHtml({ name, locale, items }),
       })
       if (result.ok) remindersSent++
       else errors.push(`${email}: ${result.error}`)
+
+      if (profile.push_notifications) {
+        const pushResult = await sendPushToUser(
+          profile.id,
+          buildDueReminderPush({ name, locale, items }),
+        )
+        if (pushResult.ok && pushResult.sent > 0) pushRemindersSent++
+        else if (!pushResult.ok) errors.push(`${profile.id} push reminder: ${pushResult.error}`)
+      }
     }
   }
 
@@ -121,6 +142,8 @@ export async function GET(request: Request) {
     ok: true,
     weeklySent,
     remindersSent,
+    pushWeeklySent,
+    pushRemindersSent,
     errors: errors.slice(0, 10),
   })
 }

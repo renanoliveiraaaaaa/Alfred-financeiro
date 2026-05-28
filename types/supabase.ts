@@ -29,6 +29,7 @@ export interface Database {
           app_theme: 'normal' | 'gala' | 'classic' | 'club' | 'liquid'
           hide_balance: boolean
           weekly_report: boolean
+          push_notifications: boolean
           locale: 'pt' | 'en'
           custom_theme: Json | null
           role: 'user' | 'admin'
@@ -49,6 +50,7 @@ export interface Database {
           app_theme?: 'normal' | 'gala' | 'classic' | 'club' | 'liquid'
           hide_balance?: boolean
           weekly_report?: boolean
+          push_notifications?: boolean
           locale?: 'pt' | 'en'
           custom_theme?: Json | null
           role?: 'user' | 'admin'
@@ -69,6 +71,7 @@ export interface Database {
           app_theme?: 'normal' | 'gala' | 'classic' | 'club' | 'liquid'
           hide_balance?: boolean
           weekly_report?: boolean
+          push_notifications?: boolean
           locale?: 'pt' | 'en'
           custom_theme?: Json | null
           role?: 'user' | 'admin'
@@ -81,6 +84,36 @@ export interface Database {
           stripe_subscription_id?: string | null
           created_at?: string
         }
+      }
+      push_subscriptions: {
+        Row: {
+          id: string
+          user_id: string
+          endpoint: string
+          p256dh: string
+          auth: string
+          user_agent: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          endpoint: string
+          p256dh: string
+          auth: string
+          user_agent?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          endpoint?: string
+          p256dh?: string
+          auth?: string
+          user_agent?: string | null
+          created_at?: string
+        }
+        Relationships: []
       }
       activity_logs: {
         Row: {

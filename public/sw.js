@@ -1,4 +1,4 @@
-const CACHE_NAME = 'alfred-finance-v4'
+const CACHE_NAME = 'alfred-finance-v5'
 const OFFLINE_URL = '/offline'
 
 /** Só URLs públicas — rotas autenticadas não entram no precache. */
@@ -71,4 +71,44 @@ self.addEventListener('fetch', (event) => {
       }),
     )
   }
+})
+
+self.addEventListener('push', (event) => {
+  let payload = { title: 'Alfred', body: '', url: '/dashboard' }
+  try {
+    if (event.data) {
+      const parsed = event.data.json()
+      payload = { ...payload, ...parsed }
+    }
+  } catch (_) {
+    /* ignore malformed payload */
+  }
+
+  event.waitUntil(
+    self.registration.showNotification(payload.title, {
+      body: payload.body,
+      icon: '/icon-192.png',
+      badge: '/apple-icon.png',
+      data: { url: payload.url || '/dashboard' },
+    }),
+  )
+})
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+  const targetUrl = event.notification.data?.url || '/dashboard'
+  const absoluteUrl = new URL(targetUrl, self.location.origin).href
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+      for (const client of windowClients) {
+        if (client.url.startsWith(self.location.origin) && 'focus' in client) {
+          return client.focus()
+        }
+      }
+      if (clients.openWindow) {
+        return clients.openWindow(absoluteUrl)
+      }
+    }),
+  )
 })
