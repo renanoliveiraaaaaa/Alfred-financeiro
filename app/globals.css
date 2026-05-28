@@ -358,34 +358,29 @@ main {
   transform: scale(1.02);
 }
 
-/* ── PWA / iOS Safe Area ── */
-.pt-safe {
-  padding-top: env(safe-area-inset-top, 0px);
-}
+/* ── PWA / iOS Safe Area (somente telemóvel — desktop inalterado) ── */
+@media (hover: none) and (pointer: coarse) {
+  .pt-safe {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
 
-.pb-safe {
-  padding-bottom: env(safe-area-inset-bottom, 0px);
-}
-
-.px-safe {
-  padding-left: env(safe-area-inset-left, 0px);
-  padding-right: env(safe-area-inset-right, 0px);
-}
-
-.min-h-app {
-  min-height: 100dvh;
-  min-height: -webkit-fill-available;
-}
-
-.h-app {
-  height: 100dvh;
-  height: -webkit-fill-available;
-}
-
-/* Garante que a bottom nav não sobreponha o home indicator no iPhone */
-@supports (padding-bottom: env(safe-area-inset-bottom)) {
   .pb-safe {
-    padding-bottom: env(safe-area-inset-bottom);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .px-safe {
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
+  }
+
+  .min-h-app {
+    min-height: 100dvh;
+    min-height: -webkit-fill-available;
+  }
+
+  .h-app {
+    height: 100dvh;
+    height: -webkit-fill-available;
   }
 }
 
@@ -393,15 +388,38 @@ main {
 @supports (height: 100dvh) {
   .app-layout {
     height: 100dvh;
-    height: -webkit-fill-available;
   }
 }
 
-/* Atalho na tela inicial: mais padding no topo (notch / status bar) */
-@media (display-mode: standalone) {
-  .standalone-safe-top {
-    padding-top: env(safe-area-inset-top, 0px);
+@media (hover: none) and (pointer: coarse) {
+  @supports (height: 100dvh) {
+    .app-layout {
+      height: -webkit-fill-available;
+    }
   }
+}
+
+/* ── Mobile: sem pinch-zoom no shell (estilo app nativa) ── */
+@media (hover: none) and (pointer: coarse) {
+  html.mobile-no-zoom,
+  html.mobile-no-zoom body {
+    touch-action: manipulation;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* iOS amplia o viewport ao focar inputs < 16px — evita “zoom” involuntário */
+  html.mobile-no-zoom input,
+  html.mobile-no-zoom select,
+  html.mobile-no-zoom textarea {
+    font-size: 16px;
+  }
+}
+
+/* Elementos que podem manter pinch (fotos, PDF inline, etc.) */
+.allow-pinch-zoom,
+.allow-pinch-zoom img,
+.allow-pinch-zoom canvas {
+  touch-action: pinch-zoom;
 }
 
 @media (prefers-reduced-motion: reduce) {

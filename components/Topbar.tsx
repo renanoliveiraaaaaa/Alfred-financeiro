@@ -112,7 +112,7 @@ export default function Topbar() {
 
   return (
     <>
-      <header className="sticky top-0 z-40 border-b border-border bg-surface/80 pt-safe backdrop-blur-md glass-topbar standalone-safe-top">
+      <header className="sticky top-0 z-40 border-b border-border bg-surface/80 pt-safe backdrop-blur-md glass-topbar">
         {showTrialBadge && (
           <div className="px-4 py-1.5 text-center text-xs font-medium bg-amber-500/10 text-amber-700 dark:text-amber-300 border-b border-amber-500/20">
             {t('trial.banner').replace('{label}', trialBadgeLabel!)}

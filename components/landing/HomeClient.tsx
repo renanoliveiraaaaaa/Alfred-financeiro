@@ -196,7 +196,7 @@ export default function HomeClient() {
 
   if (booting) {
     return (
-      <div className="flex min-h-app items-center justify-center bg-slate-950">
+      <div className="flex min-h-[100dvh] items-center justify-center bg-slate-950">
         <div
           className="h-10 w-10 animate-spin rounded-full border-2 border-emerald-500/30 border-t-emerald-400"
           aria-hidden
@@ -207,7 +207,7 @@ export default function HomeClient() {
   }
 
   return (
-    <div className="landing-page flex min-h-app flex-col overflow-y-auto overflow-x-hidden bg-slate-950 px-safe pb-safe pt-safe lg:h-app lg:flex-row lg:overflow-hidden">
+    <div className="landing-page flex min-h-[100dvh] flex-col overflow-y-auto overflow-x-hidden bg-slate-950 px-safe pb-safe pt-safe lg:h-[100dvh] lg:flex-row lg:overflow-hidden">
       <section className="relative flex shrink-0 flex-col bg-slate-950 lg:min-h-0 lg:w-1/2 lg:max-w-[50%] lg:flex-1">
         <div
           className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_-10%,rgba(16,185,129,0.18),transparent_55%)]"

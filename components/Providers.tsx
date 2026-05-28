@@ -7,6 +7,7 @@ import { UserPreferencesProvider } from '@/lib/userPreferencesContext'
 import ThemeApplier from '@/components/ThemeApplier'
 import I18nProvider from '@/lib/I18nProvider'
 import PwaRegister from '@/components/PwaRegister'
+import MobilePinchGuard from '@/components/MobilePinchGuard'
 import InstallPrompt from '@/components/InstallPrompt'
 import SkipLink from '@/components/SkipLink'
 
@@ -19,6 +20,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
           <I18nProvider>
             <SkipLink />
             <PwaRegister />
+            <MobilePinchGuard />
             <ToastProvider>
               {children}
               <InstallPrompt />

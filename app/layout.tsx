@@ -8,6 +8,8 @@ import { getServerLocale } from "@/lib/serverI18n";
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
   viewportFit: "cover", // necessário para env(safe-area-inset-*) no iPhone
   themeColor: "#0f0f0f",
 };
